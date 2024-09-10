@@ -1,5 +1,5 @@
-Project name:
-Clash free timetable creator for KREA University
+# Project Name:  
+**Clash - Free Timetable Creator for KREA University**
 
-5 sentence summary:
-KREA University manually creates a spreadsheet using an Excel sheet to schedule various courses and create student timetables. There are various software and manual methods currently in the market to create timetables and built-in systems in school management systems like Canvas. The current methods make clash resolution and managing the various timetabling requirements of professors challenging and create problems for students and admin alike. Using a dynamic programming formulated algorithm and a custom UI, we can make the process smoother and create a way to create better-optimised timetables automatically. Our algorithm can be proven mathematically correct, and the system can be tested in the real world to prove its effectiveness.
+### 5 Sentence Summary:
+KREA University manually creates a spreadsheet using Excel to schedule various courses and generate student timetables. There are numerous software and manual methods available for timetable creation, along with built-in systems in platforms like Canvas. However, these current methods struggle with resolving clashes and managing the complex timetabling needs of professors, resulting in issues for both students and administrators. By using a dynamic programming-based algorithm and a custom UI, the process can be streamlined, allowing for the automatic generation of optimally designed timetables. Our algorithm is mathematically verifiable, and its effectiveness can be tested in real-world scenarios.
