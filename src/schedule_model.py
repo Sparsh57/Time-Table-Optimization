@@ -58,10 +58,13 @@ def schedule_courses(courses, student_course_map):
 
     ## Define penalties for conflicts and adjust constraints for overlapping courses
     for roll_number, course_list in student_course_map.items(): 
-        for i in range(len(course_list) - 1):
+        for i in range(len(course_list) - 1): 
             for j in range(i + 1, len(course_list)):
                 course1 = course_list[i]
                 course2 = course_list[j]
+                # These nested loops iterate through each pair of courses for each student.
+                # They ensure that every pair of courses that the student is taking is considered exactly once. 
+                # This essentially helps in checking every possible combination of course conflicts. 
                 for k, time_slot1 in enumerate(courses[course1]['time_slots']):
                     for l, time_slot2 in enumerate(courses[course2]['time_slots']):
                         if time_slot1 == time_slot2:
@@ -71,6 +74,9 @@ def schedule_courses(courses, student_course_map):
                                 course_time_vars[course2][l].Not(),
                                 penalty_var
                             ])
+                            # The AddBoolOr constraint allows for two courses to not be scheduled at the 
+                            # same conflicting time (by negating the variables with .Not()) or for the penalty
+                            # variable to be activated (indicating that this conflict was unavoidable and hence accepted).
                             all_penalty_vars.append(penalty_var)
 
     if all_penalty_vars:
