@@ -2,6 +2,8 @@ import re
 from ortools.sat.python import cp_model
 
 def schedule_courses(courses, student_course_map):
+    model = cp_model.CpModel()
+    
     """
     Schedules courses based on the provided course time slots and student course registrations,
     ensuring no student is scheduled for overlapping courses and each course meets twice a week without conflicts.
@@ -15,41 +17,47 @@ def schedule_courses(courses, student_course_map):
         str: A string representing the scheduled courses and their time slots if a solution is found, 
              otherwise a message indicating that no solution exists.
     """
-    model = cp_model.CpModel()
-
-    # Variables for each course and time slot
     course_time_vars = {}
-    course_day_vars = {}  # Tracks days for courses
+    course_day_vars = {}
     days = ['Monday ', 'Tuesday ', 'Wednesday ', 'Thursday ', 'Friday ']
+    all_penalty_vars = []  # List to hold all penalty variables
 
-    # Define model variables
+    # model variables
     for course_id, course_info in courses.items():
-        course_time_vars[course_id] = []
-        course_day_vars[course_id] = {day: [] for day in days}
+        course_time_vars[course_id] = []  # {'COURSE_ID': [], .. , }
+        course_day_vars[course_id] = {day: [] for day in days} # {'Monday ': [], 'Tuesday ': [], 
+                                                               # 'Wednesday ': [], 'Thursday ': [],'Friday ': []}
 
-        for time_slot in course_info['time_slots']:
-            var_id = f'{course_id}_{time_slot}'
-            var = model.NewBoolVar(var_id)
+        for time_slot in course_info['time_slots']: 
+            var_id = f'{course_id}_{time_slot}'  # COURSE_ID_TIME_SLOT
+            var = model.NewBoolVar(var_id) # A new boolean variable is created.
             course_time_vars[course_id].append(var)
+
+            # course_time_vars = {
+            #'COURSE_ID1': [var_Mon9AM, var_Tue10AM, var_Wed11AM, ...],
+            # 'COURSE_ID2': [var_Mon10AM, var_Tue11AM, var_Wed9AM, ...], } 
+            # Here, each list contains boolean variables where each variable 
+            # represents whether a specific course is scheduled at a specific time slot.
+        
             match = re.match(r"(\D+)", time_slot)
             if match:
-                day = match.group(1)
-                if day in days:
-                    course_day_vars[course_id][day].append(var)
-                else:
-                    print(f"Day extracted '{day}' is not recognized as a valid day.")
+                day = match.group(1) # Day
+                course_day_vars[course_id][day].append(var) # {CourseID: {Monday:[], Tuesday:[], ..}, .. ,}
 
-    # Constraints to ensure each course is scheduled exactly twice
-    for course_id, vars in course_time_vars.items():
-        model.Add(sum(vars) == 2)
+    ## Constraints for each course to be scheduled exactly twice 
+    # Exactly Two True: Out of all the boolean variables listed for each course, exactly two must evaluate 
+    # to True in any valid solution.
+    
+    for course_id, vars in course_time_vars.items(): 
+        model.Add(sum(vars) == 2) 
 
-    # Constraint to prevent scheduling a course more than once per day
-    for course_id, day_vars in course_day_vars.items():
-        for day, vars in day_vars.items():
-            model.Add(sum(vars) <= 1)
+    ## Add constraints for no more than one time slot per day per course
+    for course_id, day_vars in course_day_vars.items():  
+        for day, vars in day_vars.items(): # day_vars is a dictionary 
+            model.Add(sum(vars) <= 1) 
 
-    # Constraint to prevent students from having overlapping courses
-    for roll_number, course_list in student_course_map.items():
+    ## Define penalties for conflicts and adjust constraints for overlapping courses
+    for roll_number, course_list in student_course_map.items(): 
         for i in range(len(course_list) - 1):
             for j in range(i + 1, len(course_list)):
                 course1 = course_list[i]
@@ -57,21 +65,25 @@ def schedule_courses(courses, student_course_map):
                 for k, time_slot1 in enumerate(courses[course1]['time_slots']):
                     for l, time_slot2 in enumerate(courses[course2]['time_slots']):
                         if time_slot1 == time_slot2:
+                            penalty_var = model.NewBoolVar(f'penalty_{course1}_{course2}_{time_slot1}')
                             model.AddBoolOr([
                                 course_time_vars[course1][k].Not(),
-                                course_time_vars[course2][l].Not()
+                                course_time_vars[course2][l].Not(),
+                                penalty_var
                             ])
+                            all_penalty_vars.append(penalty_var)
 
-    # Solve the model and extract the schedule
+    if all_penalty_vars:
+        model.Minimize(sum(all_penalty_vars))
+
     solver = cp_model.CpSolver()
     status = solver.Solve(model)
     if status == cp_model.OPTIMAL:
-        print("Solution found!")
+        print("Optimized solution found with minimized conflicts!")
         schedule_output = []
         for course_id, vars in course_time_vars.items():
             scheduled_times = [var.Name().split('_')[1] for var in vars if solver.Value(var)]
             schedule_output.append(f"{course_id} is scheduled at: {', '.join(scheduled_times)}")
         return "\n".join(schedule_output)
     else:
-        print("No solution exists.")
-        return "No solution exists."
+        return "No feasible solution found."
