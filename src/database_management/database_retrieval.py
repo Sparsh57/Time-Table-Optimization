@@ -1,5 +1,5 @@
 import pandas as pd
-from databse_connection import DatabaseConnection
+from .databse_connection import DatabaseConnection
 from pathlib import Path
 import os
 
