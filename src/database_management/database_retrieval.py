@@ -1,5 +1,7 @@
 import pandas as pd
-from database_management.databse_connection import DatabaseConnection
+from databse_connection import DatabaseConnection
+from pathlib import Path
+import os
 
 def registration_data():
     db = DatabaseConnection(
@@ -9,6 +11,8 @@ def registration_data():
         database="byfapocx02at8jbunymk"
     )
     connection = db.connect()
+    if connection is None:
+        return pd.DataFrame()  # Return an empty DataFrame if connection fails
 
     query = """
     SELECT 
@@ -35,6 +39,8 @@ def faculty_pref():
         database="byfapocx02at8jbunymk"
     )
     connection = db.connect()
+    if connection is None:
+        return pd.DataFrame()  # Return an empty DataFrame if connection fails
 
     query = """
     SELECT 
@@ -54,7 +60,7 @@ def faculty_pref():
 df_registration = registration_data()
 df_professor_pref = faculty_pref()
 
-directory_path = 'data/' 
+directory_path = os.path.join(Path(__file__).resolve().parents[2], 'retrieved_data',)
 
 # Save dataframes to CSV
 df_registration.to_csv(directory_path + 'Student_Registration.csv', index=False)
