@@ -22,6 +22,8 @@ class DatabaseConnection:
         """
         Establishes a connection to the MySQL database using the initialization parameters.
         If connected, it prints the MySQL server version and the current connected database.
+        Returns:
+        connection: The established database connection.
         """
         try:
             self.connection = mysql.connector.connect(
@@ -37,8 +39,10 @@ class DatabaseConnection:
                 cursor.execute("SELECT DATABASE();")
                 record = cursor.fetchone()
                 print("You're connected to database: ", record)
+                return self.connection  # Return the connection object
         except Error as e:
             print("Error while connecting to MySQL", e)
+            return None
 
     def execute_query(self, query, params=None):
         """
