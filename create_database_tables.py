@@ -46,7 +46,8 @@ cursor.execute("""
         SlotID INT AUTO_INCREMENT PRIMARY KEY,
         StartTime VARCHAR(10) NOT NULL,
         EndTime VARCHAR(10) NOT NULL,
-        Day VARCHAR(50) NOT NULL
+        Day VARCHAR(50) NOT NULL,
+        UNIQUE (StartTime, EndTime, Day)
     );
 """)
 
