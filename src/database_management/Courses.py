@@ -1,4 +1,4 @@
-from .databse_connection import DatabaseConnection
+from databse_connection import DatabaseConnection
 import pandas as pd
 import numpy as np
 import os
