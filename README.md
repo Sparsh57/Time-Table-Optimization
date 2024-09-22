@@ -4,7 +4,7 @@
 ### Note
 There are two branches, one for *the back end* and one for *the front end* with their own running instructions. Please follow the running instructions in each branch. 
 
-For **back-end** : [https://github.com/Sparsh57/Time-Table-Optimization/blob/feature/core-functionality/docs/cloning_instructions.md](url) 
+For **back-end** : [https://github.com/Sparsh57/Time-Table-Optimization/blob/feature/core-functionality/README.md](url) 
 
 For **front-end** : [https://github.com/Sparsh57/Time-Table-Optimization/blob/front-end/running_instructions.md](url)
 
