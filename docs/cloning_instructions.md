@@ -17,7 +17,7 @@ To run the project on your computer, follow these steps. Please note that the da
 First, clone the repository to your local machine using Git:
 
 ```bash
-git clone https://github.com/YourUsername/Time-Table-Optimization.git
+git clone https://github.com/Sparsh57/Time-Table-Optimization.git -b feature/core-functionality
 cd Time-Table-Optimization
 ```
 
@@ -65,6 +65,13 @@ To run the scheduling algorithm, follow these steps:
     ```
 
     The output will be displayed on the console and, depending on your setup, might also be saved to a file or database.
+
+3. **FastAPI**: The main_backend.py file is a FastAPI file in which we have endpoints to insert time_slots and extract time_slots.
+
+   Run the main_backend script to execute the API:
+   ```bash
+    fastapi dev main_backend.py
+    ```
 
 ### Output
 The final schedule will be output to the console, showing which courses are scheduled at what times, trying to minimize conflicts. 
