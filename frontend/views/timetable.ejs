@@ -1,0 +1,14 @@
+<table>
+    <% for(const obj of data){ %>
+     <tr>
+      <% for(const key in obj) { %>
+       <th><%= key %></th>
+      <% } %>
+     </tr>
+     <tr>
+     <% for(const key in obj) { %>
+      <td><%= obj[key] %></td>
+     <% } %>
+     </tr>
+    <% } %> 
+</table>
