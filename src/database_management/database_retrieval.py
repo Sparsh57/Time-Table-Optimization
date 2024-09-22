@@ -1,7 +1,6 @@
 import pandas as pd
 from .databse_connection import DatabaseConnection
-from pathlib import Path
-import os
+
 
 def registration_data():
     db = DatabaseConnection(
@@ -56,12 +55,3 @@ def faculty_pref():
     db.close()
 
     return df
-
-df_registration = registration_data()
-df_professor_pref = faculty_pref()
-
-directory_path = os.path.join(Path(__file__).resolve().parents[2], 'retrieved_data',)
-
-# Save dataframes to CSV
-df_registration.to_csv(directory_path + 'Student_Registration.csv', index=False)
-df_professor_pref.to_csv(directory_path + 'Faculty_Pref.csv', index=False)
