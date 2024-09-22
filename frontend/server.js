@@ -21,8 +21,8 @@ app.use(session({
 app.use(passport.initialize()) // init passport on every route call
 app.use(passport.session())    //allow passport to use "express-session"
 //Get the GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET from Google Developer Console
-const GOOGLE_CLIENT_ID = "3184701-tn6finlstvgcgvte2381.apps.googleusercontent.com"
-const GOOGLE_CLIENT_SECRET = "XyLuTLHX6Ov_93IP"
+const GOOGLE_CLIENT_ID = "process.env.CLIENT_ID"
+const GOOGLE_CLIENT_SECRET = "process.env.CLIENT_SECRET"
 
 authUser = (request, accessToken, refreshToken, profile, done) => {
   return done(null, profile);
