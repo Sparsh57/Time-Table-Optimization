@@ -30,7 +30,7 @@ authUser = (request, accessToken, refreshToken, profile, done) => {
 
 //Use "GoogleStrategy" as the Authentication Strategy
 passport.use(new GoogleStrategy({
-  clientID:     process.env.CLIENT_ID,
+  clientID: process.env.CLIENT_ID,
   clientSecret: process.env.CLIENT_SECRET,
   callbackURL: "http://localhost:4000/auth/google/callback",
   passReqToCallback   : true
