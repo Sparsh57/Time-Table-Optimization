@@ -1,5 +1,6 @@
 import re
 from ortools.sat.python import cp_model
+import pandas as pd
 
 def schedule_courses(courses, student_course_map):
     model = cp_model.CpModel()
@@ -84,12 +85,17 @@ def schedule_courses(courses, student_course_map):
 
     solver = cp_model.CpSolver()
     status = solver.Solve(model)
+  
+    # Creating a DataFrame to hold the schedule
     if status == cp_model.OPTIMAL:
-        print("Optimized solution found with minimized conflicts!")
-        schedule_output = []
+        data = []
         for course_id, vars in course_time_vars.items():
-            scheduled_times = [var.Name().split('_')[1] for var in vars if solver.Value(var)]
-            schedule_output.append(f"{course_id} is scheduled at: {', '.join(scheduled_times)}")
-        return "\n".join(schedule_output)
+            times = [var.Name().split('_')[1] for var in vars if solver.Value(var)]
+            for time in times:
+                data.append({'Course ID': course_id, 'Scheduled Time': time})
+        
+        schedule_df = pd.DataFrame(data)
+        return schedule_df
     else:
-        return "No feasible solution found."
+        print("No feasible solution found.")
+        return pd.DataFrame(columns=['Course ID', 'Scheduled Time'])
