@@ -3,6 +3,7 @@ from utilities import faculty_busy_slots, create_course_dictionary
 from schedule_model import schedule_courses
 from conflict_checker import check_conflicts
 from database_management.database_retrieval import registration_data, faculty_pref
+from database_management.schedule import schedule
 
 # Load data
 df_merged = registration_data()
@@ -21,3 +22,6 @@ if isinstance(schedule_data, dict):
         print(f'{course}: {", ".join(times)}')
 else:
     print(schedule_data)
+    
+    # Populates the Schedule Table in the Database. 
+    schedule(schedule_data) 
