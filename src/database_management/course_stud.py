@@ -5,17 +5,16 @@ import os
 from pathlib import Path
 
 
-def insert_course_students(file_name, db_config):
+def insert_course_students(file, db_config):
     """
     Inserts student course enrollments from a CSV file into the database.
 
-    :param file_name: The file name for the CSV file containing student registration data.
+    :param file: The CSV file containing student registration data.
     :param db_config: A dictionary containing the database configuration (host, user, password, database).
     """
 
-    file_loc = os.path.join(Path(__file__).resolve().parents[2], 'data', file_name)
     # Read the CSV into a DataFrame
-    df_courses = pd.read_csv(file_loc)
+    df_courses = pd.read_csv(file)
 
     # Initialize the database connection
     db = DatabaseConnection(

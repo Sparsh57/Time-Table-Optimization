@@ -1,21 +1,17 @@
 from .databse_connection import DatabaseConnection
 import pandas as pd
 import numpy as np
-import os
-from pathlib import Path
 
 
-def insert_courses_professors(file_name, db_config):
+def insert_courses_professors(file, db_config):
     """
     Inserts course information associated with professors from a CSV file into the database.
 
-    :param file_name: The file name for the CSV file containing courses and faculty names.
+    :param file: The CSV file containing courses and faculty names.
     :param db_config: A dictionary containing the database configuration (host, user, password, database).
     """
-    # Getting the file location for the faculty preference CSV file
-    file_loc = os.path.join(Path(__file__).resolve().parents[2], 'data', file_name)
     # Read the CSV into a DataFrame
-    df_courses = pd.read_csv(file_loc)
+    df_courses = pd.read_csv(file)
 
     # Initialize the database connection
     db = DatabaseConnection(

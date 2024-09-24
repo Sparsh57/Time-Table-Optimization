@@ -5,16 +5,14 @@ from pathlib import Path
 import os
 
 
-def insert_professor_busy_slots(file_name, db_config):
+def insert_professor_busy_slots(file, db_config):
     """
     Inserts professor busy slots from a CSV file into a database.
 
-    :param file_name: The name of the CSV file containing faculty preferences.
+    :param file: The CSV file containing faculty preferences.
     :param db_config: A dictionary containing the database configuration (host, user, password, database).
     """
-    # Getting the file location for the faculty preference CSV file
-    file_loc = os.path.join(Path(__file__).resolve().parents[2], 'data', file_name)
-    df_courses = pd.read_csv(file_loc)  # Read the CSV into a DataFrame
+    df_courses = pd.read_csv(file)  # Read the CSV into a DataFrame
 
     # Initialize the database connection
     db = DatabaseConnection(
