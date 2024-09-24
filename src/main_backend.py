@@ -1,8 +1,15 @@
 import fastapi
 from pydantic import BaseModel
 from typing import List, Tuple
+from .database_management.Courses import insert_courses_professors
+from .database_management.busy_slot import insert_professor_busy_slots
 from .database_management.Slot_info import insert_time_slots
+from .database_management.course_stud import insert_course_students
 from .database_management.databse_connection import DatabaseConnection
+from fastapi import UploadFile, File
+from fastapi.responses import JSONResponse
+from pathlib import Path
+import os
 
 app = fastapi.FastAPI()
 
@@ -77,3 +84,25 @@ def extract_time():
     finally:
         # Close the database connection
         mydb.close()
+
+@app.post("/course_data/")
+def course(file: UploadFile = File(...)):
+    if not file.filename.endswith('.csv') or file.filename.endswith('.xlsx'):
+        return JSONResponse(content={"error": "Only csv or excel files are allowed."})
+    insert_courses_professors(file.file, db_config)
+    return JSONResponse(content={"success": "Inserted"})
+
+@app.post('/faculty_preference/')
+def faculty_pref(file: UploadFile = File(...)):
+    if not file.filename.endswith('.csv') or file.filename.endswith('.xlsx'):
+        return JSONResponse(content={"error": "Only csv or excel files are allowed."})
+    insert_professor_busy_slots(file.file, db_config)
+    return JSONResponse(content={"success": "Inserted"})
+
+@app.post('/student_courses/')
+def student_course(file: UploadFile = File(...)):
+    if not file.filename.endswith('.csv') or file.filename.endswith('.xlsx'):
+        return JSONResponse(content={"error": "Only csv or excel files are allowed."})
+    insert_course_students(file.file, db_config)
+    return JSONResponse(content={"success": "Inserted"})
+
