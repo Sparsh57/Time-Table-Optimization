@@ -62,5 +62,15 @@ cursor.execute("""
     );
 """)
 
+# Create the Schedule table
+cursor.execute("""CREATE TABLE IF NOT EXISTS Schedule (
+    CourseID INT,
+    SlotID INT,
+    FOREIGN KEY (CourseID) REFERENCES Courses(CourseID),
+    FOREIGN KEY (SlotID) REFERENCES Slots(SlotID),
+    PRIMARY KEY (CourseID, SlotID)
+    );
+""")
+
 cursor.close()
 mydb.close()
