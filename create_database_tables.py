@@ -23,7 +23,7 @@ cursor.execute("""
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS Courses (
         CourseID INT AUTO_INCREMENT PRIMARY KEY,
-        CourseName VARCHAR(255) NOT NULL,
+        CourseName VARCHAR(255) UNIQUE NOT NULL,
         ProfessorID INT,
         FOREIGN KEY (ProfessorID) REFERENCES Users(UserID)
     );
