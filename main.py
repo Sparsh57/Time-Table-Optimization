@@ -35,10 +35,10 @@ class TimeSlot(BaseModel):
     days: list
     times: list
 
-db_config = {'host': "byfapocx02at8jbunymk-mysql.services.clever-cloud.com",
-             'user': "urao5yk0erbiklfr",
-             'password': "tpgCmLhZdwPk8iAxzVMd",
-             'database': "byfapocx02at8jbunymk"}
+db_config = {'host': os.getenv("DATABASE_HOST"),
+             'user': os.getenv("DATABASE_USER"),
+             'password': os.getenv("DATABSE_PASSWORD"),
+             'database': os.getenv("DATABASE_REF")}
 
 @app.post("/send_admin_data")
 async def send_admin_data(
