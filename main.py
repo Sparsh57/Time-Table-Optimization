@@ -13,7 +13,6 @@ from src.database_management.databse_connection import DatabaseConnection
 from src.database_management.Courses import insert_courses_professors
 from src.database_management.busy_slot import insert_professor_busy_slots
 from src.database_management.course_stud import insert_course_students
-from src.database_management.schedule import timetable_made
 from src.main_algorithm import gen_timetable
 
 # Load environment variables
