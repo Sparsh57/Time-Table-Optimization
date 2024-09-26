@@ -18,7 +18,6 @@ from pathlib import Path
 
 
 load_dotenv()
-print(os.getenv("CLIENT_ID"))
 
 # Initialize FastAPI
 app = FastAPI()
@@ -37,10 +36,10 @@ class TimeSlot(BaseModel):
     days: List[str]
     times: List[Tuple[str, str]]  # List of tuples (start_time, end_time)
 
-db_config = {'host': "byfapocx02at8jbunymk-mysql.services.clever-cloud.com",
-             'user': "urao5yk0erbiklfr",
-             'password': "tpgCmLhZdwPk8iAxzVMd",
-             'database': "byfapocx02at8jbunymk"}
+db_config = {'host': os.getenv("DATABASE_HOST"),
+             'user': os.getenv("DATABASE_USER"),
+             'password': os.getenv("DATABSE_PASSWORD"),
+             'database': os.getenv("DATABASE_REF")}
 
 users = {}
 
@@ -194,5 +193,4 @@ async def logout(request: Request):
 
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run(app, host="localhost", port=4000)
