@@ -8,6 +8,8 @@ import pandas as pd
 import os
 import httpx
 
+from src.database_management.databse_connection import DatabaseConnection
+
 from src.database_management.Courses import insert_courses_professors
 from src.database_management.busy_slot import insert_professor_busy_slots
 from src.database_management.course_stud import insert_course_students
@@ -39,6 +41,14 @@ db_config = {'host': os.getenv("DATABASE_HOST"),
              'password': os.getenv("DATABSE_PASSWORD"),
              'database': os.getenv("DATABASE_REF")}
 
+def timetable_made():
+    db = DatabaseConnection(**db_config)
+    db.connect()
+    query = "SELECT COUNT(*) FROM Schedule"
+    result = db.fetch_query(query)
+    db.close()
+    return result[0][0] > 0 
+
 @app.post("/send_admin_data")
 async def send_admin_data(
     courses_file: UploadFile = File(...),
@@ -56,7 +66,7 @@ async def send_admin_data(
         if file.filename.endswith('.csv') or file.filename.endswith('.xlsx'):
             df = pd.read_csv(file.file) if file.filename.endswith('.csv') else pd.read_excel(file.file)
             try:
-                #db_function(df, db_config)
+                db_function(df, db_config)
                 responses[file.filename] = "Data inserted successfully"
             except Exception as e:
                 responses[file.filename] = str(e)
@@ -108,7 +118,3 @@ async def dashboard(request: Request):
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("home.html", {"request": request})
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="localhost", port=4000)
