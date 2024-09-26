@@ -6,7 +6,7 @@ from .database_management.database_retrieval import registration_data, faculty_p
 from .database_management.schedule import schedule
 
 
-def main():
+def gen_timetable():
     # Load data
     df_merged = registration_data()
     student_course_map = prepare_student_course_map(df_merged)

@@ -29,3 +29,19 @@ def schedule(schedule_df):
     finally:
         db.close()
 
+def timetable_made():
+    db = DatabaseConnection(
+        host="byfapocx02at8jbunymk-mysql.services.clever-cloud.com",
+        user="urao5yk0erbiklfr",
+        password="tpgCmLhZdwPk8iAxzVMd",
+        database="byfapocx02at8jbunymk"
+    )
+    db.connect()
+    count_query = "SELECT COUNT(*) FROM Schedule;"
+    count = db.fetch_query(query=count_query)[0][0]
+    if count>0:
+        return True
+    else:
+        return False
+
+timetable_made()

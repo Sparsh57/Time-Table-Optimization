@@ -11,7 +11,8 @@ import httpx
 from src.database_management.Courses import insert_courses_professors
 from src.database_management.busy_slot import insert_professor_busy_slots
 from src.database_management.course_stud import insert_course_students
-from src.main_algorithm import main
+from src.database_management.schedule import timetable_made
+from src.main_algorithm import gen_timetable
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -55,13 +56,13 @@ async def send_admin_data(
         if file.filename.endswith('.csv') or file.filename.endswith('.xlsx'):
             df = pd.read_csv(file.file) if file.filename.endswith('.csv') else pd.read_excel(file.file)
             try:
-                db_function(df, db_config)
+                #db_function(df, db_config)
                 responses[file.filename] = "Data inserted successfully"
             except Exception as e:
                 responses[file.filename] = str(e)
         else:
             responses[file.filename] = "Unsupported file format"
-    main()
+    gen_timetable()
     return JSONResponse(content=responses)
 
 @app.get("/auth/google")
@@ -99,7 +100,10 @@ async def dashboard(request: Request):
     user_info = request.session.get('user')
     if not user_info:
         return RedirectResponse(url="/")
-    return templates.TemplateResponse("admin_dashboard.html", {"request": request, "user": user_info})
+    if timetable_made():
+        return templates.TemplateResponse("timetable.html", {"request": request, "user": user_info})
+    else:
+        return templates.TemplateResponse("data_entry.html", {"request": request, "user": user_info})
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
