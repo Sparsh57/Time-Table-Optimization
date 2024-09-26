@@ -13,9 +13,14 @@ from database_management.busy_slot import insert_professor_busy_slots
 from database_management.course_stud import insert_course_students
 from database_management.databse_connection import DatabaseConnection
 
+
+
 # Load environment variables
 from dotenv import load_dotenv
 load_dotenv()
+
+client_id = os.getenv("CLIENT_ID")
+client_secret = os.getenv("CLIENT_SECRET")
 
 app = FastAPI()
 
@@ -63,7 +68,7 @@ async def send_admin_data(
 
 @app.get("/auth/google")
 async def login_with_google():
-    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    
     redirect_uri = "http://localhost:4000/auth/google/callback"
     return RedirectResponse(
         f"https://accounts.google.com/o/oauth2/v2/auth?client_id={client_id}&response_type=code"
@@ -72,8 +77,6 @@ async def login_with_google():
 
 @app.get("/auth/google/callback")
 async def google_callback(request: Request, code: str):
-    client_id = os.getenv("GOOGLE_CLIENT_ID")
-    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
     redirect_uri = "http://localhost:4000/auth/google/callback"
     token_url = "https://oauth2.googleapis.com/token"
     data = {
@@ -99,7 +102,7 @@ async def dashboard(request: Request):
     user_info = request.session.get('user')
     if not user_info:
         return RedirectResponse(url="/")
-    return templates.TemplateResponse("dashboard.html", {"request": request, "user": user_info})
+    return templates.TemplateResponse("admin_dashboard.html", {"request": request, "user": user_info})
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):

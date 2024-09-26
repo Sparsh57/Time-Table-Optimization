@@ -14,7 +14,7 @@ def insert_course_students(file, db_config):
     """
 
     # Read the CSV into a DataFrame
-    df_courses = pd.read_csv(file)
+    df_courses = file
 
     # Initialize the database connection
     db = DatabaseConnection(

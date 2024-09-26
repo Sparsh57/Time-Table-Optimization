@@ -11,7 +11,7 @@ def insert_courses_professors(file, db_config):
     :param db_config: A dictionary containing the database configuration (host, user, password, database).
     """
     # Read the CSV into a DataFrame
-    df_courses = pd.read_csv(file)
+    df_courses = file
 
     # Initialize the database connection
     db = DatabaseConnection(
