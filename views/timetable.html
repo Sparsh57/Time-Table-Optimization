@@ -17,13 +17,72 @@
             });
         });
     </script>
+    <style>
+        body {
+            background-color: #e3f2fd;
+            font-family: 'Roboto', sans-serif;
+        }
+        nav {
+            background-color: #3f51b5; /* Indigo theme */
+        }
+        .brand-logo, .nav-wrapper ul li a {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: bold;
+        }
+        .brand-logo {
+            font-size: 1.8rem;
+        }
+        .btn {
+            background-color: #5c6bc0; /* Lighter indigo for buttons */
+            transition: background-color 0.3s ease;
+        }
+        .btn:hover {
+            background-color: #3949ab; /* Slightly darker on hover */
+        }
+        .header {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-top: 40px;
+            text-align: center;
+            color: #1a237e; /* Deep indigo text for headers */
+        }
+        table {
+            box-shadow: 0px 4px 15px rgba(0,0,0,0.1);
+        }
+        table thead {
+            background-color: #3949ab; /* Darker indigo for table headers */
+            color: #fff;
+        }
+        table tbody tr:hover {
+            background-color: #eceff1; /* Very light grey for hover */
+            transition: background-color 0.3s ease;
+        }
+        .card-panel {
+            border-radius: 10px;
+            padding: 15px 25px;
+        }
+        footer {
+            background-color: #3f51b5; /* Consistent indigo footer */
+            padding: 40px 0;
+        }
+        footer a {
+            color: #bdc3c7;
+        }
+        footer a:hover {
+            color: #fff;
+        }
+        footer .white-text {
+            font-size: 1.2rem;
+        }
+    </style>
 </head>
 <body>
     <header>
-        <nav>
-            <div class="nav-wrapper container">
-                <a href="/" class="brand-logo">Timetable <i class="material-icons left">schedule</i></a>
-                <ul id="nav-mobile" class="right hide-on-med-and-down">
+        <nav class="nav-wrapper indigo darken-4">
+            <div class="container">
+                <a href="/" class="brand-logo"><i class="material-icons left">schedule</i>Timetable</a>
+                <a href="#" data-target="mobile-demo" class="sidenav-trigger"><i class="material-icons">menu</i></a>
+                <ul class="right hide-on-med-and-down">
                     <li><a href="/dashboard">Dashboard</a></li>
                     <li><a href="/logout">Logout</a></li>
                 </ul>
@@ -65,23 +124,23 @@
         </div>
     </main>
 
-    <footer class="page-footer">
+    <footer class="page-footer indigo darken-3">
         <div class="container">
             <div class="row">
                 <div class="col l6 s12">
-                    <h5 class="white-text">Timetable System</h5>
-                    <p class="grey-text text-lighten-4">This system allows for managing and viewing academic timetables efficiently.</p>
+                    <h5 class="white-text">About the Timetable System</h5>
+                    <p class="grey-text text-lighten-4">Efficiently manage and view academic schedules with our advanced system.</p>
                 </div>
                 <div class="col l4 offset-l2 s12">
                     <h5 class="white-text">Quick Links</h5>
                     <ul>
                         <li><a class="grey-text text-lighten-3" href="#!">Help</a></li>
-                        <li><a class="grey-text text-lighten-3" href="#!">Settings</a></li>
-                        <li><a class="grey-text text-lighten-3" href="#!">Support</a></li>
+                        <li><a class="grey-text text-lighten-3" href="#!">Contact</a></li>
+                        <li><a class="grey-text text-lighten-3" href="#!">Suggestions</a></li>
                     </ul>
                 </div>
             </div>
         </div>
-    </footer>
+    </footer>   
 </body>
 </html>

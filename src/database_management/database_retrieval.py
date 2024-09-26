@@ -70,4 +70,3 @@ def faculty_pref():
     db.close()
 
     return df
-Changed from Mysql to Mariadb. Also imported port in every file required.
