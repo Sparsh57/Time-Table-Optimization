@@ -49,6 +49,19 @@ def timetable_made():
     db.close()
     return result[0][0] > 0 
 
+def fetch_schedule_data():
+    db = DatabaseConnection(**db_config)
+    db.connect()
+    query = """
+        SELECT Schedule.ScheduleID, Course.CourseName, TimeSlot.TimeSlotID
+        FROM Schedule
+        JOIN Course ON Schedule.CourseID = Course.CourseID
+        JOIN TimeSlot ON Schedule.TimeSlotID = TimeSlot.TimeSlotID
+    """
+    result = db.fetch_query(query)
+    db.close()
+    return result
+
 @app.post("/send_admin_data")
 async def send_admin_data(
     courses_file: UploadFile = File(...),
@@ -113,7 +126,7 @@ async def dashboard(request: Request):
     if timetable_made():
         return templates.TemplateResponse("timetable.html", {"request": request, "user": user_info})
     else:
-        return templates.TemplateResponse("data_entry.html", {"request": request, "user": user_info})
+        return templates.TemplateResponse("data_entry.html", {"request": request, "user": user_info, "schedule_data": schedule_data})
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
