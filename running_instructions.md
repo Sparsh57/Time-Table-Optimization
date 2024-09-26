@@ -1,11 +1,5 @@
-- download node js
-
+- install Python 3.x and FastAPI
 - navigate to the folder titled frontend
-
-- npm install --save dotenv
-
-- run "node server.js"
-
-- open https://localhost:4000
-
-- login with email "dummy1234562024@gmail.com" and password "example123@2024"
+- install dependencies from requirements.txt by running pip install -r requirements.txt
+- run the FastAPI server with uvicorn main:app --reload
+- open https://localhost:4000/ to see the home page
