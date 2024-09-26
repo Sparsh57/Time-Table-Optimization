@@ -12,7 +12,7 @@ def insert_professor_busy_slots(file, db_config):
     :param file: The CSV file containing faculty preferences.
     :param db_config: A dictionary containing the database configuration (host, user, password, database).
     """
-    df_courses = pd.read_csv(file)  # Read the CSV into a DataFrame
+    df_courses = file  # Read the CSV into a DataFrame
 
     # Initialize the database connection
     db = DatabaseConnection(
