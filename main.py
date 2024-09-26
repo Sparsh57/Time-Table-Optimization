@@ -11,9 +11,7 @@ import httpx
 from src.database_management.Courses import insert_courses_professors
 from src.database_management.busy_slot import insert_professor_busy_slots
 from src.database_management.course_stud import insert_course_students
-from src.database_management.databse_connection import DatabaseConnection
-
-
+from src.main_algorithm import main
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -63,7 +61,7 @@ async def send_admin_data(
                 responses[file.filename] = str(e)
         else:
             responses[file.filename] = "Unsupported file format"
-
+    main()
     return JSONResponse(content=responses)
 
 @app.get("/auth/google")
@@ -93,7 +91,6 @@ async def google_callback(request: Request, code: str):
         user_info_url = "https://www.googleapis.com/oauth2/v3/userinfo"
         user_info_response = await client.get(user_info_url, headers={"Authorization": f"Bearer {tokens['access_token']}"})
         user_info = user_info_response.json()
-
     request.session['user'] = user_info
     return RedirectResponse(url="/dashboard")
 
