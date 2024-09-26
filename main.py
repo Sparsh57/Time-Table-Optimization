@@ -48,9 +48,9 @@ async def send_admin_data(
 ):
     responses = {}
     files = {
-        "courses_file": (courses_file.file, insert_courses_professors),
-        "faculty_preferences_file": (faculty_preferences_file.file, insert_professor_busy_slots),
-        "student_courses_file": (student_courses_file.file, insert_course_students)
+        "courses_file": (courses_file, insert_courses_professors),
+        "faculty_preferences_file": (faculty_preferences_file, insert_professor_busy_slots),
+        "student_courses_file": (student_courses_file, insert_course_students)
     }
 
     for file_key, (file, db_function) in files.items():
