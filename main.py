@@ -53,10 +53,23 @@ def fetch_schedule_data():
     db = DatabaseConnection(**db_config)
     db.connect()
     query = """
-        SELECT Schedule.ScheduleID, Course.CourseName, TimeSlot.TimeSlotID
-        FROM Schedule
-        JOIN Course ON Schedule.CourseID = Course.CourseID
-        JOIN TimeSlot ON Schedule.TimeSlotID = TimeSlot.TimeSlotID
+    SELECT 
+        Slots.Day,
+        Slots.StartTime,
+        Slots.EndTime,
+        GROUP_CONCAT(DISTINCT Courses.CourseName ORDER BY Courses.CourseName SEPARATOR ', ') AS Courses
+    FROM 
+        Schedule
+    JOIN 
+        Courses ON Schedule.CourseID = Courses.CourseID
+    JOIN 
+        Slots ON Schedule.SlotID = Slots.SlotID
+    GROUP BY 
+        Slots.Day, Slots.StartTime, Slots.EndTime
+    ORDER BY 
+        FIELD(Slots.Day, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'), 
+        Slots.StartTime, 
+        Slots.EndTime;
     """
     result = db.fetch_query(query)
     db.close()
@@ -124,10 +137,20 @@ async def dashboard(request: Request):
     if not user_info:
         return RedirectResponse(url="/")
     if timetable_made():
-        return templates.TemplateResponse("timetable.html", {"request": request, "user": user_info})
+        schedule_data = fetch_schedule_data()
+        return templates.TemplateResponse("timetable.html", {
+            "request": request,
+            "user": user_info,
+            "schedule_data": schedule_data 
+        })
     else:
-        return templates.TemplateResponse("data_entry.html", {"request": request, "user": user_info, "schedule_data": schedule_data})
-
+        return templates.TemplateResponse("data_entry.html", {"request": request, "user": user_info})
+    
+    
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("home.html", {"request": request})
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="localhost", port=4000)
