@@ -1,344 +1,93 @@
-<html lang="en"></html>
-  <head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Compiled and minified CSS -->
+    <title>Admin Dashboard</title>
+    <!-- Materialize CSS and JS from CDN for styling and components -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-    <!-- Compiled and minified JavaScript -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link href="main.css" rel="stylesheet">
-    <link rel = "stylesheet"
-         href = "https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.3/css/materialize.min.css">
-      <script type = "text/javascript"
-         src = "https://code.jquery.com/jquery-2.1.1.min.js"></script>           
-      <script src = "https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.3/js/materialize.min.js">
-      </script> 
-    <title>Document</title>
+    <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <link rel="stylesheet" href="/static/main.css">
 </head>
 <body>
     <header>
-        <nav role="navigation">
-          <div class="nav-wrapper container"><a id="logo-container" href="/" class="brand-logo">Some Title <i class="material-icons left hide-on-med-and-down">apps</i></a>
-            <ul id="dropdown" class="dropdown-content">
-              <li><a href="">Register</a></li>
-              <li class="divider"></li>
-              <li><a href="">Sign In</a></li>
-            </ul>
-            <ul class="right hide-on-med-and-down">
-              <li id="timer-tab"><a href="">Tab 1</a></li>
-              <li id="stats-tab"><a href="">Tab 2</a></li>
-              <li id="graphs-tab"><a href="">Tab 3</a></li>
-              <li><a href="" data-activates="dropdown" class="dropdown-button">Tab 4<i class="material-icons right">arrow_drop_down</i></a></li>
-            </ul>
-          </div>
+        <nav>
+            <div class="nav-wrapper container">
+                <a href="/" class="brand-logo">Admin Panel <i class="material-icons left">dashboard</i></a>
+                <ul id="nav-mobile" class="right hide-on-med-and-down">
+                    <li><a href="/dashboard">Dashboard</a></li>
+                    <li><a href="/logout">Logout</a></li>
+                </ul>
+            </div>
         </nav>
-      </header>
-    
-      <main>
+    </header>
+
+    <main>
+        <div class="container">
+            <h4>Upload Data Files</h4>
+            <form action="/send_admin_data" method="post" enctype="multipart/form-data">
+                <!-- Courses File Upload -->
+                <div class="file-field input-field">
+                    <div class="btn">
+                        <span>Upload Courses</span>
+                        <input type="file" name="courses_file" required>
+                    </div>
+                    <div class="file-path-wrapper">
+                        <input class="file-path validate" type="text" placeholder="Upload courses file">
+                    </div>
+                </div>
+                <!-- Faculty Preferences File Upload -->
+                <div class="file-field input-field">
+                    <div class="btn">
+                        <span>Upload Faculty Preferences</span>
+                        <input type="file" name="faculty_preferences_file" required>
+                    </div>
+                    <div class="file-path-wrapper">
+                        <input class="file-path validate" type="text" placeholder="Upload faculty preferences file">
+                    </div>
+                </div>
+                <!-- Student Courses File Upload -->
+                <div class="file-field input-field">
+                    <div class="btn">
+                        <span>Upload Student Courses</span>
+                        <input type="file" name="student_courses_file" required>
+                    </div>
+                    <div class="file-path-wrapper">
+                        <input class="file-path validate" type="text" placeholder="Upload student courses file">
+                    </div>
+                </div>
+                <button class="btn waves-effect waves-light" type="submit" name="action">Submit<i class="material-icons right">send</i></button>
+            </form>
+        </div>
+    </main>
+
+    <footer class="page-footer">
         <div class="container">
             <div class="row">
-            </div>
-            <form action="/send_admin_data" method="POST">
-              <div class="row s12">
-                <div class="col s3">
-                  <div class="row s12">
-                    <div class="col s8"><h5>Monday</h5></div>
-                    <div class="col s4"><p>
-                        <label>
-                          <input type="checkbox" class="filled-in" checked="checked" />
-                          <span></span>
-                        </label>
-                    </p></div>
-                  </div>
-                  <div class="row s12">
-                    <div class="col s8"><h5>Tuesday</h5></div>
-                    <div class="col s4"><p>
-                      <label>
-                        <input type="checkbox" class="filled-in" checked="checked" />
-                        <span></span>
-                      </label>
-                    </p></div>
-                  </div>
-                  <div class="row s12">
-                    <div class="col s8"><h5>Wednesday</h5></div>
-                    <div class="col s4"><h5>
-                      <label>
-                        <input type="checkbox" class="filled-in" checked="checked" />
-                        <span></span>
-                      </label>
-                    </h5></div>
-                  </div>
-                  <div class="row s12">
-                    <div class="col s8"><h5>Thursday</h5></div>
-                    <div class="col s4"><p>
-                      <label>
-                        <input type="checkbox" class="filled-in" checked="checked" />
-                        <span></span>
-                      </label>
-                    </p></div>
-                  </div>
-                  <div class="row s12">
-                    <div class="col s8"><h5>Friday</h5></div>
-                    <div class="col s4"><p>
-                      <label>
-                        <input type="checkbox" class="filled-in" checked="checked" />
-                        <span></span>
-                      </label>
-                    </p></div>
-                  </div>
-                  <div class="row s12">
-                    <div class="col s8"><h5>Saturday</h5></div>
-                    <div class="col s4"><p>
-                      <label>
-                        <input type="checkbox" class="filled-in" checked="checked" />
-                        <span></span>
-                      </label>
-                    </p></div>
-                  </div>
-                  <div class="row s12">
-                    <div class="col s8"><h5>Sunday</h5></div>
-                    <div class="col s4"><p>
-                      <label>
-                        <input type="checkbox" class="filled-in" checked="checked" />
-                        <span></span>
-                      </label>
-                    </p></div>
-                    </div>
-               </div>
-               <div class="col s2"></div>
-               <div class="col s8">
-                  <div class="row s10">
-                    <div class="col s2">
-                      <h5>Slot 1:</h5>
-                    </div>
-                    <div class="col s2">
-                      <p>Start Time:</p>
-                    </div>
-                    <div class="col s2">
-                      <input type = "time" class = "timepicker" />
-                    </div>
-                    <div class="col s2">
-                      <p>End Time:</p>
-                    </div>
-                    <div class="col s2">
-                      <input type = "time" class = "timepicker" />
-                    </div>
-                  </div>
-                  <div class="row">
-                    <div class="col s2">
-                      <h5>Slot 2</h5>
-                    </div>
-                    <div class="col s2">
-                      <p>Start Time:</p>
-                    </div>
-                    <div class="col s2">
-                      <input type = "time" class = "timepicker" />
-                    </div>
-                    <div class="col s2">
-                      <p>End Time:</p>
-                    </div>
-                    <div class="col s2">
-                      <input type = "time" class = "timepicker" />
-                    </div>
-                  </div>
-                  <div class="row">
-                    <div class="col s2">
-                      <h5>Slot 3</h5>
-                    </div>
-                    <div class="col s2">
-                      <p>Start Time:</p>
-                    </div>
-                    <div class="col s2">
-                      <input type = "time" class = "timepicker" />
-                    </div>
-                    <div class="col s2">
-                      <p>End Time:</p>
-                    </div>
-                    <div class="col s2">
-                      <input type = "time" class = "timepicker" />
-                    </div>
-                  </div>
-                  <div class="row">
-                    <div class="col s2">
-                      <h5>Slot 4</h5>
-                    </div>
-                    <div class="col s2">
-                      <p>Start Time:</p>
-                    </div>
-                    <div class="col s2">
-                      <input type = "time" class = "timepicker" />
-                    </div>
-                    <div class="col s2">
-                      <p>End Time:</p>
-                    </div>
-                    <div class="col s2">
-                      <input type = "time" class = "timepicker" />
-                    </div>
-                  </div>
-                  <div class="row">
-                    <div class="col s2">
-                      <h5>Slot 5</h5>
-                    </div>
-                    <div class="col s2">
-                      <p>Start Time:</p>
-                    </div>
-                    <div class="col s2">
-                      <input type = "time" class = "timepicker" />
-                    </div>
-                    <div class="col s2">
-                      <p>End Time:</p>
-                    </div>
-                    <div class="col s2">
-                      <input type = "time" class = "timepicker" />
-                    </div>
-                  </div>
-                  <div class="row">
-                    <div class="col s2">
-                      <h5>Slot 6</h5>
-                    </div>
-                    <div class="col s2">
-                      <p>Start Time:</p>
-                    </div>
-                    <div class="col s2">
-                      <input type = "time" class = "timepicker" />
-                    </div>
-                    <div class="col s2">
-                      <p>End Time:</p>
-                    </div>
-                    <div class="col s2">
-                      <input type = "time" class = "timepicker" />
-                    </div>
-                  </div>
-                  <div class="row">
-                    <div class="col s2">
-                      <h5>Slot 7</h5>
-                    </div>
-                    <div class="col s2">
-                      <p>Start Time:</p>
-                    </div>
-                    <div class="col s2">
-                      <input type = "time" class = "timepicker" />
-                    </div>
-                    <div class="col s2">
-                      <p>End Time:</p>
-                    </div>
-                    <div class="col s2">
-                      <input type = "time" class = "timepicker" />
-                    </div>
-                  </div>
+                <div class="col l6 s12">
+                    <h5 class="white-text">Useful Links</h5>
+                    <p class="grey-text text-lighten-4">Quick access to various administrative functions.</p>
                 </div>
-              </div>
-               <div class="row s12">
-                    <div class="col s12">
-                         <div class="col s2">
-                              <h5>file 1 upload</h5>
-                         </div>
-                         <div class="col s4">
-                              <div class = "file-field input-field">
-                                   <div class = "btn">
-                                        <span>Browse</span>
-                                        <input type = "file" />
-                                   </div>          
-                                   <div class = "file-path-wrapper">
-                                        <input class = "file-path validate" type = "text"
-                                        placeholder = "Upload file" />
-                                   </div>
-                              </div>
-                         </div>      
-                    </div>
-               </div>
-               <div class="row s12">
-                    <div class="col s12">
-                         <div class="col s2">
-                              <h5>file 2 upload</h5>
-                         </div>
-                         <div class="col s4">
-                              <div class = "file-field input-field">
-                                   <div class = "btn">
-                                        <span>Browse</span>
-                                        <input type = "file" />
-                                   </div>          
-                                   <div class = "file-path-wrapper">
-                                        <input class = "file-path validate" type = "text"
-                                        placeholder = "Upload file" />
-                                   </div>
-                              </div>
-                         </div>      
-                    </div>
-               </div>
-               <div class="row s12">
-                    <div class="col s12">
-                         <div class="col s2">
-                              <h5>file 3 upload</h5>
-                         </div>
-                         <div class="col s4">
-                              <div class = "file-field input-field">
-                                   <div class = "btn">
-                                        <span>Browse</span>
-                                        <input type = "file" />
-                                   </div>          
-                                   <div class = "file-path-wrapper">
-                                        <input class = "file-path validate" type = "text"
-                                        placeholder = "Upload file" />
-                                   </div>
-                              </div>
-                         </div>      
-                    </div>
-               </div>
-              <div class="row s12">
-               <center>
-                    <button class="btn waves-effect waves-light" type="submit" name="action">Submit
-                    <i class="material-icons right">send</i>
-                    </button>
-               </center>
-               </div>
-          </form>
-        </div>
-        
-      </main>
-    
-      <footer class="page-footer">
-        <div class="container">
-          <div class="row">
-            <div class="col l6 s12">
-              <h5 class="white-text">Some Title</h5>
-              <p class="grey-text text-lighten-4">Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                <div class="col l4 offset-l2 s12">
+                    <h5 class="white-text">Resources</h5>
+                    <ul>
+                        <li><a class="grey-text text-lighten-3" href="#!">Help</a></li>
+                        <li><a class="grey-text text-lighten-3" href="#!">Support</a></li>
+                        <li><a class="grey-text text-lighten-3" href="#!">Contact</a></li>
+                    </ul>
+                </div>
             </div>
-            <div class="col l2 offset-l2 s6">
-              <h6>About</h6>
-              <ul>
-                <li><a href="" class="grey-text text-lighten-3">Help</a></li>
-                <li><a href="" class="grey-text text-lighten-3">Contact</a></li>
-                <li><a href="" class="grey-text text-lighten-3">Suggestions</a></li>
-              </ul>
-            </div>
-            <div class="col l2 s6">
-              <h6>Developer</h6>
-              <ul>
-                <li><a href="" class="grey-text text-lighten-3">Source</a></li>
-                <li><a href="" class="grey-text text-lighten-3">Contribute</a></li>
-                <li><a href="" class="grey-text text-lighten-3">API Docs</a></li>
-              </ul>
-            </div>
-          </div>
         </div>
-        <div class="footer-copyright">
-          <div class="container">Made by <a href="">Me </a></div>
-        </div>
-      </footer>
-      <script>
-        $('.timepicker').timepicker({
-          timeFormat: 'h:mm p',
-          interval: 60,
-          minTime: '10',
-          maxTime: '6:00pm',
-          defaultTime: '11',
-          startTime: '10:00',
-          dynamic: false,
-          dropdown: true,
-          scrollbar: true
-      });
-      </script>   
+    </footer>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var elems = document.querySelectorAll('.dropdown-trigger');
+            M.Dropdown.init(elems);
+            var elems = document.querySelectorAll('.timepicker');
+            M.Timepicker.init(elems);
+        });
+    </script>
 </body>
 </html>
