@@ -31,6 +31,7 @@ def insert_time_slots(db_config, input_data):
     mydb = DatabaseConnection(
         host=db_config["host"],
         user=db_config["user"],
+        port=db_config["port"],
         password=db_config["password"],
         database=db_config["database"]
     )

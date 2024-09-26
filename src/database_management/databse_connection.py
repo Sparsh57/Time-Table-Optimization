@@ -1,21 +1,23 @@
-import mysql.connector
-from mysql.connector import Error
+import mariadb
+from mariadb import Error
+
 
 class DatabaseConnection:
-    def __init__(self, host, user, password, database):
+    def __init__(self, host, user, password, database, port):
         """
         Initializes the database connection class with necessary database parameters.
-        
+
         Args:
-        host (str): The server address of the MySQL database.
-        user (str): Username used to authenticate with MySQL.
-        password (str): Password used to authenticate with MySQL.
+        host (str): The server address of the Mariadb database.
+        user (str): Username used to authenticate with Mariadb.
+        password (str): Password used to authenticate with Mariadb.
         database (str): The name of the database to connect to.
         """
         self.host = host
         self.user = user
         self.password = password
         self.database = database
+        self.port = int(port)
         self.connection = None  # Initially there is no connection
 
     def connect(self):
@@ -26,23 +28,32 @@ class DatabaseConnection:
         connection: The established database connection.
         """
         try:
-            self.connection = mysql.connector.connect(
-                host=self.host,
-                user=self.user,
-                password=self.password,
-                database=self.database
-            )
-            if self.connection.is_connected():
-                db_info = self.connection.get_server_info()
-                print(f"Successfully connected to MySQL Server version {db_info}")
+            self.connection =mariadb.connect(
+                                host=self.host,
+                                port=self.port,
+                                user=self.user,
+                                password=self.password,
+                                database=self.database  # Added database parameter
+                            )
+            if self.is_connected():
                 cursor = self.connection.cursor()
+                cursor.execute("SELECT VERSION();")
+                db_info = cursor.fetchone()
+                print(f"Successfully connected to MariaDB Server version: {db_info[0]}")
                 cursor.execute("SELECT DATABASE();")
                 record = cursor.fetchone()
                 print("You're connected to database: ", record)
                 return self.connection  # Return the connection object
         except Error as e:
-            print("Error while connecting to MySQL", e)
+            print("Error while connecting to Mariadb", e)
             return None
+
+    def is_connected(self):
+        try:
+            self.connection.ping()
+        except:
+            return False
+        return True
 
     def execute_query(self, query, params=None):
         """
@@ -91,6 +102,6 @@ class DatabaseConnection:
         """
         Closes the database connection if it is open.
         """
-        if self.connection and self.connection.is_connected():
+        if self.connection and self.is_connected():
             self.connection.close()
-            print("MySQL connection is closed")
+            print("Mariadb connection is closed")
