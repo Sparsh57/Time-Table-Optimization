@@ -1,13 +1,21 @@
-import mysql.connector
+import mariadb
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
-mydb = {'host': os.getenv("DATABASE_HOST"),
+mydb_dict = {'host': os.getenv("DATABASE_HOST"),
              'user': os.getenv("DATABASE_USER"),
-             'password': os.getenv("DATABSE_PASSWORD"),
-             'database': os.getenv("DATABASE_REF")}
+             'password': os.getenv("DATABASE_PASSWORD"),
+             'database': os.getenv("DATABASE_REF"),
+             'port': os.getenv("DATABASE_PORT")}
 
+mydb = mariadb.connect(
+    host=mydb_dict["host"],
+    port=int(mydb_dict["port"]),
+    user=mydb_dict["user"],
+    password=mydb_dict["password"],
+    database=mydb_dict["database"]  # Added database parameter
+)
 
 cursor = mydb.cursor()
 

@@ -1,12 +1,20 @@
 from .databse_connection import DatabaseConnection
 import pandas as pd
+import os
 
 def schedule(schedule_df):
+    mydb_dict = {'host': os.getenv("DATABASE_HOST"),
+                 'user': os.getenv("DATABASE_USER"),
+                 'password': os.getenv("DATABASE_PASSWORD"),
+                 'database': os.getenv("DATABASE_REF"),
+                 'port': os.getenv("DATABASE_PORT")}
+
     db = DatabaseConnection(
-        host="byfapocx02at8jbunymk-mysql.services.clever-cloud.com",
-        user="urao5yk0erbiklfr",
-        password="tpgCmLhZdwPk8iAxzVMd",
-        database="byfapocx02at8jbunymk"
+        host=mydb_dict["host"],
+        port=int(mydb_dict["port"]),
+        user=mydb_dict["user"],
+        password=mydb_dict["password"],
+        database=mydb_dict["database"]  # Added database parameter
     )
     db.connect() 
     

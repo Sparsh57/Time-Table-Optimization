@@ -37,8 +37,9 @@ class TimeSlot(BaseModel):
 
 db_config = {'host': os.getenv("DATABASE_HOST"),
              'user': os.getenv("DATABASE_USER"),
-             'password': os.getenv("DATABSE_PASSWORD"),
-             'database': os.getenv("DATABASE_REF")}
+             'port': os.getenv("DATABASE_PORT"),
+             'password': os.getenv("DATABASE_PASSWORD"),
+             'database': os.getenv("DATABASE_REF"),}
 
 def timetable_made():
     db = DatabaseConnection(**db_config)
@@ -81,6 +82,7 @@ async def send_admin_data(
     student_courses_file: UploadFile = File(...)
 ):
     responses = {}
+
     files = {
         "courses_file": (courses_file, insert_courses_professors),
         "faculty_preferences_file": (faculty_preferences_file, insert_professor_busy_slots),

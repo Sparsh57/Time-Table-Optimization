@@ -12,11 +12,11 @@ def insert_courses_professors(file, db_config):
     """
     # Read the CSV into a DataFrame
     df_courses = file
-
     # Initialize the database connection
     db = DatabaseConnection(
         host=db_config["host"],
         user=db_config["user"],
+        port=db_config["port"],
         password=db_config["password"],
         database=db_config["database"]
     )
@@ -26,7 +26,6 @@ def insert_courses_professors(file, db_config):
     fetch_user = db.fetch_query("SELECT UserID, Email FROM Users WHERE Role='Professor'")
     # Create a dictionary mapping faculty names (values) to UserIDs (keys)
     dict_user = {value: key for key, value in fetch_user}
-
     # Create a new DataFrame with relevant columns (Course code and Faculty Name)
     df_merged = df_courses[['Course code', 'Faculty Name']].copy()
     df_merged['UserID'] = np.nan  # Initialize UserID column as NaN

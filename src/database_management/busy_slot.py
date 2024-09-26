@@ -1,8 +1,5 @@
 from .databse_connection import DatabaseConnection
-import pandas as pd
 import numpy as np
-from pathlib import Path
-import os
 
 
 def insert_professor_busy_slots(file, db_config):
@@ -18,6 +15,7 @@ def insert_professor_busy_slots(file, db_config):
     db = DatabaseConnection(
         host=db_config["host"],
         user=db_config["user"],
+        port=db_config["port"],
         password=db_config["password"],
         database=db_config["database"]
     )
