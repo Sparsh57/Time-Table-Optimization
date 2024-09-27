@@ -106,7 +106,7 @@ async def send_admin_data(
     for file_key, (file, db_function) in files.items():
             try:
                 db_function(file, db_config)
-                responses[file.filename] = "Data inserted successfully"
+                responses[file_key] = "Data inserted successfully"
             except Exception as e:
                 responses[file.filename] = str(e)
     gen_timetable()
