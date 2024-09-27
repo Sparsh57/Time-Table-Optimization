@@ -1,6 +1,9 @@
-from .databse_connection import DatabaseConnection
+from databse_connection import DatabaseConnection
 import pandas as pd
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
 def insert_time_slots(db_config, input_data):
     """
@@ -40,3 +43,23 @@ def insert_time_slots(db_config, input_data):
             print(f"Failed to insert row {index}: {e}")  # Print error if insertion fails
 
     db.close()  # Close the database connection
+
+
+db_config = {'host': os.getenv("DATABASE_HOST"),
+             'user': os.getenv("DATABASE_USER"),
+             'port': os.getenv("DATABASE_PORT"),
+             'password': os.getenv("DATABASE_PASSWORD"),
+             'database': os.getenv("DATABASE_REF"),}
+
+insert_time = {
+  "days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+  "times": [
+    ["08:30", "10:30"],
+    ["10:30", "12:30"],
+    ["12:30", "14:30"],
+    ["14:30", "16:30"],
+    ["16:30", "18:30"],
+    ["18:30", "20:30"]
+  ]
+}
+insert_time_slots(db_config, insert_time)
