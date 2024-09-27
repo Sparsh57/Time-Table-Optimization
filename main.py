@@ -115,19 +115,32 @@ async def dashboard(request: Request):
     if not user_info:
         return RedirectResponse(url="/")
     if timetable_made():
+        return RedirectResponse(url="/timetable")
+    else:
+        return RedirectResponse(url="/get_admin_data")
+
+
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    return templates.TemplateResponse("home.html", {"request": request})
+
+@app.get("/get_admin_data", response_class=HTMLResponse)
+async def get_admin_data(request: Request):
+    user_info = request.session.get('user')
+    return templates.TemplateResponse("data_entry.html", {"request": request, "user": user_info})
+
+@app.get("/timetable", response_class=HTMLResponse)
+async def show_timetable(request: Request):
+    user_info = request.session.get('user')
+    if not user_info:
+        return RedirectResponse(url="/")
+    if timetable_made():
         schedule_data = fetch_schedule_data()
         return templates.TemplateResponse("timetable.html", {
             "request": request,
             "user": user_info,
             "schedule_data": schedule_data
         })
-    else:
-        return templates.TemplateResponse("data_entry.html", {"request": request, "user": user_info})
-
-
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    return templates.TemplateResponse("home.html", {"request": request})
 
 if __name__ == "__main__":
     import uvicorn

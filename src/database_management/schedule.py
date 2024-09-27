@@ -1,4 +1,4 @@
-from .databse_connection import DatabaseConnection
+from databse_connection import DatabaseConnection
 import pandas as pd
 import os
 
@@ -64,6 +64,7 @@ def fetch_schedule_data():
     return result
 
 def generate_csv():
-    pass
+    data = fetch_schedule_data()
+    print(fetch_schedule_data)
 
-print(fetch_schedule_data())
+gen
