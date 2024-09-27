@@ -7,14 +7,17 @@ from pydantic import BaseModel
 import pandas as pd
 import os
 import httpx
+from fastapi.responses import FileResponse
+
 
 from src.database_management.databse_connection import DatabaseConnection
 from src.database_management.Users import insert_user_data
 from src.database_management.Courses import insert_courses_professors
 from src.database_management.busy_slot import insert_professor_busy_slots
 from src.database_management.course_stud import insert_course_students
-from src.database_management.schedule import timetable_made, fetch_schedule_data
+from src.database_management.schedule import timetable_made, fetch_schedule_data, generate_csv
 from src.main_algorithm import gen_timetable
+from src.database_management.truncate_db import truncate_detail
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -127,20 +130,25 @@ async def home(request: Request):
 @app.get("/get_admin_data", response_class=HTMLResponse)
 async def get_admin_data(request: Request):
     user_info = request.session.get('user')
+    truncate_detail(db_config)
     return templates.TemplateResponse("data_entry.html", {"request": request, "user": user_info})
 
 @app.get("/timetable", response_class=HTMLResponse)
 async def show_timetable(request: Request):
+   
     user_info = request.session.get('user')
     if not user_info:
-        return RedirectResponse(url="/")
-    if timetable_made():
-        schedule_data = fetch_schedule_data()
+        return RedirectResponse(url="/") 
+    if timetable_made(): 
+        schedule_data = fetch_schedule_data()  
         return templates.TemplateResponse("timetable.html", {
             "request": request,
             "user": user_info,
             "schedule_data": schedule_data
         })
+    else:
+        return RedirectResponse(url="/get_admin_data") 
+
 
 if __name__ == "__main__":
     import uvicorn
