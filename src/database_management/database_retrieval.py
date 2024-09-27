@@ -1,11 +1,26 @@
 import pandas as pd
 from .databse_connection import DatabaseConnection
 import os
+import sqlalchemy
+from sqlalchemy.ext.declarative import declarative_base
 
+
+def get_connection():
+    mydb_dict = {
+        'host': os.getenv("DATABASE_HOST"),
+        'user': os.getenv("DATABASE_USER"),
+        'password': os.getenv("DATABASE_PASSWORD"),
+        'database': os.getenv("DATABASE_REF"),
+        'port': os.getenv("DATABASE_PORT")
+    }
+
+    connection_string = f"mariadb+mariadbconnector://{mydb_dict['user']}:{mydb_dict['password']}@{mydb_dict['host']}:{mydb_dict['port']}/{mydb_dict['database']}"
+    engine = sqlalchemy.create_engine(connection_string)
+    return engine
 
 def registration_data():
-    db = DatabaseConnection.get_connection()
-    if db is None:
+    engine = get_connection()
+    if engine is None:
         return pd.DataFrame()  # Return an empty DataFrame if connection fails
 
     query = """
@@ -20,20 +35,19 @@ def registration_data():
     LEFT JOIN Professor_BusySlots ps ON p.UserID = ps.ProfessorID
     GROUP BY u.Email, c.CourseName, p.Email;
     """
-    df = pd.read_sql_query(query, connection)
-    db.close()
+
+    with engine.connect() as conn:
+        df = pd.read_sql(
+            sql=query,
+            con=conn.connection
+        )
+    engine.dispose()
 
     return df
 
 def faculty_pref():
-    mydb_dict = {'host': os.getenv("DATABASE_HOST"),
-                 'user': os.getenv("DATABASE_USER"),
-                 'password': os.getenv("DATABASE_PASSWORD"),
-                 'database': os.getenv("DATABASE_REF"),
-                 'port': os.getenv("DATABASE_PORT")}
-
-    db = DatabaseConnection.get_connection()
-    if db is None:
+    engine = get_connection()
+    if engine is None:
         return pd.DataFrame()  # Return an empty DataFrame if connection fails
 
     query = """
@@ -46,7 +60,10 @@ def faculty_pref():
     WHERE u.Role = 'Professor'
     ORDER BY u.Email, s.Day, s.StartTime;
     """
-    df = pd.read_sql_query(query, connection)
-    db.close()
+    with engine.connect() as conn:
+        df = pd.read_sql(
+            sql=query,
+            con=conn.connection
+        )
 
     return df

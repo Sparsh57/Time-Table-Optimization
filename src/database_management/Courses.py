@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 
 
-def insert_courses_professors(file):
+def insert_courses_professors(file, db_config):
     """
     Inserts course information associated with professors from a CSV file into the database.
 
