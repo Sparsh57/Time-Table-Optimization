@@ -3,18 +3,26 @@ import pandas as pd
 import os
 
 def schedule(schedule_df):
+    print("this is the shiiiii")
+    print("schedule db = ")
+    print(schedule_df)
     db = DatabaseConnection.get_connection()
     try:
         course_ids = db.fetch_query("SELECT CourseName, CourseID FROM Courses")
         course_id_map = {name: id for name, id in course_ids} 
         time_slots = db.fetch_query("SELECT CONCAT(Day, ' ', StartTime), SlotID FROM Slots")
+        print(f'time_slots = {time_slots}')
         slot_id_map = {time: id for time, id in time_slots}
+        print(f'map = {slot_id_map}')
 
         for index, row in schedule_df.iterrows():
+            #print(row)
             course_id = course_id_map.get(row['Course ID'])
             slot_id = slot_id_map.get(row['Scheduled Time'])
             if course_id and slot_id:
-                insert_query = "INSERT INTO Schedule (CourseID, SlotID) VALUES (%s, %s)"
+                print("here")
+                insert_query = f"INSERT INTO Schedule (CourseID, SlotID) VALUES ({course_id}, {slot_id})"
+                print(insert_query)
                 db.execute_query(insert_query, (course_id, slot_id))
 
     except Exception as e:
@@ -57,3 +65,5 @@ def fetch_schedule_data():
 
 def generate_csv():
     pass
+
+print(fetch_schedule_data())

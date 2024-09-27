@@ -77,7 +77,7 @@ async def send_admin_data(
             except Exception as e:
                 responses[file.filename] = str(e)
     gen_timetable()
-    return RedirectResponse(url="/dashboard")
+    return RedirectResponse(url="/dashboard",status_code=status.HTTP_303_SEE_OTHER)
 
 @app.get("/auth/google")
 async def login_with_google():

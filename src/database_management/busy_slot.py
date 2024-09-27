@@ -66,3 +66,26 @@ def insert_professor_busy_slots(file, db_config):
 
     # Close the database connection once all operations are complete
     db.close()
+
+def empty_professor_busy_slots(db_config):
+    db = DatabaseConnection.get_connection()
+    cursor = db.cursor()
+    cursor = db.cursor()
+    delete_query = "DELETE FROM Professor_BusySlots"
+    cursor.execute(delete_query)
+    db.commit()
+    print(f"{cursor.rowcount} records deleted successfully")
+    cursor.close()
+    db.close()
+
+def fetch_professor_busy_slots():
+    db = DatabaseConnection.get_connection()
+    query = """
+    SELECT * FROM Professor_BusySlots
+    """
+    result = db.fetch_query(query)
+    print(result)
+    db.close()
+    return result
+
+fetch_professor_busy_slots()

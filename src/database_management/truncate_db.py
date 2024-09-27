@@ -27,7 +27,6 @@ def truncate_detail(db_config):
         "TRUNCATE Course_Stud;",
         "TRUNCATE Professor_BusySlots;",
         "TRUNCATE Schedule;",
-        "TRUNCATE Slots;",
         "TRUNCATE Users;",
         "SET FOREIGN_KEY_CHECKS = 1;"  # Re-enable foreign key checks
     ]

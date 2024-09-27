@@ -24,6 +24,6 @@ def gen_timetable():
             print(f'{course}: {", ".join(times)}')
     else:
         print(schedule_data)
-
+        print("populating database!!!!!!!!!!!!!!!!")
         # Populates the Schedule Table in the Database.
         schedule(schedule_data)
