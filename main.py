@@ -79,6 +79,7 @@ async def send_admin_data(
                 responses[file_key] = "Data inserted successfully"
             except Exception as e:
                 responses[file.filename] = str(e)
+    truncate_detail(db_config)
     gen_timetable()
     return RedirectResponse(url="/dashboard",status_code=status.HTTP_303_SEE_OTHER)
 
@@ -130,7 +131,6 @@ async def home(request: Request):
 @app.get("/get_admin_data", response_class=HTMLResponse)
 async def get_admin_data(request: Request):
     user_info = request.session.get('user')
-    truncate_detail(db_config)
     return templates.TemplateResponse("data_entry.html", {"request": request, "user": user_info})
 
 @app.get("/timetable", response_class=HTMLResponse)

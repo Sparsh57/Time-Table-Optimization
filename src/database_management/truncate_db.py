@@ -45,4 +45,3 @@ db_config = {'host': os.getenv("DATABASE_HOST"),
              'password': os.getenv("DATABASE_PASSWORD"),
              'database': os.getenv("DATABASE_REF"),}
 
-truncate_detail(db_config)
