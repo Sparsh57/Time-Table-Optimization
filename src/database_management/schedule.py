@@ -58,3 +58,8 @@ def fetch_schedule_data():
     finally:
         db.close()
 
+def generate_csv(filename='schedule.csv'):
+    data = fetch_schedule_data()
+    df = pd.DataFrame(data)
+    df.to_csv(filename, index=False)
+    return filename 
