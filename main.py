@@ -149,6 +149,13 @@ async def show_timetable(request: Request):
     else:
         return RedirectResponse(url="/get_admin_data") 
 
+@app.get("/download-timetable")
+async def download_schedule_csv():
+    try:
+        file_path = generate_csv()
+        return FileResponse(file_path, media_type='application/octet-stream', filename="Timetable.csv")
+    except HTTPException as http_exc:
+        return JSONResponse(status_code=http_exc.status_code, content={"detail": http_exc.detail})
 
 if __name__ == "__main__":
     import uvicorn
