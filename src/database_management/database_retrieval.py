@@ -3,6 +3,7 @@ from .databse_connection import DatabaseConnection
 import os
 import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
+from urllib.parse import quote_plus
 
 
 def get_connection():
@@ -13,8 +14,8 @@ def get_connection():
         'database': os.getenv("DATABASE_REF"),
         'port': os.getenv("DATABASE_PORT")
     }
-
-    connection_string = f"mariadb+mariadbconnector://{mydb_dict['user']}:{mydb_dict['password']}@{mydb_dict['host']}:{mydb_dict['port']}/{mydb_dict['database']}"
+    encoded_password = quote_plus(mydb_dict['password'])
+    connection_string = f"mariadb+pymysql://{mydb_dict['user']}:{encoded_password}@{mydb_dict['host']}:{mydb_dict['port']}/{mydb_dict['database']}"
     engine = sqlalchemy.create_engine(connection_string)
     return engine
 
