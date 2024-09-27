@@ -9,7 +9,7 @@ import os
 import httpx
 
 from src.database_management.databse_connection import DatabaseConnection
-
+from src.database_management.Users import insert_user_data
 from src.database_management.Courses import insert_courses_professors
 from src.database_management.busy_slot import insert_professor_busy_slots
 from src.database_management.course_stud import insert_course_students
@@ -47,7 +47,7 @@ def timetable_made():
     query = "SELECT COUNT(*) FROM Schedule"
     result = db.fetch_query(query)
     db.close()
-    return result[0][0] > 0 
+    return result[0][0] > 0
 
 def fetch_schedule_data():
     db = DatabaseConnection(**db_config)
@@ -77,34 +77,44 @@ def fetch_schedule_data():
 
 @app.post("/send_admin_data")
 async def send_admin_data(
-    courses_file: UploadFile = File(...),
-    faculty_preferences_file: UploadFile = File(...),
-    student_courses_file: UploadFile = File(...)
+        courses_file: UploadFile = File(...),
+        faculty_preferences_file: UploadFile = File(...),
+        student_courses_file: UploadFile = File(...)
 ):
     responses = {}
+    files = {
+        "courses_file": courses_file,
+        "faculty_preferences_file": faculty_preferences_file,
+        "student_courses_file": student_courses_file,
+    }
+    data = {}
+    # Load valid dataframes
+    for file_key, file in files.items():
+        if file.filename.endswith(('.csv', '.xlsx')):
+            data[file_key] = (
+                pd.read_csv(file.file) if file.filename.endswith('.csv') else pd.read_excel(file.file)
+            )
+        else:
+            responses[file.filename] = "Unsupported file format"
 
     files = {
-        "courses_file": (courses_file, insert_courses_professors),
-        "faculty_preferences_file": (faculty_preferences_file, insert_professor_busy_slots),
-        "student_courses_file": (student_courses_file, insert_course_students)
+        "insert_user_data": ([data["courses_file"], data["student_courses_file"]], insert_user_data),
+        "courses_file": (data["courses_file"], insert_courses_professors),
+        "faculty_preferences_file": (data["faculty_preferences_file"], insert_professor_busy_slots),
+        "student_courses_file": (data["student_courses_file"], insert_course_students)
     }
-
     for file_key, (file, db_function) in files.items():
-        if file.filename.endswith('.csv') or file.filename.endswith('.xlsx'):
-            df = pd.read_csv(file.file) if file.filename.endswith('.csv') else pd.read_excel(file.file)
             try:
-                db_function(df, db_config)
+                db_function(file, db_config)
                 responses[file.filename] = "Data inserted successfully"
             except Exception as e:
                 responses[file.filename] = str(e)
-        else:
-            responses[file.filename] = "Unsupported file format"
     gen_timetable()
-    return JSONResponse(content=responses)
+    return RedirectResponse(url="/dashboard")
 
 @app.get("/auth/google")
 async def login_with_google():
-    
+
     redirect_uri = "http://localhost:4000/auth/google/callback"
     return RedirectResponse(
         f"https://accounts.google.com/o/oauth2/v2/auth?client_id={client_id}&response_type=code"
@@ -142,12 +152,12 @@ async def dashboard(request: Request):
         return templates.TemplateResponse("timetable.html", {
             "request": request,
             "user": user_info,
-            "schedule_data": schedule_data 
+            "schedule_data": schedule_data
         })
     else:
         return templates.TemplateResponse("data_entry.html", {"request": request, "user": user_info})
-    
-    
+
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("home.html", {"request": request})
