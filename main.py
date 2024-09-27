@@ -13,6 +13,7 @@ from src.database_management.Users import insert_user_data
 from src.database_management.Courses import insert_courses_professors
 from src.database_management.busy_slot import insert_professor_busy_slots
 from src.database_management.course_stud import insert_course_students
+from src.database_management.schedule import timetable_made, fetch_schedule_data
 from src.main_algorithm import gen_timetable
 
 # Load environment variables
@@ -40,40 +41,6 @@ db_config = {'host': os.getenv("DATABASE_HOST"),
              'port': os.getenv("DATABASE_PORT"),
              'password': os.getenv("DATABASE_PASSWORD"),
              'database': os.getenv("DATABASE_REF"),}
-
-def timetable_made():
-    db = DatabaseConnection(**db_config)
-    db.connect()
-    query = "SELECT COUNT(*) FROM Schedule"
-    result = db.fetch_query(query)
-    db.close()
-    return result[0][0] > 0
-
-def fetch_schedule_data():
-    db = DatabaseConnection(**db_config)
-    db.connect()
-    query = """
-    SELECT 
-        Slots.Day,
-        Slots.StartTime,
-        Slots.EndTime,
-        GROUP_CONCAT(DISTINCT Courses.CourseName ORDER BY Courses.CourseName SEPARATOR ', ') AS Courses
-    FROM 
-        Schedule
-    JOIN 
-        Courses ON Schedule.CourseID = Courses.CourseID
-    JOIN 
-        Slots ON Schedule.SlotID = Slots.SlotID
-    GROUP BY 
-        Slots.Day, Slots.StartTime, Slots.EndTime
-    ORDER BY 
-        FIELD(Slots.Day, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'), 
-        Slots.StartTime, 
-        Slots.EndTime;
-    """
-    result = db.fetch_query(query)
-    db.close()
-    return result
 
 @app.post("/send_admin_data")
 async def send_admin_data(

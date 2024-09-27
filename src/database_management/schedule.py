@@ -3,21 +3,7 @@ import pandas as pd
 import os
 
 def schedule(schedule_df):
-    mydb_dict = {'host': os.getenv("DATABASE_HOST"),
-                 'user': os.getenv("DATABASE_USER"),
-                 'password': os.getenv("DATABASE_PASSWORD"),
-                 'database': os.getenv("DATABASE_REF"),
-                 'port': os.getenv("DATABASE_PORT")}
-
-    db = DatabaseConnection(
-        host=mydb_dict["host"],
-        port=int(mydb_dict["port"]),
-        user=mydb_dict["user"],
-        password=mydb_dict["password"],
-        database=mydb_dict["database"]  # Added database parameter
-    )
-    db.connect() 
-    
+    db = DatabaseConnection.get_connection()
     try:
         course_ids = db.fetch_query("SELECT CourseName, CourseID FROM Courses")
         course_id_map = {name: id for name, id in course_ids} 
@@ -36,3 +22,38 @@ def schedule(schedule_df):
     
     finally:
         db.close()
+
+def timetable_made():
+    db = DatabaseConnection.get_connection()
+    query = "SELECT COUNT(*) FROM Schedule"
+    result = db.fetch_query(query)
+    db.close()
+    return result[0][0] > 0
+
+def fetch_schedule_data():
+    db = DatabaseConnection.get_connection()
+    query = """
+    SELECT 
+        Slots.Day,
+        Slots.StartTime,
+        Slots.EndTime,
+        GROUP_CONCAT(DISTINCT Courses.CourseName ORDER BY Courses.CourseName SEPARATOR ', ') AS Courses
+    FROM 
+        Schedule
+    JOIN 
+        Courses ON Schedule.CourseID = Courses.CourseID
+    JOIN 
+        Slots ON Schedule.SlotID = Slots.SlotID
+    GROUP BY 
+        Slots.Day, Slots.StartTime, Slots.EndTime
+    ORDER BY 
+        FIELD(Slots.Day, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'), 
+        Slots.StartTime, 
+        Slots.EndTime;
+    """
+    result = db.fetch_query(query)
+    db.close()
+    return result
+
+def generate_csv():
+    pass

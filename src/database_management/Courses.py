@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 
 
-def insert_courses_professors(file, db_config):
+def insert_courses_professors(file):
     """
     Inserts course information associated with professors from a CSV file into the database.
 
@@ -13,14 +13,7 @@ def insert_courses_professors(file, db_config):
     # Read the CSV into a DataFrame
     df_courses = file
     # Initialize the database connection
-    db = DatabaseConnection(
-        host=db_config["host"],
-        user=db_config["user"],
-        port=db_config["port"],
-        password=db_config["password"],
-        database=db_config["database"]
-    )
-    db.connect()  # Connect to the database
+    db = DatabaseConnection.get_connection()
 
     # Fetch user information (UserID and Email) for professors
     fetch_user = db.fetch_query("SELECT UserID, Email FROM Users WHERE Role='Professor'")

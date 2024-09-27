@@ -1,5 +1,8 @@
 import mariadb
 from mariadb import Error
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 
 class DatabaseConnection:
@@ -46,6 +49,7 @@ class DatabaseConnection:
                 return self.connection  # Return the connection object
         except Error as e:
             print("Error while connecting to Mariadb", e)
+            #BACKUP
             return None
 
     def is_connected(self):
@@ -105,3 +109,20 @@ class DatabaseConnection:
         if self.connection and self.is_connected():
             self.connection.close()
             print("Mariadb connection is closed")
+
+    def get_connection():
+        mydb_dict = {'host': os.getenv("DATABASE_HOST"),
+                 'user': os.getenv("DATABASE_USER"),
+                 'password': os.getenv("DATABASE_PASSWORD"),
+                 'database': os.getenv("DATABASE_REF"),
+                 'port': os.getenv("DATABASE_PORT")}
+
+        db = DatabaseConnection(
+            host=mydb_dict["host"],
+            port=int(mydb_dict["port"]),
+            user=mydb_dict["user"],
+            password=mydb_dict["password"],
+            database=mydb_dict["database"]  # Added database parameter
+        )
+        db.connect() 
+        return db

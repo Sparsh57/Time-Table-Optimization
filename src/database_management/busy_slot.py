@@ -12,14 +12,7 @@ def insert_professor_busy_slots(file, db_config):
     df_courses = file  # Read the CSV into a DataFrame
 
     # Initialize the database connection
-    db = DatabaseConnection(
-        host=db_config["host"],
-        user=db_config["user"],
-        port=db_config["port"],
-        password=db_config["password"],
-        database=db_config["database"]
-    )
-    db.connect()  # Connect to the database
+    db = DatabaseConnection.get_connection()
 
     # Fetch the user information (UserID and Email) for professors
     fetch_user = db.fetch_query("SELECT UserID, Email FROM Users WHERE Role='Professor'")

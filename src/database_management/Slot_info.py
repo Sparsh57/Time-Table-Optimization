@@ -28,22 +28,15 @@ def insert_time_slots(db_config, input_data):
     print(df)
 
     # Initialize the database connection
-    mydb = DatabaseConnection(
-        host=db_config["host"],
-        user=db_config["user"],
-        port=db_config["port"],
-        password=db_config["password"],
-        database=db_config["database"]
-    )
-    mydb.connect()  # Connect to the database
+    db = DatabaseConnection.get_connection()
 
     # Insert time slots into the database
     for index, row in df.iterrows():
         try:
             query = """INSERT INTO Slots (StartTime, EndTime, Day) VALUES (%s, %s, %s)"""
             params = (row['StartTime'], row['EndTime'], row['Day'])
-            mydb.execute_query(query, params)
+            db.execute_query(query, params)
         except Exception as e:
             print(f"Failed to insert row {index}: {e}")  # Print error if insertion fails
 
-    mydb.close()  # Close the database connection
+    db.close()  # Close the database connection

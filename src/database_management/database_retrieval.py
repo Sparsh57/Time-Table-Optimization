@@ -4,21 +4,8 @@ import os
 
 
 def registration_data():
-    mydb_dict = {'host': os.getenv("DATABASE_HOST"),
-                 'user': os.getenv("DATABASE_USER"),
-                 'password': os.getenv("DATABASE_PASSWORD"),
-                 'database': os.getenv("DATABASE_REF"),
-                 'port': os.getenv("DATABASE_PORT")}
-
-    db = DatabaseConnection(
-        host=mydb_dict["host"],
-        port=int(mydb_dict["port"]),
-        user=mydb_dict["user"],
-        password=mydb_dict["password"],
-        database=mydb_dict["database"]  # Added database parameter
-    )
-    connection = db.connect()
-    if connection is None:
+    db = DatabaseConnection.get_connection()
+    if db is None:
         return pd.DataFrame()  # Return an empty DataFrame if connection fails
 
     query = """
@@ -45,15 +32,8 @@ def faculty_pref():
                  'database': os.getenv("DATABASE_REF"),
                  'port': os.getenv("DATABASE_PORT")}
 
-    db = DatabaseConnection(
-        host=mydb_dict["host"],
-        port=int(mydb_dict["port"]),
-        user=mydb_dict["user"],
-        password=mydb_dict["password"],
-        database=mydb_dict["database"]  # Added database parameter
-    )
-    connection = db.connect()
-    if connection is None:
+    db = DatabaseConnection.get_connection()
+    if db is None:
         return pd.DataFrame()  # Return an empty DataFrame if connection fails
 
     query = """
