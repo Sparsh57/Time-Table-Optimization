@@ -79,7 +79,7 @@ async def send_admin_data(
                 db_function(file, db_config)
                 responses[file_key] = "Data inserted successfully"
             except Exception as e:
-                responses[file.filename] = str(e)
+                responses[file_key] = str(e)
     gen_timetable()
     return RedirectResponse(url="/dashboard",status_code=status.HTTP_303_SEE_OTHER)
 
