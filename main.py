@@ -109,15 +109,15 @@ async def google_callback(request: Request, code: str):
         user_info_url = "https://www.googleapis.com/oauth2/v3/userinfo"
         user_info_response = await client.get(user_info_url, headers={"Authorization": f"Bearer {tokens['access_token']}"})
         user_info = user_info_response.json()
-    if user_info.get('email') in (os.getenv("ALLOWED_EMAILS")):
-        request.session['user'] = user_info
-        return RedirectResponse(url="/dashboard")
-    else: 
+    try:
+        if user_info.get('email') in (os.getenv("ALLOWED_EMAILS")):
+            request.session['user'] = user_info
+            return RedirectResponse(url="/dashboard")
+        else: 
+            return templates.TemplateResponse("access_denied.html", {"request": request}, status_code=403)
+    except:
         return templates.TemplateResponse("access_denied.html", {"request": request}, status_code=403)
     
-    request.session['user'] = user_info
-    return RedirectResponse(url="/dashboard")
-
 @app.get("/logout")
 async def logout(request: Request):
   request.session.pop('user', None)  # Remove the user from the session
@@ -142,11 +142,13 @@ async def home(request: Request):
 @app.get("/get_admin_data", response_class=HTMLResponse)
 async def get_admin_data(request: Request):
     user_info = request.session.get('user')
+    if not user_info:
+        return RedirectResponse(url="/") 
+    user_info = request.session.get('user')
     return templates.TemplateResponse("data_entry.html", {"request": request, "user": user_info})
 
 @app.get("/timetable", response_class=HTMLResponse)
 async def show_timetable(request: Request):
-   
     user_info = request.session.get('user')
     if not user_info:
         return RedirectResponse(url="/") 
