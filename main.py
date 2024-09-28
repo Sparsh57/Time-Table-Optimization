@@ -51,6 +51,7 @@ async def send_admin_data(
         faculty_preferences_file: UploadFile = File(...),
         student_courses_file: UploadFile = File(...)
 ):
+    truncate_detail(db_config)
     responses = {}
     files = {
         "courses_file": courses_file,
@@ -79,7 +80,6 @@ async def send_admin_data(
                 responses[file_key] = "Data inserted successfully"
             except Exception as e:
                 responses[file.filename] = str(e)
-    truncate_detail(db_config)
     gen_timetable()
     return RedirectResponse(url="/dashboard",status_code=status.HTTP_303_SEE_OTHER)
 
