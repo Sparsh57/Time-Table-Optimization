@@ -110,9 +110,12 @@ async def google_callback(request: Request, code: str):
         user_info_url = "https://www.googleapis.com/oauth2/v3/userinfo"
         user_info_response = await client.get(user_info_url, headers={"Authorization": f"Bearer {tokens['access_token']}"})
         user_info = user_info_response.json()
-    request.session['user'] = user_info
-    return RedirectResponse(url="/dashboard")
-
+    if user_info.get('email') in (os.getenv("ALLOWED_EMAILS")):
+        request.session['user'] = user_info
+        return RedirectResponse(url="/dashboard")
+    else: 
+        return templates.TemplateResponse("access_denied.html", {"request": request}, status_code=403)
+    
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
     user_info = request.session.get('user')
