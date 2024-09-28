@@ -4,6 +4,7 @@ import numpy as np
 
 
 def insert_courses_professors(file, db_config):
+    print("INSETING COURSES")
     """
     Inserts course information associated with professors from a CSV file into the database.
 
@@ -53,3 +54,16 @@ def insert_courses_professors(file, db_config):
 
     # Close the database connection once all operations are complete
     db.close()
+
+def fetch_course_data():
+    db = DatabaseConnection.get_connection()
+    try:
+        query = """
+        SELECT * from Courses
+        """
+        result = db.fetch_query(query)
+        return result
+    finally:
+        db.close()
+
+print(fetch_course_data())

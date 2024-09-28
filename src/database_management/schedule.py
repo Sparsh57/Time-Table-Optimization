@@ -5,11 +5,14 @@ import os
 def schedule(schedule_df):
     db = DatabaseConnection.get_connection()
     try:
+        
         course_ids = db.fetch_query("SELECT CourseName, CourseID FROM Courses")
+        print("course_ids",course_ids)
         course_id_map = {name: id for name, id in course_ids} 
+        print("course_id_map",course_id_map)
         time_slots = db.fetch_query("SELECT CONCAT(Day, ' ', StartTime), SlotID FROM Slots")
         slot_id_map = {time: id for time, id in time_slots}
-
+        print("slot_id_map",slot_id_map)
         for index, row in schedule_df.iterrows():
             course_id = course_id_map.get(row['Course ID'])
             slot_id = slot_id_map.get(row['Scheduled Time'])
@@ -63,3 +66,5 @@ def generate_csv(filename='schedule.csv'):
     df = pd.DataFrame(data)
     df.to_csv(filename, index=False)
     return filename 
+
+print(fetch_schedule_data())

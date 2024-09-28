@@ -1,4 +1,4 @@
-from databse_connection import DatabaseConnection
+from .databse_connection import DatabaseConnection
 import pandas as pd
 import os
 from dotenv import load_dotenv
@@ -45,6 +45,20 @@ def insert_time_slots(db_config, input_data):
     db.close()  # Close the database connection
 
 
+
+
+
+def fetch_slot_data():
+    db = DatabaseConnection.get_connection()
+    try:
+        query = """
+        SELECT * from Slots
+        """
+        result = db.fetch_query(query)
+        return result
+    finally:
+        db.close()
+
 db_config = {'host': os.getenv("DATABASE_HOST"),
              'user': os.getenv("DATABASE_USER"),
              'port': os.getenv("DATABASE_PORT"),
@@ -62,4 +76,5 @@ insert_time = {
     ["18:30", "20:30"]
   ]
 }
-insert_time_slots(db_config, insert_time)
+#insert_time_slots(db_config, insert_time)
+print(fetch_slot_data())
