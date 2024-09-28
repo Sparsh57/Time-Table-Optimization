@@ -20,8 +20,8 @@ def insert_user_data(list_files, db_config):
     filtered_prof_column.rename(columns={'Faculty Name': 'Email'}, inplace=True)  # Rename to 'email'
 
     filtered_stud_column = stud_course_data['Roll No.'].dropna()  # Remove null values
-    filtered_stud_column = filtered_stud_column[
-        ~filtered_stud_column.isin(['TBD', '-', '#N/A'])]  # Remove invalid entries
+    #filtered_stud_column = filtered_stud_column[
+       #~filtered_stud_column.isin(['TBD', '-', '#N/A'])]  # Remove invalid entries
     filtered_stud_column = filtered_stud_column.drop_duplicates()  # Remove duplicates
     filtered_stud_column = pd.DataFrame(filtered_stud_column, columns=['Roll No.'])  # Convert to DataFrame
     filtered_stud_column["Role"] = "Student"  # Add role
@@ -37,3 +37,19 @@ def insert_user_data(list_files, db_config):
         db.execute_query(insert_query, (row['UserID'], row['Email'], row['Role']))
 
     db.close()
+    
+
+def fetch_user_data():
+    db = DatabaseConnection.get_connection()
+    try:
+        query = """
+        SELECT * from Users
+        WHERE  Role = 'Professor' 
+
+        """
+        result = db.fetch_query(query)
+        return result
+    finally:
+        db.close()
+
+print(fetch_user_data())
