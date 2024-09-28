@@ -103,7 +103,6 @@ async def google_callback(request: Request, code: str):
         "redirect_uri": redirect_uri,
         "grant_type": "authorization_code"
     }
-
     async with httpx.AsyncClient() as client:
         response = await client.post(token_url, data=data)
         tokens = response.json()
@@ -116,6 +115,15 @@ async def google_callback(request: Request, code: str):
     else: 
         return templates.TemplateResponse("access_denied.html", {"request": request}, status_code=403)
     
+    request.session['user'] = user_info
+    return RedirectResponse(url="/dashboard")
+
+@app.get("/logout")
+async def logout(request: Request):
+  request.session.pop('user', None)  # Remove the user from the session
+  response = RedirectResponse('/', status_code= 302)
+  return response
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
     user_info = request.session.get('user')
