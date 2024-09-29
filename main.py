@@ -15,7 +15,7 @@ from src.database_management.Users import insert_user_data
 from src.database_management.Courses import insert_courses_professors
 from src.database_management.busy_slot import insert_professor_busy_slots
 from src.database_management.course_stud import insert_course_students
-from src.database_management.schedule import timetable_made, fetch_schedule_data, generate_csv
+from src.database_management.schedule import timetable_made, fetch_schedule_data, generate_csv, get_student_schedule
 from src.main_algorithm import gen_timetable
 from src.database_management.truncate_db import truncate_detail
 
