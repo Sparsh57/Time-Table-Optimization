@@ -82,3 +82,40 @@ def get_course_ids_for_student(roll_number):
     finally:
         db.close()
 
+def get_schedule_for_courses(course_id_list):
+    if not course_id_list:
+        return []
+    db = DatabaseConnection.get_connection()
+    try:
+        in_clause = ', '.join(course_id_list)
+        schedule_query = """
+        SELECT 
+            Slots.Day,
+            Slots.StartTime,
+            Slots.EndTime,
+            GROUP_CONCAT(DISTINCT Courses.CourseName ORDER BY Courses.CourseName SEPARATOR ', ') AS Courses
+        FROM 
+            Schedule
+        JOIN 
+            Courses ON Schedule.CourseID = Courses.CourseID
+        JOIN 
+            Slots ON Schedule.SlotID = Slots.SlotID
+        WHERE 
+            Schedule.CourseID IN (%s)
+        GROUP BY 
+            Slots.Day, Slots.StartTime, Slots.EndTime
+        ORDER BY 
+            FIELD(Slots.Day, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'), 
+            Slots.StartTime, 
+            Slots.EndTime
+        """
+        schedule_query = schedule_query % in_clause 
+        schedule = db.fetch_query(schedule_query)
+        return schedule
+    finally:
+        db.close()
+
+def get_student_schedule(roll_number):
+    course_ids = get_course_ids_for_student(roll_number)
+    schedule = get_schedule_for_courses(course_ids)
+    return schedule
