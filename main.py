@@ -15,7 +15,7 @@ from src.database_management.Users import insert_user_data
 from src.database_management.Courses import insert_courses_professors
 from src.database_management.busy_slot import insert_professor_busy_slots
 from src.database_management.course_stud import insert_course_students
-from src.database_management.schedule import timetable_made, fetch_schedule_data, generate_csv, get_student_schedule
+from src.database_management.schedule import timetable_made, fetch_schedule_data, generate_csv, get_student_schedule, generate_csv_for_student
 from src.main_algorithm import gen_timetable
 from src.database_management.truncate_db import truncate_detail
 
@@ -169,6 +169,17 @@ async def download_schedule_csv():
         return FileResponse(file_path, media_type='application/octet-stream', filename="Timetable.csv")
     except HTTPException as http_exc:
         return JSONResponse(status_code=http_exc.status_code, content={"detail": http_exc.detail})
+
+@app.get("/download-timetable/{roll_number}")
+async def download_student_schedule_csv(roll_number: str):
+    try:
+        file_path = generate_csv_for_student(roll_number)
+        return FileResponse(file_path, media_type='application/octet-stream', filename=f"Timetable_{roll_number}.csv")
+    except HTTPException as http_exc:
+        return JSONResponse(status_code=http_exc.status_code, content={"detail": http_exc.detail})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
+
 
 @app.get("/timetable/{roll_number}", response_class=HTMLResponse)
 async def show_student_timetable(request: Request, roll_number: str):
