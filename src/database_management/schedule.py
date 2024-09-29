@@ -67,6 +67,12 @@ def generate_csv(filename='schedule.csv'):
     df.to_csv(filename, index=False)
     return filename 
 
+def generate_csv_for_student(roll_number): 
+    filename = f'Student_{roll_number}.csv'
+    data = get_student_schedule(roll_number)
+    df = pd.DataFrame(data)
+    df.to_csv(filename, index = False)
+    return filename
 
 def get_course_ids_for_student(roll_number):
     db = DatabaseConnection.get_connection()
