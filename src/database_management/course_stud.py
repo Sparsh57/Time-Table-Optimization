@@ -30,7 +30,7 @@ def insert_course_students(file, db_config):
     dict_course = {value: key for key, value in fetch_course}
 
     # Create a new DataFrame with relevant columns (G CODE and Roll No.)
-    df_merged = df_courses[['G CODE', 'Roll No.']].copy()
+    df_merged = df_courses[['G CODE', 'Roll No.', 'Sections']].copy()
     df_merged['UserID'] = np.nan  # Initialize UserID column as NaN
     df_merged['CourseID'] = np.nan  # Initialize CourseID column as NaN
 
@@ -42,11 +42,25 @@ def insert_course_students(file, db_config):
             continue  # Skip if Roll No. is not found in dict_user
 
     # Map G CODE to CourseID using the dict_course dictionary
-    for g_code in df_merged["G CODE"]:
+    for index, row in df_merged.iterrows():
+        g_code = row["G CODE"]
+        section = row["Sections"]
+
+        # Try removing the section part from the G CODE
         try:
-            df_merged.loc[df_merged["G CODE"] == g_code, "CourseID"] = int(dict_course[g_code])
+            # Assuming the section is in parentheses like G CODE (Section)
+            course = g_code.replace(f"({section})", "").strip()
+
+            # Debugging output
+            if course != g_code:
+                print(f"Original G CODE: {g_code}, Processed Course: {course}")
+
+            # Map the cleaned course to CourseID
+            df_merged.loc[index, "CourseID"] = int(dict_course[course])
+
         except KeyError:
-            continue  # Skip if G CODE is not found in dict_course
+            print(f"Course not found for G CODE: {g_code} after processing, skipping.")
+            continue
 
     # Drop rows where either UserID or CourseID is missing (NaN values)
     df_merged.dropna(subset=['UserID', 'CourseID'], inplace=True)
