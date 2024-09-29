@@ -170,6 +170,26 @@ async def download_schedule_csv():
     except HTTPException as http_exc:
         return JSONResponse(status_code=http_exc.status_code, content={"detail": http_exc.detail})
 
+@app.get("/timetable/{roll_number}", response_class=HTMLResponse)
+async def show_student_timetable(request: Request, roll_number: str):
+    user_info = request.session.get('user')
+    if not user_info:
+        return RedirectResponse(url="/") 
+    
+    # Fetch the specific schedule for the student by their roll number
+    schedule_data = get_student_schedule(roll_number) 
+    
+    #if not schedule_data:
+        #return templates.TemplateResponse("no_data.html", {"request": request}, status_code=404)
+
+    # Render the schedule in a new template specifically designed for this view
+    return templates.TemplateResponse("student_timetable.html", {
+        "request": request,
+        "user": user_info,
+        "schedule_data": schedule_data,
+        "roll_number": roll_number
+    })
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="localhost", port=4000)
