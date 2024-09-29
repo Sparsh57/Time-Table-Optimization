@@ -16,7 +16,8 @@ def gen_timetable():
     # Prepare courses and scheduleS
     courses = create_course_dictionary(student_course_map, course_professor_map, professor_busy_slots)
     schedule_data = schedule_courses(courses, student_course_map)
-
+    print("Conflicts")
+    print(check_conflicts(schedule_data, student_course_map))
     # Check and print scheduling results
     if isinstance(schedule_data, dict):
         print("Scheduling completed successfully.")
