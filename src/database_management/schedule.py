@@ -67,4 +67,18 @@ def generate_csv(filename='schedule.csv'):
     df.to_csv(filename, index=False)
     return filename 
 
-print(fetch_schedule_data())
+
+def get_course_ids_for_student(roll_number):
+    db = DatabaseConnection.get_connection()
+    try:
+        course_query = """
+        SELECT CourseID
+        FROM Course_Stud
+        JOIN Users ON Course_Stud.StudentID = Users.UserID
+        WHERE Users.Email = %s
+        """
+        course_ids = db.fetch_query(course_query, (roll_number,))
+        return [str(course[0]) for course in course_ids]
+    finally:
+        db.close()
+
