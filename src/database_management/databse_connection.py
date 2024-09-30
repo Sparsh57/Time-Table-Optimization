@@ -1,7 +1,10 @@
 import mariadb
-from mariadb import Error
+import mysql.connector
+from mariadb import Error as MariadbError
+from mysql.connector import Error as MySQLError
 import os
 from dotenv import load_dotenv
+
 load_dotenv()
 
 
@@ -11,33 +14,34 @@ class DatabaseConnection:
         Initializes the database connection class with necessary database parameters.
 
         Args:
-        host (str): The server address of the Mariadb database.
-        user (str): Username used to authenticate with Mariadb.
-        password (str): Password used to authenticate with Mariadb.
+        host (str): The server address of the database (MariaDB or MySQL).
+        user (str): Username used to authenticate with the database.
+        password (str): Password used to authenticate with the database.
         database (str): The name of the database to connect to.
+        port (int): The port number for the database connection.
         """
         self.host = host
         self.user = user
         self.password = password
         self.database = database
         self.port = int(port)
-        self.connection = None  # Initially there is no connection
+        self.connection = None
 
     def connect(self):
         """
-        Establishes a connection to the MySQL database using the initialization parameters.
-        If connected, it prints the MySQL server version and the current connected database.
+        Establishes a connection to the MariaDB database. If it fails, it falls back to a MySQL database connection.
+
         Returns:
         connection: The established database connection.
         """
         try:
-            self.connection =mariadb.connect(
-                                host=self.host,
-                                port=self.port,
-                                user=self.user,
-                                password=self.password,
-                                database=self.database  # Added database parameter
-                            )
+            self.connection = mariadb.connect(
+                host=self.host,
+                port=self.port,
+                user=self.user,
+                password=self.password,
+                database=self.database
+            )
             if self.is_connected():
                 cursor = self.connection.cursor()
                 cursor.execute("SELECT VERSION();")
@@ -45,27 +49,54 @@ class DatabaseConnection:
                 print(f"Successfully connected to MariaDB Server version: {db_info[0]}")
                 cursor.execute("SELECT DATABASE();")
                 record = cursor.fetchone()
-                print("You're connected to database: ", record)
-                return self.connection  # Return the connection object
-        except Error as e:
-            print("Error while connecting to Mariadb", e)
-            #BACKUP
+                print("You're connected to MariaDB database: ", record)
+                return self.connection
+        except MariadbError as e:
+            print("Error while connecting to MariaDB:", e)
+            print("Attempting to connect to MySQL database as a backup...")
+            return self.connect_to_mysql()
+
+    def connect_to_mysql(self):
+        """
+        Attempts to connect to a MySQL database as a backup.
+
+        Returns:
+        connection: The established MySQL database connection or None if it fails.
+        """
+        try:
+            self.connection = mysql.connector.connect(
+                host=os.getenv("MYSQL_HOST"),
+                user=os.getenv("MYSQL_USER"),
+                password=os.getenv("MYSQL_PASSWORD"),
+                database=os.getenv("MYSQL_DATABASE")
+            )
+            if self.is_connected():
+                cursor = self.connection.cursor()
+                cursor.execute("SELECT VERSION();")
+                db_info = cursor.fetchone()
+                print(f"Successfully connected to MySQL Server version: {db_info[0]}")
+                cursor.execute("SELECT DATABASE();")
+                record = cursor.fetchone()
+                print("You're connected to MySQL database: ", record)
+                return self.connection
+        except MySQLError as e:
+            print("Error while connecting to MySQL:", e)
             return None
 
     def is_connected(self):
         try:
-            self.connection.ping()
+            self.connection.ping(reconnect=True)
         except:
             return False
         return True
 
     def execute_query(self, query, params=None):
         """
-        Executes a SQL query on the connected database. It can handle queries with or without parameters.
+        Executes a SQL query on the connected database.
 
         Args:
         query (str): The SQL query to execute.
-        params (tuple, optional): The parameters to substitute into the SQL query.
+        params (tuple, optional): Parameters for the SQL query.
         """
         try:
             cursor = self.connection.cursor()
@@ -75,17 +106,17 @@ class DatabaseConnection:
                 cursor.execute(query)
             self.connection.commit()
             print("Query executed successfully")
-        except Error as e:
+        except (MariadbError, MySQLError) as e:
             print(f"Failed to execute query: {e}")
             self.connection.rollback()
 
     def fetch_query(self, query, params=None):
         """
-        Fetches and returns results from a SQL query. This method is used for queries that retrieve data.
+        Fetches and returns results from a SQL query.
 
         Args:
-        query (str): The SQL query to execute for fetching data.
-        params (tuple, optional): The parameters to substitute into the SQL query.
+        query (str): The SQL query to execute.
+        params (tuple, optional): Parameters for the SQL query.
 
         Returns:
         list: A list of tuples representing the fetched rows.
@@ -96,9 +127,9 @@ class DatabaseConnection:
                 cursor.execute(query, params)
             else:
                 cursor.execute(query)
-            results = cursor.fetchall()  # Fetch all results
+            results = cursor.fetchall()
             return results
-        except Error as e:
+        except (MariadbError, MySQLError) as e:
             print(f"Failed to fetch data: {e}")
             return None
 
@@ -108,21 +139,30 @@ class DatabaseConnection:
         """
         if self.connection and self.is_connected():
             self.connection.close()
-            print("Mariadb connection is closed")
+            print("Database connection is closed")
 
+    @staticmethod
     def get_connection():
-        mydb_dict = {'host': os.getenv("DATABASE_HOST"),
-                 'user': os.getenv("DATABASE_USER"),
-                 'password': os.getenv("DATABASE_PASSWORD"),
-                 'database': os.getenv("DATABASE_REF"),
-                 'port': os.getenv("DATABASE_PORT")}
+        """
+        Retrieves the database connection using environment variables.
+
+        Returns:
+        db: An instance of DatabaseConnection.
+        """
+        mydb_dict = {
+            'host': os.getenv("DATABASE_HOST"),
+            'user': os.getenv("DATABASE_USER"),
+            'password': os.getenv("DATABASE_PASSWORD"),
+            'database': os.getenv("DATABASE_REF"),
+            'port': os.getenv("DATABASE_PORT")
+        }
 
         db = DatabaseConnection(
             host=mydb_dict["host"],
             port=int(mydb_dict["port"]),
             user=mydb_dict["user"],
             password=mydb_dict["password"],
-            database=mydb_dict["database"]  # Added database parameter
+            database=mydb_dict["database"]
         )
-        db.connect() 
+        db.connect()
         return db
