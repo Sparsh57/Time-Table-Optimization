@@ -35,6 +35,7 @@ cursor.execute("""
         CourseID INT AUTO_INCREMENT PRIMARY KEY,
         CourseName VARCHAR(255) UNIQUE NOT NULL,
         ProfessorID INT,
+        CourseType VARCHAR(20),
         FOREIGN KEY (ProfessorID) REFERENCES Users(UserID)
     );
 """)

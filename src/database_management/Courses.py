@@ -3,6 +3,19 @@ import pandas as pd
 import numpy as np
 
 
+def map_course_type(course_type):
+    """
+    Maps the course type to either 'Elective' or 'Required'.
+
+    :param course_type: The original course type value.
+    :return: 'Elective' if 'Elective' is in the value, else 'Required'.
+    """
+    if 'Elective' in course_type:
+        return 'Elective'
+    else:
+        return 'Required'
+
+
 def insert_courses_professors(file, db_config):
     print("INSETING COURSES")
     """
@@ -21,7 +34,7 @@ def insert_courses_professors(file, db_config):
     # Create a dictionary mapping faculty names (values) to UserIDs (keys)
     dict_user = {value: key for key, value in fetch_user}
     # Create a new DataFrame with relevant columns (Course code and Faculty Name)
-    df_merged = df_courses[['Course code', 'Faculty Name']].copy()
+    df_merged = df_courses[['Course code', 'Faculty Name', 'Course Type']].copy()
     df_merged['UserID'] = np.nan  # Initialize UserID column as NaN
 
     # Map Faculty Name to UserID
@@ -31,9 +44,12 @@ def insert_courses_professors(file, db_config):
         except KeyError:
             continue  # Skip if Faculty Name is not found in the dictionary
 
+    # Apply the mapping function to convert Course Type to either 'Elective' or 'Required'
+    df_merged['Course Type'] = df_merged['Course Type'].apply(map_course_type)
+
     # Keep only relevant columns and rename
-    df_merged = df_merged[['Course code', 'UserID']]
-    df_merged.rename(columns={'Course code': 'Course'}, inplace=True)
+    df_merged = df_merged[['Course code', 'UserID', 'Course Type']]
+    df_merged.rename(columns={'Course code': 'Course', 'Course Type': 'Type'}, inplace=True)
 
     # Drop rows with missing UserID
     df_merged.dropna(inplace=True)
@@ -41,14 +57,14 @@ def insert_courses_professors(file, db_config):
 
     # SQL query to insert data into the Courses table
     insert_query = """
-        INSERT INTO Courses (CourseName, ProfessorID)
-        VALUES (%s, %s)
+        INSERT INTO Courses (CourseName, ProfessorID, CourseType)
+        VALUES (%s, %s, %s)
     """
 
     # Iterate over each row in the DataFrame and insert the data into the database
     for row in df_merged.itertuples(index=False):
         try:
-            db.execute_query(insert_query, (row.Course, row.UserID))  # Insert Course and UserID
+            db.execute_query(insert_query, (row.Course, row.UserID, row.Type))  # Insert Course and UserID
         except Exception as e:
             print(f"Error inserting row {row}: {e}")  # Print error if insertion fails
 
