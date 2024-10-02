@@ -82,6 +82,7 @@ def insert_course_students(file, db_config):
             db.execute_query(insert_query, (row[0], row[1]))  # Insert UserID (StudentID) and CourseID
         except Exception as e:
             print(f"Error inserting row {row}: {e}")  # Print error if insertion fails
+            raise e  
 
     # Close the database connection once all operations are complete
     db.close()

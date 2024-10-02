@@ -7,24 +7,30 @@ from .database_management.schedule import schedule
 
 
 def gen_timetable():
-    # Load data
-    df_merged = registration_data()
-    student_course_map = prepare_student_course_map(df_merged)
-    course_professor_map = create_course_professor_map(df_merged)
-    professor_busy_slots = faculty_busy_slots(faculty_pref())
+    try:
+        # Load data
+        df_merged = registration_data()
+        student_course_map = prepare_student_course_map(df_merged)
+        course_professor_map = create_course_professor_map(df_merged)
+        professor_busy_slots = faculty_busy_slots(faculty_pref())
 
-    # Prepare courses and scheduleS
-    courses = create_course_dictionary(student_course_map, course_professor_map, professor_busy_slots)
-    schedule_data = schedule_courses(courses, student_course_map)
-    print("Conflicts")
-    print(check_conflicts(schedule_data, student_course_map))
-    # Check and print scheduling results
-    if isinstance(schedule_data, dict):
-        print("Scheduling completed successfully.")
-        for course, times in schedule_data.items():
-            print(f'{course}: {", ".join(times)}')
-    else:
-        print(schedule_data)
-        print("populating database!!!!!!!!!!!!!!!!")
-        # Populates the Schedule Table in the Database.
-        schedule(schedule_data)
+        # Prepare courses and scheduleS
+        courses = create_course_dictionary(student_course_map, course_professor_map, professor_busy_slots)
+        schedule_data = schedule_courses(courses, student_course_map)
+        print("Conflicts")
+        print(check_conflicts(schedule_data, student_course_map))
+        
+        # Check and print scheduling results
+        if isinstance(schedule_data, dict):
+            print("Scheduling completed successfully.")
+            for course, times in schedule_data.items():
+                print(f'{course}: {", ".join(times)}')
+        else:
+            print(schedule_data)
+            print("populating database!!!!!!!!!!!!!!!!")
+            # Populates the Schedule Table in the Database.
+            schedule(schedule_data)
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        raise e  

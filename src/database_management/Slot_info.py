@@ -41,6 +41,7 @@ def insert_time_slots(db_config, input_data):
             db.execute_query(query, params)
         except Exception as e:
             print(f"Failed to insert row {index}: {e}")  # Print error if insertion fails
+            raise e
 
     db.close()  # Close the database connection
 
