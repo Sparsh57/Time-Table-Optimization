@@ -5,13 +5,14 @@ import os
 def schedule(schedule_df):
     db = DatabaseConnection.get_connection()
     try:
+        
         course_ids = db.fetch_query("SELECT CourseName, CourseID FROM Courses")
-        print("course_ids", course_ids)
+        print("course_ids",course_ids)
         course_id_map = {name: id for name, id in course_ids} 
-        print("course_id_map", course_id_map)
+        print("course_id_map",course_id_map)
         time_slots = db.fetch_query("SELECT CONCAT(Day, ' ', StartTime), SlotID FROM Slots")
         slot_id_map = {time: id for time, id in time_slots}
-        print("slot_id_map", slot_id_map)
+        print("slot_id_map",slot_id_map)
         for index, row in schedule_df.iterrows():
             course_id = course_id_map.get(row['Course ID'])
             slot_id = slot_id_map.get(row['Scheduled Time'])
@@ -22,7 +23,6 @@ def schedule(schedule_df):
 
     except Exception as e:
         print("An error occurred while inserting data:", e)
-        raise e
     
     finally:
         db.close()
@@ -58,9 +58,6 @@ def fetch_schedule_data():
         """
         result = db.fetch_query(query)
         return result
-    except Exception as e:
-        print("An error occurred while fetching schedule data:", e)
-        raise e
     finally:
         db.close()
 
@@ -88,9 +85,6 @@ def get_course_ids_for_student(roll_number):
         """
         course_ids = db.fetch_query(course_query, (roll_number,))
         return [str(course[0]) for course in course_ids]
-    except Exception as e:
-        print(f"An error occurred while fetching course IDs for student {roll_number}:", e)
-        raise e
     finally:
         db.close()
 
@@ -124,17 +118,10 @@ def get_schedule_for_courses(course_id_list):
         schedule_query = schedule_query % in_clause 
         schedule = db.fetch_query(schedule_query)
         return schedule
-    except Exception as e:
-        print(f"An error occurred while fetching schedule for courses {course_id_list}:", e)
-        raise e
     finally:
         db.close()
 
 def get_student_schedule(roll_number):
-    try:
-        course_ids = get_course_ids_for_student(roll_number)
-        schedule = get_schedule_for_courses(course_ids)
-        return schedule
-    except Exception as e:
-        print(f"An error occurred while fetching schedule for student {roll_number}:", e)
-        raise e
+    course_ids = get_course_ids_for_student(roll_number)
+    schedule = get_schedule_for_courses(course_ids)
+    return schedule

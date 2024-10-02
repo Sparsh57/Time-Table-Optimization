@@ -36,7 +36,6 @@ def truncate_detail(db_config):
             mydb.execute_query(query)  # Execute each query
     except Exception as e:
         print(f"Error occurred: {e}")
-        raise e  
     finally:
         mydb.close()
 
@@ -45,3 +44,4 @@ db_config = {'host': os.getenv("DATABASE_HOST"),
              'port': os.getenv("DATABASE_PORT"),
              'password': os.getenv("DATABASE_PASSWORD"),
              'database': os.getenv("DATABASE_REF"),}
+

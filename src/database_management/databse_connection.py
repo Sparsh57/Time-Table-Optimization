@@ -81,13 +81,13 @@ class DatabaseConnection:
                 return self.connection
         except MySQLError as e:
             print("Error while connecting to MySQL:", e)
-            raise e
+            return None
 
     def is_connected(self):
         try:
             self.connection.ping(reconnect=True)
-        except Exception as e:
-            raise e
+        except:
+            return False
         return True
 
     def execute_query(self, query, params=None):
@@ -109,7 +109,6 @@ class DatabaseConnection:
         except (MariadbError, MySQLError) as e:
             print(f"Failed to execute query: {e}")
             self.connection.rollback()
-            raise e
 
     def fetch_query(self, query, params=None):
         """
@@ -132,7 +131,7 @@ class DatabaseConnection:
             return results
         except (MariadbError, MySQLError) as e:
             print(f"Failed to fetch data: {e}")
-            raise e
+            return None
 
     def close(self):
         """

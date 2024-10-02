@@ -67,7 +67,6 @@ def insert_courses_professors(file, db_config):
             db.execute_query(insert_query, (row.Course, row.UserID, row.Type))  # Insert Course and UserID
         except Exception as e:
             print(f"Error inserting row {row}: {e}")  # Print error if insertion fails
-            raise e  
 
     # Close the database connection once all operations are complete
     db.close()
@@ -80,9 +79,6 @@ def fetch_course_data():
         """
         result = db.fetch_query(query)
         return result
-    except Exception as e:
-        print(f"Error fetching course data: {e}")
-        raise e  
     finally:
         db.close()
 

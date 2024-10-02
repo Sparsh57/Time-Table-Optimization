@@ -1,6 +1,7 @@
 from .databse_connection import DatabaseConnection
 import numpy as np
 
+
 def insert_professor_busy_slots(file, db_config):
     """
     Inserts professor busy slots from a CSV file into a database.
@@ -62,7 +63,6 @@ def insert_professor_busy_slots(file, db_config):
             db.execute_query(insert_query, (row[0], row[1]))  # Insert ProfessorID and SlotID into the table
         except Exception as e:
             print(f"Error inserting row {row}: {e}")  # Print error if insertion fails
-            raise e  # Re-raise the exception
 
     # Close the database connection once all operations are complete
     db.close()
@@ -72,31 +72,20 @@ def empty_professor_busy_slots(db_config):
     cursor = db.cursor()
     cursor = db.cursor()
     delete_query = "DELETE FROM Professor_BusySlots"
-    try:
-        cursor.execute(delete_query)
-        db.commit()
-        print(f"{cursor.rowcount} records deleted successfully")
-    except Exception as e:
-        print(f"Error occurred while deleting records: {e}")
-        raise e  # Re-raise the exception
-    finally:
-        cursor.close()
-        db.close()
+    cursor.execute(delete_query)
+    db.commit()
+    print(f"{cursor.rowcount} records deleted successfully")
+    cursor.close()
+    db.close()
 
 def fetch_professor_busy_slots():
     db = DatabaseConnection.get_connection()
-    try:
-        query = """
-        SELECT * FROM Professor_BusySlots
-        """
-        result = db.fetch_query(query)
-        print(result)
-        return result
-    except Exception as e:
-        print(f"Error occurred while fetching professor busy slots: {e}")
-        raise e  # Re-raise the exception
-    finally:
-        db.close()
+    query = """
+    SELECT * FROM Professor_BusySlots
+    """
+    result = db.fetch_query(query)
+    print(result)
+    db.close()
+    return result
 
-# Example usage of fetch_professor_busy_slots
 fetch_professor_busy_slots()
