@@ -1,6 +1,10 @@
 import csv
 import random 
 import pandas as pd
+import os
+
+# Get the current working directory
+path = os.getcwd()
 
 num_students = 1000
 num_profs = 100
@@ -22,8 +26,6 @@ student_names = []
 for i in range(num_students):
     student_names.append(f"student_{i}")
 
-
-# Course_list generation
 def select_with_prob(choice_list, check_list, repeat_percent,middle_num,max_num):
     choice = random.choice(choice_list)
     count = sum(1 for i in check_list if i == choice)
@@ -34,12 +36,17 @@ def select_with_prob(choice_list, check_list, repeat_percent,middle_num,max_num)
         select_with_prob(choice_list, check_list, repeat_percent,middle_num,max_num)
     else:
         return choice
-courses_offered = []
-check_list = []
-for course in course_names:
-    prof = select_with_prob(prof_names,check_list,75,2,3)
-    courses_offered.append({"Course code":course,"Faculty Name":prof})
-    check_list.append(prof)
+
+def gen_course_list(prof_names,course_names):
+    # Course_list generation
+    courses_offered = []
+    check_list = []
+    for course in course_names:
+        prof = select_with_prob(prof_names,check_list,75,2,3)
+        courses_offered.append({"Course code":course,"Faculty Name":prof})
+        check_list.append(prof)
+    df = pd.DataFrame(courses_offered)
+    df.to_csv("test_data/Students - Courses Offere List - AY 2024-25 - Term 1 - Sheet1.csv",index=False)
 
 # Faculty Pref
 def generate_faculty_schedule(faculty_names):
@@ -61,12 +68,17 @@ def generate_faculty_schedule(faculty_names):
             data.append({'Name':name, 'Busy Slots':f'{slots[0]} {slots[1]}'})
             
     df = pd.DataFrame(data)
-    df.to_csv('faculty_pref.csv', index=False)
- 
-with open('Students - Courses Offere List - AY 2024-25 - Term 1 - Sheet1.csv', 'w', newline='') as file:
-    writer = csv.writer(file)
-    writer.writerow(["Course code","Faculty Name"])
-    for i in courses_offered:
-        writer.writerow([i["Course code"],i["Faculty Name"]])
+    df.to_csv('test_data/faculty_pref.csv', index=False)
 
+def gen_student_csv(student_list, course_list):
+    data = []
+    for student in student_list:
+        courses = random.sample(course_list, 4)
+        for i in courses:
+            data.append({"Roll No.":student,"G CODE":i})
+    df = pd.DataFrame(data)
+    df.to_csv("test_data/Student Registration Data.csv",index=False)
+
+gen_course_list(prof_names,course_names)
 generate_faculty_schedule(prof_names)
+gen_student_csv(student_names,course_names)
