@@ -35,7 +35,7 @@ def schedule_courses(courses, student_course_map):
             course_time_vars[course_id].append(var)
 
             # course_time_vars = {
-            #'COURSE_ID1': [var_Mon9AM, var_Tue10AM, var_Wed11AM, ...],
+            # 'COURSE_ID1': [var_Mon9AM, var_Tue10AM, var_Wed11AM, ...],
             # 'COURSE_ID2': [var_Mon10AM, var_Tue11AM, var_Wed9AM, ...], } 
             # Here, each list contains boolean variables where each variable 
             # represents whether a specific course is scheduled at a specific time slot.
