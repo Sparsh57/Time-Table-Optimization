@@ -94,7 +94,20 @@
     </script>
 </head>
 <body>
-    <div class="container">
+    
+        <header>
+            <nav class="nav-wrapper indigo darken-4">
+                <div class="container">
+                    <a href="/" class="brand-logo"><i class="material-icons left">schedule</i>Timetable</a>
+                    <a href="#" data-target="mobile-demo" class="sidenav-trigger"><i class="material-icons">menu</i></a>
+                    <ul class="right hide-on-med-and-down">
+                        <li><a href="/dashboard">Dashboard</a></li>
+                        <li><a href="/logout">Logout</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </header>
+        <div class="container"></div>
         <h4 class="header">Weekly Timetable</h4>
         <div class="row">
             <button id="download-csv" class="btn waves-effect waves-light tooltipped" data-position="left" name="Download as CSV">
@@ -106,16 +119,18 @@
                 <i class="material-icons right">post_add</i>
             </button>
             
-            <button id="send-schedule" class="btn waves-effect waves-light tooltipped" data-position="left" name="Get a single schedule">
-                Get a single schedule
-                <i class="material-icons right">post_add</i>
-            </button>
         </div>
-        <form onsubmit="redirectToTimetable(event)">
-            <label for="rollNumber">Roll Number:</label>
-            <input type="text" id="rollNumber" name="rollNumber" required>
-            <button type="submit">Submit</button>
-        </form>
+        <div class="row s8">
+            <div class="col s2"></div>
+            <div class="col">
+                <form onsubmit="redirectToTimetable(event)">
+                    <label for="rollNumber">Roll Number:</label>
+                    <input type="text" id="rollNumber" name="rollNumber" required>
+                    <button type="submit">Submit</button>
+                </form>
+            </div>
+        </div>
+        
         <footer class="page-footer indigo darken-3">
             <div class="container">
                 <div class="row">
@@ -135,5 +150,16 @@
             </div>
         </footer> 
     </div>
+    <script>
+        document.getElementById('download-csv').onclick = function() {
+            window.location.href = '/download-timetable';
+        };
+        document.getElementById('get-data').onclick = function() {
+            window.location.href = '/get_admin_data';
+        };
+        document.getElementById('send-schedule').onclick = function() {
+            window.location.href = '/get_role_no';
+        };
+    </script>
 </body>
 </html>
