@@ -82,6 +82,15 @@
             const rollNumber = document.getElementById('rollNumber').value;
             window.location.href = `/timetable/${rollNumber}`;
         }
+        document.getElementById('download-csv').onclick = function() {
+            window.location.href = '/download-timetable';
+        };
+        document.getElementById('get-data').onclick = function() {
+            window.location.href = '/get_admin_data';
+        };
+        document.getElementById('send-schedule').onclick = function() {
+            window.location.href = '/get_role_no';
+        };
     </script>
 </head>
 <body>
