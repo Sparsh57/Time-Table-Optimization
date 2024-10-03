@@ -103,6 +103,11 @@
                     Generate New Schedule
                     <i class="material-icons right">post_add</i>
                 </button>
+                
+                <button id="send-schedule" class="btn waves-effect waves-light tooltipped" data-position="left" name="Get a single schedule">
+                    Get a single schedule
+                    <i class="material-icons right">post_add</i>
+                </button>
             </div>
             
             {% if schedule_data %}
@@ -167,6 +172,9 @@
         };
         document.getElementById('get-data').onclick = function() {
             window.location.href = '/get_admin_data';
+        };
+        document.getElementById('send-schedule').onclick = function() {
+            window.location.href = '/get_role_no';
         };
     </script>
 </body>

@@ -139,6 +139,10 @@ async def dashboard(request: Request):
 async def home(request: Request):
     return templates.TemplateResponse("home.html", {"request": request})
 
+@app.get("/get_role_no", response_class=HTMLResponse)
+async def role_no(request: Request):
+    return templates.TemplateResponse("get_role_number.html", {"request": request})
+
 @app.get("/get_admin_data", response_class=HTMLResponse)
 async def get_admin_data(request: Request):
     user_info = request.session.get('user')
