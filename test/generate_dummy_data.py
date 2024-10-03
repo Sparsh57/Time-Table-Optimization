@@ -6,7 +6,7 @@ import os
 # Get the current working directory
 path = os.getcwd()
 
-num_students = 1000
+num_students = 100
 num_profs = 100
 num_courses = 100
 courses_per_student = 4
@@ -14,17 +14,17 @@ courses_per_student = 4
 # Gen_prof_names
 prof_names = []
 for i in range(num_profs):
-    prof_names.append(f"prof_{i}")
+    prof_names.append(f"prof{i}")
 
 # Gen_courses
 course_names = []
 for i in range(num_courses):
-    course_names.append(f"course_{i}")
+    course_names.append(f"course{i}")
 
 # Gen_students
 student_names = []
 for i in range(num_students):
-    student_names.append(f"student_{i}")
+    student_names.append(f"student{i}")
 
 def select_with_prob(choice_list, check_list, repeat_percent,middle_num,max_num):
     choice = random.choice(choice_list)
@@ -43,7 +43,7 @@ def gen_course_list(prof_names,course_names):
     check_list = []
     for course in course_names:
         prof = select_with_prob(prof_names,check_list,75,2,3)
-        courses_offered.append({"Course code":course,"Faculty Name":prof})
+        courses_offered.append({"Course code":course,"Faculty Name":prof,"Course Type":"Required"})
         check_list.append(prof)
     df = pd.DataFrame(courses_offered)
     df.to_csv("test_data/Students - Courses Offere List - AY 2024-25 - Term 1 - Sheet1.csv",index=False)
@@ -65,7 +65,7 @@ def generate_faculty_schedule(faculty_names):
             busy_slots.add((day, time))
         
         for slots in busy_slots: 
-            data.append({'Name':name, 'Busy Slots':f'{slots[0]} {slots[1]}'})
+            data.append({'Name':name, 'Busy Slot':f'{slots[0]} {slots[1]}'})
             
     df = pd.DataFrame(data)
     df.to_csv('test_data/faculty_pref.csv', index=False)
@@ -75,7 +75,7 @@ def gen_student_csv(student_list, course_list):
     for student in student_list:
         courses = random.sample(course_list, 4)
         for i in courses:
-            data.append({"Roll No.":student,"G CODE":i})
+            data.append({"Roll No.":student,"G CODE":i,"Sections": "A"})
     df = pd.DataFrame(data)
     df.to_csv("test_data/Student Registration Data.csv",index=False)
 

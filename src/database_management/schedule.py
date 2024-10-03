@@ -3,22 +3,29 @@ import pandas as pd
 import os
 
 def schedule(schedule_df):
+    print(schedule_df)
     db = DatabaseConnection.get_connection()
     try:
         
         course_ids = db.fetch_query("SELECT CourseName, CourseID FROM Courses")
-        print("course_ids",course_ids)
+        #print("course_ids",course_ids)
         course_id_map = {name: id for name, id in course_ids} 
-        print("course_id_map",course_id_map)
+        #print("course_id_map",course_id_map)
+        
         time_slots = db.fetch_query("SELECT CONCAT(Day, ' ', StartTime), SlotID FROM Slots")
         slot_id_map = {time: id for time, id in time_slots}
         print("slot_id_map",slot_id_map)
+        print("heyyy")
         for index, row in schedule_df.iterrows():
+            
             course_id = course_id_map.get(row['Course ID'])
+            #print(course_id)
             slot_id = slot_id_map.get(row['Scheduled Time'])
+            #print(slot_id)
             if course_id and slot_id:
+                #print("Heyyy")
                 insert_query = f"INSERT INTO Schedule (CourseID, SlotID) VALUES ({course_id}, {slot_id})"
-                print(insert_query)
+                #print(insert_query)
                 db.execute_query(insert_query, (course_id, slot_id))
 
     except Exception as e:

@@ -105,7 +105,7 @@ class DatabaseConnection:
             else:
                 cursor.execute(query)
             self.connection.commit()
-            print("Query executed successfully")
+            #print("Query executed successfully")
         except (MariadbError, MySQLError) as e:
             print(f"Failed to execute query: {e}")
             self.connection.rollback()

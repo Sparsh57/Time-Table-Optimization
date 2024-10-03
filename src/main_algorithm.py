@@ -10,21 +10,30 @@ def gen_timetable():
     # Load data
     df_merged = registration_data()
     student_course_map = prepare_student_course_map(df_merged)
+    #print(f'student_course_map: {student_course_map}')
     course_professor_map = create_course_professor_map(df_merged)
     professor_busy_slots = faculty_busy_slots(faculty_pref())
 
     # Prepare courses and scheduleS
     courses = create_course_dictionary(student_course_map, course_professor_map, professor_busy_slots)
+    #print(f'courses: {courses}')
     schedule_data = schedule_courses(courses, student_course_map)
+    #print("schedule_data")
+    #print(schedule_data)
+
     print("Conflicts")
     print(check_conflicts(schedule_data, student_course_map))
     # Check and print scheduling results
+    
+    
     if isinstance(schedule_data, dict):
         print("Scheduling completed successfully.")
         for course, times in schedule_data.items():
             print(f'{course}: {", ".join(times)}')
     else:
-        print(schedule_data)
+        pass
+        #print("showing DATAAA")
+        #print(schedule_data)
         print("populating database!!!!!!!!!!!!!!!!")
         # Populates the Schedule Table in the Database.
         schedule(schedule_data)
