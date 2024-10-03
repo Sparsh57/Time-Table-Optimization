@@ -92,8 +92,8 @@ def schedule_courses(courses, student_course_map):
         data = []
         for course_id, vars in course_time_vars.items():
             times = [var.Name().split('_')[1] for var in vars if solver.Value(var)]
-            print("TIMESS")
-            print(times)
+            #print("TIMESS")
+            #print(times)
             for time in times:
                 data.append({'Course ID': course_id, 'Scheduled Time': time})
         

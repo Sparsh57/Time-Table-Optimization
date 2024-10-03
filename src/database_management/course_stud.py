@@ -59,7 +59,7 @@ def insert_course_students(file, db_config):
             df_merged.loc[index, "CourseID"] = int(dict_course[course])
 
         except KeyError:
-            print(f"Course not found for G CODE: {g_code} after processing, skipping.")
+            #print(f"Course not found for G CODE: {g_code} after processing, skipping.")
             continue
 
     # Drop rows where either UserID or CourseID is missing (NaN values)
