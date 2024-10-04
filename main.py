@@ -8,8 +8,7 @@ import pandas as pd
 import os
 import httpx
 from fastapi.responses import FileResponse
-
-
+from io import BytesIO
 from src.database_management.databse_connection import DatabaseConnection
 from src.database_management.Users import insert_user_data
 from src.database_management.Courses import insert_courses_professors
@@ -61,10 +60,11 @@ async def send_admin_data(
     data = {}
     # Load valid dataframes
     for file_key, file in files.items():
-        if file.filename.endswith(('.csv', '.xlsx')):
-            data[file_key] = (
-                pd.read_csv(file.file) if file.filename.endswith('.csv') else pd.read_excel(file.file)
-            )
+        if file.filename.endswith('.csv'):
+            data[file_key] = pd.read_csv(file.file)
+        elif file.filename.endswith('.xlsx'):
+            file_bytes = await file.read()  # Read the file content into bytes
+            data[file_key] = pd.read_excel(BytesIO(file_bytes))  # Use BytesIO to handle Excel file
         else:
             responses[file.filename] = "Unsupported file format"
 
