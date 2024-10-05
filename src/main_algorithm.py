@@ -16,8 +16,7 @@ def gen_timetable():
 
     # Prepare courses and scheduleS
     courses = create_course_dictionary(student_course_map, course_professor_map, professor_busy_slots)
-    #print(f'courses: {courses}')
-    schedule_data = schedule_courses(courses, student_course_map)
+    schedule_data = schedule_courses(courses, student_course_map, course_professor_map)
     #print("schedule_data")
     #print(schedule_data)
 

@@ -1,5 +1,3 @@
-from src.database_management.schedule import timetable_made, fetch_schedule_data
-
 def check_conflicts(schedule, student_course_map):
     conflicts = {}
     for student, courses in student_course_map.items():
@@ -10,4 +8,3 @@ def check_conflicts(schedule, student_course_map):
             conflicts[student] = times
     return conflicts
 
-print(fetch_schedule_data)

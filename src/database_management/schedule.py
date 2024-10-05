@@ -6,31 +6,31 @@ def schedule(schedule_df):
     print(schedule_df)
     db = DatabaseConnection.get_connection()
     try:
-        
+
         course_ids = db.fetch_query("SELECT CourseName, CourseID FROM Courses")
         #print("course_ids",course_ids)
-        course_id_map = {name: id for name, id in course_ids} 
+        course_id_map = {name: id for name, id in course_ids}
         #print("course_id_map",course_id_map)
-        
+
         time_slots = db.fetch_query("SELECT CONCAT(Day, ' ', StartTime), SlotID FROM Slots")
         slot_id_map = {time: id for time, id in time_slots}
         print("slot_id_map",slot_id_map)
         print("heyyy")
         for index, row in schedule_df.iterrows():
-            
+
             course_id = course_id_map.get(row['Course ID'])
             #print(course_id)
             slot_id = slot_id_map.get(row['Scheduled Time'])
             #print(slot_id)
             if course_id and slot_id:
                 #print("Heyyy")
-                insert_query = f"INSERT INTO Schedule (CourseID, SlotID) VALUES ({course_id}, {slot_id})"
+                insert_query = f"INSERT INTO Schedule (CourseID, SlotID) VALUES (%s, %s)"
                 #print(insert_query)
                 db.execute_query(insert_query, (course_id, slot_id))
 
     except Exception as e:
         print("An error occurred while inserting data:", e)
-    
+
     finally:
         db.close()
 
@@ -72,9 +72,9 @@ def generate_csv(filename='schedule.csv'):
     data = fetch_schedule_data()
     df = pd.DataFrame(data)
     df.to_csv(filename, index=False)
-    return filename 
+    return filename
 
-def generate_csv_for_student(roll_number): 
+def generate_csv_for_student(roll_number):
     filename = f'Student_{roll_number}.csv'
     data = get_student_schedule(roll_number)
     df = pd.DataFrame(data)
@@ -122,7 +122,7 @@ def get_schedule_for_courses(course_id_list):
             Slots.StartTime, 
             Slots.EndTime
         """
-        schedule_query = schedule_query % in_clause 
+        schedule_query = schedule_query % in_clause
         schedule = db.fetch_query(schedule_query)
         return schedule
     finally:
