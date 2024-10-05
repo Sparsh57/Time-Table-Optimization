@@ -138,8 +138,10 @@ class DatabaseConnection:
         Closes the database connection if it is open.
         """
         if self.connection and self.is_connected():
-            self.connection.close()
-            print("Database connection is closed")
+            cursor = self.connection.cursor()
+            cursor.close()  # Ensure the cursor is closed before closing the connection
+            self.connection.close()  # Close the connection if it's open
+            print("Database connection closed.")
 
     @staticmethod
     def get_connection():
