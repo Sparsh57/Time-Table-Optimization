@@ -3,6 +3,17 @@ import pandas as pd
 import re
 from itertools import combinations
 
+class SolutionCollector(cp_model.CpSolverSolutionCallback):
+    def __init__(self, variables):
+        cp_model.CpSolverSolutionCallback.__init__(self)
+        self.variables = variables
+        self.solutions = []
+
+    def on_solution_callback(self):
+        solution = {}
+        for var_name, variable in self.variables.items():
+            solution[var_name] = self.Value(variable)
+        self.solutions.append(solution)
 
 def schedule_courses(courses, student_course_map, course_professor_map):
     """
@@ -33,6 +44,7 @@ def schedule_courses(courses, student_course_map, course_professor_map):
     days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
     all_penalty_vars = []  # Holds penalty variables for conflicts
     time_slot_count_vars = {}  # Holds count variables for time slots
+    solution_variables = {}
 
     # Create model variables for each course's time slots
     for course_id, course_info in courses.items():
@@ -43,6 +55,8 @@ def schedule_courses(courses, student_course_map, course_professor_map):
             var_id = f'{course_id}_{time_slot}'  # Unique variable ID for each course time slot
             var = model.NewBoolVar(var_id)  # Create a boolean variable
             course_time_vars[course_id].append(var)  # Add variable to course time vars
+            solution_variables[var_id] = var  # Add this variable to the solution variables dictionary
+
 
             # Extract the day from the time slot and add the variable to the corresponding day
             match = re.match(r"(\D+)", time_slot)
@@ -121,17 +135,16 @@ def schedule_courses(courses, student_course_map, course_professor_map):
 
     # Solve the model
     solver = cp_model.CpSolver()
-    status = solver.Solve(model)
+    solution_collector = SolutionCollector(solution_variables)
+    solver.SearchForAllSolutions(model, solution_collector)
 
-    # Creating a DataFrame to hold the schedule
-    if status == cp_model.OPTIMAL:
-        data = []
-        for course_id, vars in course_time_vars.items():
-            times = [var.Name().split('_')[1] for var in vars if solver.Value(var)]
-            for time in times:
-                data.append({'Course ID': course_id, 'Scheduled Time': time})
-        schedule_df = pd.DataFrame(data)  # Create DataFrame from the scheduling data
-        return schedule_df
+    # Convert solutions to DataFrame
+    all_solutions = []
+    for solution in solution_collector.solutions:
+        schedule = [{'Course ID': var.split('_')[0], 'Scheduled Time': var.split('_')[1]} for var, value in solution.items() if value]
+        all_solutions.extend(schedule)
+    if all_solutions:
+        return pd.DataFrame(all_solutions)
     else:
         print("No feasible solution found.")
         return pd.DataFrame(columns=['Course ID', 'Scheduled Time'])  # Return empty DataFrame if no solution
