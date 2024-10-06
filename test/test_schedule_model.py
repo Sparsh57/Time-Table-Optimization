@@ -104,6 +104,27 @@ class TestCourseScheduling(unittest.TestCase):
 
         for student, times in student_schedule.items():
             self.assertEqual(len(times), len(set(times)), f"Student {student} has overlapping classes.")
+    
+    def test_professor_conflicts(self):
+        """
+        Ensure that no professor is scheduled to teach more than one course at the same time.
+        """
+        result = schedule_courses(self.courses, self.student_course_map, self.course_professor_map)
+        professor_schedule = {}
+
+        # Track each professor's courses and times
+        for _, row in result.iterrows():
+            course = row['Course ID']
+            time_slot = row['Scheduled Time']
+            professor = self.course_professor_map[course]
+            if professor not in professor_schedule:
+                professor_schedule[professor] = []
+            professor_schedule[professor].append(time_slot)
+
+        # Check for conflicts in professors' schedules
+        for professor, slots in professor_schedule.items():
+            self.assertEqual(len(slots), len(set(slots)), f"Professor {professor} has overlapping classes.")
+
 
 if __name__ == '__main__':
     unittest.main()
