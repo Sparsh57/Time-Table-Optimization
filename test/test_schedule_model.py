@@ -1,38 +1,42 @@
 import unittest
 import sys
 from pathlib import Path
-
 import pandas as pd
 
-current_file_path = Path(__file__)
-# Get the parent's parent's path
+# Get the current file's directory path
+current_file_path = Path(__file__).resolve()
+
+# Get the grandparent directory path, which is two levels up
 grandparent_path = current_file_path.parent.parent
 
-# Convert to a string and add to system path
+# Append the grandparent directory to the system path
 sys.path.append(str(grandparent_path))
 
+# Import the schedule_courses function
 from src.schedule_model import schedule_courses
-
 
 class TestCourseScheduling(unittest.TestCase):
     def setUp(self):
         """
-        Set up sample input data for testing.
+        Set up sample input data
         """
         self.courses = {
-            'C1': {'time_slots': ['Monday 9:00', 'Tuesday 10:00', 'Wednesday 11:00']},
-            'C2': {'time_slots': ['Monday 9:00', 'Tuesday 10:00', 'Wednesday 11:00']},
-            'C3': {'time_slots': ['Tuesday 10:00', 'Thursday 2:00', 'Friday 4:00']}
-        }
+        'Math101': {'time_slots': ['Monday 9:00', 'Wednesday 11:00', 'Friday 10:00']},
+        'CS101': {'time_slots': ['Monday 10:00', 'Tuesday 9:00', 'Thursday 10:00']},
+        'History201': {'time_slots': ['Tuesday 11:00', 'Thursday 9:00', 'Friday 11:00']}
+    }
+
         self.student_course_map = {
-            'S1': ['C1', 'C2'],
-            'S2': ['C1', 'C3']
-        }
+        'Alice': ['Math101', 'CS101'],
+        'Bob': ['CS101', 'History201'],
+        'Charlie': ['Math101', 'History201']
+    }
+
         self.course_professor_map = {
-            'C1': 'Prof1',
-            'C2': 'Prof1',  # Same professor as C1
-            'C3': 'Prof2'
-        }
+        'Math101': 'Prof. Einstein',
+        'CS101': 'Prof. Turing',
+        'History201': 'Prof. Schliemann'
+    }
 
     def test_schedule_courses(self):
         """
