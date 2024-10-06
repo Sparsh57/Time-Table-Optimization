@@ -2,9 +2,12 @@ from ortools.sat.python import cp_model
 import pandas as pd
 import re
 from itertools import combinations
+from typing import Dict, List
 
 
-def schedule_courses(courses, student_course_map, course_professor_map):
+def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
+                     student_course_map: Dict[str, List[str]],
+                     course_professor_map: Dict[str, str]) -> pd.DataFrame:
     """
     Schedules courses for a given set of courses, students, and professors,
     ensuring no conflicts and adherence to constraints.
@@ -24,6 +27,10 @@ def schedule_courses(courses, student_course_map, course_professor_map):
                     feasible solution is found.
     """
 
+    assert isinstance(courses, dict), "Expected 'courses' to be a dictionary"
+    assert isinstance(student_course_map, dict), "Expected 'student_course_map' to be a dictionary"
+    assert isinstance(course_professor_map, dict), "Expected 'course_professor_map' to be a dictionary"
+    
     # Initialize the constraint programming model
     model = cp_model.CpModel()
 
