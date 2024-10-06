@@ -23,6 +23,8 @@ The project consists of:
 - A **front-end** that provides user-friendly interfaces for uploading data, viewing timetables, and downloading the generated schedule.
 - A **Google OAuth** system for secure access.
 
+Find complete diagrams on the docs page at [https://github.com/Sparsh57/Time-Table-Optimization/blob/master/docs/Timetable_Presentation.pdf](https://github.com/Sparsh57/Time-Table-Optimization/blob/master/docs/Timetable_Presentation.pdf)
+
 ## Features
 
 - **Automatic Timetable Generation**: Generates conflict-free schedules using Google OR-Tools.
@@ -121,10 +123,16 @@ The project uses MariaDB for managing course, professor, and student data. Key t
 2. **Upload Data**: Administrators can upload CSV/Excel files containing course details, professor schedules, and student enrollments.
 3. **Generate Timetable**: Once the data is uploaded, the system will automatically generate an optimized timetable.
 4. **View Timetable**: Administrators can view the generated timetable, while students can view and download their specific timetable by entering their roll number.
-5. **Download**: Both administrators and students can download the timetable in CSV format.
+5. **Download**: Administrators and students can download the timetable in CSV format.
 
+## How to Install and Run
 
-  
+1. **Clone the repo**: Download the repo from [github](https://github.com/Sparsh57/Time-Table-Optimization/) by cloning it or forking it.
+2. **Download Libraries** Download all requirements using  ```pip install -r requirements.txt``` while in the project parent folder.
+3. **Run the main python file using** ```python main.py``` while in the same folder.
+4. **View app on Browser** view the app on [https://localhost:4000](https://localhost:4000)
+     
 ---
+For any bug reports please contact the repo contributor or submit issues on the github page
 
 This project provides a scalable, optimized solution to the complex problem of scheduling in educational institutions, with a focus on automation, efficiency, and ease of use.
