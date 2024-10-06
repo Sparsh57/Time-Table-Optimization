@@ -105,7 +105,9 @@ def schedule_courses(courses, student_course_map, course_professor_map):
         day_vars = []
         for course_id, vars in course_day_vars.items():
             day_vars.extend(vars[day])  # Collect all course variables for the day
-        model.Add(sum(day_vars) <= max_courses_per_day)  # Limit courses scheduled per day
+        excess_courses = model.NewIntVar(0, num_courses, f'excess_courses_{day}')
+        model.Add(sum(day_vars) <= max_courses_per_day + excess_courses)        # Limit courses scheduled per day
+        all_penalty_vars.append(excess_courses)
 
     # Distribute the total classes evenly across time slots
     total_classes = sum(len(course_info['time_slots']) for course_info in courses.values())
@@ -113,7 +115,14 @@ def schedule_courses(courses, student_course_map, course_professor_map):
     max_classes_per_time_slot = total_classes // num_time_slots + 1  # Allow for slight overage
 
     for time_slot, vars in time_slot_count_vars.items():
-        model.Add(sum(vars) <= max_classes_per_time_slot)  # Limit classes per time slot
+        # Define an integer variable to track excess classes in this time slot
+        excess_classes = model.NewIntVar(0, total_classes, f'excess_classes_{time_slot}')
+
+        # Add a soft constraint: number of classes in this time slot can exceed the limit by 'excess_classes'
+        model.Add(sum(vars) <= max_classes_per_time_slot + excess_classes)
+
+        # Penalize excess classes in the minimization objective
+        all_penalty_vars.append(excess_classes) # Limit classes per time slot
 
     # Minimize penalties for conflicts
     if all_penalty_vars:
