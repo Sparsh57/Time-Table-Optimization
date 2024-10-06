@@ -33,7 +33,7 @@ def insert_user_data(list_files, db_config):
     final_data['UserID'] = final_data.index + 1
 
     for index, row in final_data.iterrows():
-        insert_query = "INSERT INTO Users (UserID, Email, Role) VALUES (?, ?, ?)"
+        insert_query = "INSERT INTO Users (UserID, Email, Role) VALUES (%s, %s, %s)"
         db.execute_query(insert_query, (row['UserID'], row['Email'], row['Role']))
 
     db.close()

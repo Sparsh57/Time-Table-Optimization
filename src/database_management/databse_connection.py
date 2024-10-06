@@ -32,7 +32,7 @@ class DatabaseConnection:
         Establishes a connection to the MariaDB database. If it fails, it falls back to a MySQL database connection.
 
         Returns:
-        connection: The established database connection.
+        connection: The established database connection or None if both connections fail.
         """
         try:
             self.connection = mariadb.connect(
@@ -54,7 +54,7 @@ class DatabaseConnection:
         except MariadbError as e:
             print("Error while connecting to MariaDB:", e)
             print("Attempting to connect to MySQL database as a backup...")
-            return self.connect_to_mysql()
+        return self.connect_to_mysql()
 
     def connect_to_mysql(self):
         """
@@ -84,6 +84,12 @@ class DatabaseConnection:
             return None
 
     def is_connected(self):
+        """
+        Checks if the database connection is active and reconnects if needed.
+
+        Returns:
+        bool: True if the connection is active, False otherwise.
+        """
         try:
             self.connection.ping(reconnect=True)
         except:
@@ -98,6 +104,10 @@ class DatabaseConnection:
         query (str): The SQL query to execute.
         params (tuple, optional): Parameters for the SQL query.
         """
+        if not self.is_connected():
+            print("No active database connection.")
+            return
+
         try:
             cursor = self.connection.cursor()
             if params:
@@ -105,7 +115,7 @@ class DatabaseConnection:
             else:
                 cursor.execute(query)
             self.connection.commit()
-            #print("Query executed successfully")
+            print("Query executed successfully")
         except (MariadbError, MySQLError) as e:
             print(f"Failed to execute query: {e}")
             self.connection.rollback()
@@ -119,8 +129,12 @@ class DatabaseConnection:
         params (tuple, optional): Parameters for the SQL query.
 
         Returns:
-        list: A list of tuples representing the fetched rows.
+        list: A list of tuples representing the fetched rows or None if an error occurs.
         """
+        if not self.is_connected():
+            print("No active database connection.")
+            return None
+
         try:
             cursor = self.connection.cursor()
             if params:
@@ -138,10 +152,13 @@ class DatabaseConnection:
         Closes the database connection if it is open.
         """
         if self.connection and self.is_connected():
-            cursor = self.connection.cursor()
-            cursor.close()  # Ensure the cursor is closed before closing the connection
-            self.connection.close()  # Close the connection if it's open
-            print("Database connection closed.")
+            try:
+                cursor = self.connection.cursor()
+                cursor.close()
+                self.connection.close()
+                print("Database connection closed.")
+            except (MariadbError, MySQLError) as e:
+                print(f"Failed to close connection: {e}")
 
     @staticmethod
     def get_connection():
