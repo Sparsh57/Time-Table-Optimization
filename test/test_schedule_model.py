@@ -75,5 +75,35 @@ class TestCourseScheduling(unittest.TestCase):
         # Since this is an infeasible scheduling case, we expect an empty DataFrame
         self.assertTrue(result.empty)
 
+    def test_no_conflicts_for_students(self):
+        """Students should not have overlapping courses."""
+        result = schedule_courses(self.courses, self.student_course_map, self.course_professor_map)
+        student_schedule = {}
+        for _, row in result.iterrows():
+            course, time = row['Course ID'], row['Scheduled Time']
+            for student, courses in self.student_course_map.items():
+                if course in courses:
+                    if student not in student_schedule:
+                        student_schedule[student] = []
+                    student_schedule[student].append(time)
+
+        for student, times in student_schedule.items():
+            self.assertEqual(len(times), len(set(times)), f"Student {student} has overlapping classes.")
+
+    def test_no_conflicts_for_students(self):
+        """Students should not have overlapping courses."""
+        result = schedule_courses(self.courses, self.student_course_map, self.course_professor_map)
+        student_schedule = {}
+        for _, row in result.iterrows():
+            course, time = row['Course ID'], row['Scheduled Time']
+            for student, courses in self.student_course_map.items():
+                if course in courses:
+                    if student not in student_schedule:
+                        student_schedule[student] = []
+                    student_schedule[student].append(time)
+
+        for student, times in student_schedule.items():
+            self.assertEqual(len(times), len(set(times)), f"Student {student} has overlapping classes.")
+
 if __name__ == '__main__':
     unittest.main()
