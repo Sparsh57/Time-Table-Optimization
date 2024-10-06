@@ -4,7 +4,9 @@ def check_conflicts(schedule, student_course_map):
         times = []
         for course in courses:
             times.extend(schedule.get(course, []))
+        # Check if any times appear more than once
         if len(times) != len(set(times)):
-            conflicts[student] = times
+            # Detect and store the conflict times
+            conflict_times = [time for time in times if times.count(time) > 1]
+            conflicts[student] = conflict_times
     return conflicts
-
