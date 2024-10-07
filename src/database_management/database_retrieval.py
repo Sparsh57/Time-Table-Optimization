@@ -1,27 +1,24 @@
 import pandas as pd
 from .databse_connection import DatabaseConnection
 import os
-import sqlalchemy
-from sqlalchemy.ext.declarative import declarative_base
-from urllib.parse import quote_plus
 
 
-def get_connection():
-    mydb_dict = {
-        'host': os.getenv("DATABASE_HOST"),
-        'user': os.getenv("DATABASE_USER"),
-        'password': os.getenv("DATABASE_PASSWORD"),
-        'database': os.getenv("DATABASE_REF"),
-        'port': os.getenv("DATABASE_PORT")
-    }
-    encoded_password = quote_plus(mydb_dict['password'])
-    connection_string = f"mariadb+pymysql://{mydb_dict['user']}:{encoded_password}@{mydb_dict['host']}:{mydb_dict['port']}/{mydb_dict['database']}"
-    engine = sqlalchemy.create_engine(connection_string)
-    return engine
+def registration_data(db_config):
+    """
+    Fetch registration data of students, including roll numbers, course names, and professor emails.
 
-def registration_data():
-    engine = get_connection()
-    if engine is None:
+    Returns:
+        pd.DataFrame: DataFrame containing the registration data.
+    """
+    # Initialize the database connection
+    db = DatabaseConnection(
+        host=db_config["host"],
+        user=db_config["user"],
+        port=db_config["port"],
+        password=db_config["password"],
+        database=db_config["database"]).connect()
+
+    if db is None:
         return pd.DataFrame()  # Return an empty DataFrame if connection fails
 
     query = """
@@ -37,18 +34,35 @@ def registration_data():
     GROUP BY u.Email, c.CourseName, p.Email;
     """
 
-    with engine.connect() as conn:
-        df = pd.read_sql(
-            sql=query,
-            con=conn.connection
-        )
-    engine.dispose()
+    try:
+        # Execute the query using the fetch_query method from DatabaseConnection
+
+        result = db.fetch_query(query)
+        # Convert the result to a pandas DataFrame
+        df = pd.DataFrame(result, columns=['Roll No.', 'G CODE', 'Professor'])
+
+    finally:
+        # Ensure the database connection is closed after query execution
+        db.close()
 
     return df
 
-def faculty_pref():
-    engine = get_connection()
-    if engine is None:
+
+def faculty_pref(db_config):
+    """
+    Fetch professor preferences for busy slots.
+
+    Returns:
+        pd.DataFrame: DataFrame containing professor names and their busy time slots.
+    """
+    # Initialize the database connection
+    db = DatabaseConnection(host=db_config["host"],
+        user=db_config["user"],
+        port=db_config["port"],
+        password=db_config["password"],
+        database=db_config["database"]).connect()
+
+    if db is None:
         return pd.DataFrame()  # Return an empty DataFrame if connection fails
 
     query = """
@@ -61,10 +75,16 @@ def faculty_pref():
     WHERE u.Role = 'Professor'
     ORDER BY u.Email, s.Day, s.StartTime;
     """
-    with engine.connect() as conn:
-        df = pd.read_sql(
-            sql=query,
-            con=conn.connection
-        )
+
+    try:
+        # Execute the query using the fetch_query method from DatabaseConnection
+        result = db.fetch_query(query)
+
+        # Convert the result to a pandas DataFrame
+        df = pd.DataFrame(result, columns=['Name', 'Busy Slot'])
+
+    finally:
+        # Ensure the database connection is closed after query execution
+        db.close()
 
     return df
