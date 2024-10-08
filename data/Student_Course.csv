@@ -1,0 +1,109 @@
+﻿Course code,Faculty Name,Course Type
+ARTS205,Ritwik Kaikini (VF),Elective
+ARTS224,Swarnamalya Ganesh,Elective
+ARTS233,Kaveri Bharath,Elective
+ARTS234|PHIL234|PSYC235,Swarnamalya Ganesh,Elective
+ARTS235|ENVS237,Prajna Desai (VF),Elective
+ARTS236|LITT234,Prajna Desai (VF),Elective
+BIOS221,Lakshman Varanasi,Elective
+BIOS224,Shivani Jadeja,Elective
+BIOS227|ENVS227|PSYC227,Guha Dharmarajan,Elective
+BIOS231|CHEM231,Kalyan Chakrabarti & Sivakumar Srinivasan,Elective
+BIOS251|HIST251,John Mathew,Elective
+BIOS306|CHEM305,Vinodkumar Saranathan,Elective
+BIOS409|ENVS409,Guha Dharmarajan,Elective
+BIOS432|CHEM432,Kalyan Chakrabarti,Elective
+BUSI201,Easwaran KV,Elective
+BUSI211|PSYC213,Ravi Thilagan DJE,Elective
+BUSI317,Easwaran KV,Elective
+BUSI318,Sathya Saminadan,Elective
+BUSI319,Amit Das,Elective
+CHEM207,Surajit Kayal,Elective
+CHEM216,KS Viswanathan,Elective
+CHEM219,Ravikumar Komaragiri,Elective
+CHEM319,Randhir Rai,Elective
+CHEM321,Sudip Roy,Elective
+CHEM322|BIOS322,N. Chandrakumar,Elective
+CHEM431,Ravikumar Komaragiri,Elective
+CHEM433,KS Viswanathan,Elective
+CHEM434,Sudip Roy,Elective
+CHEM440,Brijesh Mishra,Elective
+COMP203,Abuthahir Abdulrahuman,Elective
+COMP207,Prathamesh Turaga,Elective
+COMP235,Ravi Prakash,Elective
+COMP310&COMP410,Srikrishnan Divakaran,Elective
+COMP311|MATH311,Meesum Syed,Elective
+COMP328&COMP428,Prathamesh Turaga,Elective
+COMP329|MATH329&COMP429|MATH429,Meesum Syed,Elective
+COMP332&COMP432,Mullai Thiagu,Elective
+COMP347&COMP447,Shubham Solanki,Elective
+COMP350,Mullai Thiagu,Elective
+COMP431|ARTS431,"Srikumar Subramanian, Sumitra Ranganathan",Elective
+CWPC601,Anannya Dasgupta,Elective
+DATA201-A,Shyam Sudhakar,Elective
+DATA201-B,Shyam Sudhakar,Elective
+ECON201-A,Rohan Gudibande,Elective
+ECON201-B,Samyukta Bhupatiraju,Elective
+ECON206,Karthik Rao Cavale,Elective
+ECON207,Pulapre Balakrishnan,Elective
+ECON209,Albert Jodhimani,Elective
+ECON210-A,Anwesha Chakrabarti,Elective
+ECON210-B,Rohan Gudibande,Elective
+ECON315|SOCL323|BUSI312,Sabina Yasmin,Elective
+ECON321&ECON421,Suchika Chopra,Elective
+ECON329|SOCL332|POLT335&ECON429|SOCL432|POLT435,Sarabjeet Natesan,Elective
+ECON330|BUSI330&ECON430|BUSI430,Sarabjeet Natesan,Elective
+ECON332&ECON432,Anwesha Chakrabarti,Elective
+ECON333&ECON433,Debdulal Thakur,Elective
+ENVS221|LITT242,Joya John,Elective
+ENVS242|SOCL242|POLT221,Bharath Sundaram,Elective
+ENVS245,Viswanathan KS and Sathvika Talasila,Elective
+ENVS250|PHIL211,Shruti Pandey,Elective
+ENVS328,Sathvika Talasila,Elective
+ENVS421,Chirag Dhara,Elective
+ENVS433|HIST433|SOCL433|LITT433,Annu Jalais,Elective
+HIST303|PHIL315|LITT306,Prithvi Datta Chandra Shobhi,Elective
+HIST314|SOCL351|POLT351,S. Anandhi,Elective
+HIST326&HIST426,Shanti Pappu,Elective
+HIST328|BIOS328|LITT328|ARTS328&HIST428|BIOS428|LITT428|ARTS428,John Mathew,Elective
+HIST330|SOCL330|POLT330,Aashique Iqbal,Elective
+HIST339,Preeti Gulati,Elective
+LITT208,Sayandeb Chowdhury,Elective
+LITT212|ARTS232,Abhishek Shukla,Elective
+MATH061&PHYS061,Shibi Vasudevan & Shuchita Goyal,Elective
+MATH191|COMP201,Soumya Dey,Elective
+MATH203,Arghya Mondal,Elective
+MATH226,Debangana Mukherjee,Elective
+MATH257,Rishi Vyas,Elective
+MATH305&MATH405,Shuchita Goyal,Elective
+MATH333,CP Anil Kumar,Elective
+MATH344&MATH444,Arghya Mondal,Elective
+MATH355&MATH455,Soumya Dey,Elective
+PHIL214|PHIL314&PHIL414,Vivek Radhakrishnan,Elective
+PHYS110,"Sushant, Venkata, Rama Kamineni, Siddharth",Elective
+PHYS216|COMP216,Sushant Raut,Elective
+PHYS226,Venkata Srinu Bhadram,Elective
+PHYS231,Sushant Raut,Elective
+PHYS311,Rama Koteswara Rao Kamineni,Elective
+PHYS327,Venkata Srinu Bhadram,Elective
+PHYS345,T R Govindarajan,Elective
+PHYS360&PHYS460,Rama Koteswara Rao Kamineni,Elective
+PHYS443,Venkata Bhadram,Elective
+POLT203,Dyotana Banerjee,Elective
+POLT205,Swarna Rajagopalan,Elective
+POLT333|SOCL333,Dyotana Banerjee,Elective
+POLT334|SOCL334,Shilpi Singh,Elective
+POLT412,Swarna Rajagopalan,Elective
+POLT415|SOCL415,Geeti Das,Elective
+PSYC208,Shruti Chakravarty,Elective
+PSYC209,Akanksha Adya,Elective
+PSYC251|SOCL251,Shruti Chakravarty,Elective
+PSYC327,Rakshi Rath,Elective
+PSYC345&PSYC445,Ranjini Krishnan,Elective
+PSYC437,Pooja Nair,Elective
+PSYC440,Madhavilatha Maganti,Elective
+PSYC442,Rakshi Rath,Elective
+SOCL201|POLT201,Arani Basu,Elective
+SOCL325|ENVS325,Sharin Naomi,Elective
+SOCL328,Annu Jalais,Elective
+SOCL411|POLT411,Arani Basu,Elective

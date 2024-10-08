@@ -88,48 +88,48 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                             ])
                             all_penalty_vars.append(penalty_var)
 
-    # Constraints to avoid scheduling two courses taught by the same professor at the same time
-    for course_id1, course_id2 in combinations(courses.keys(), 2):
-        if course_professor_map[course_id1] == course_professor_map[course_id2]:
-            for time_slot1 in courses[course_id1]['time_slots']:
-                for time_slot2 in courses[course_id2]['time_slots']:
-                    if time_slot1 == time_slot2:
-                        # Create a constraint to ensure that not both courses can be scheduled at the same time
-                        model.AddBoolOr([
-                            course_time_vars[course_id1][courses[course_id1]['time_slots'].index(time_slot1)].Not(),
-                            course_time_vars[course_id2][courses[course_id2]['time_slots'].index(time_slot2)].Not()
-                        ])
+    # # Constraints to avoid scheduling two courses taught by the same professor at the same time
+    # for course_id1, course_id2 in combinations(courses.keys(), 2):
+    #     if course_professor_map[course_id1] == course_professor_map[course_id2]:
+    #         for time_slot1 in courses[course_id1]['time_slots']:
+    #             for time_slot2 in courses[course_id2]['time_slots']:
+    #                 if time_slot1 == time_slot2:
+    #                     # Create a constraint to ensure that not both courses can be scheduled at the same time
+    #                     model.AddBoolOr([
+    #                         course_time_vars[course_id1][courses[course_id1]['time_slots'].index(time_slot1)].Not(),
+    #                         course_time_vars[course_id2][courses[course_id2]['time_slots'].index(time_slot2)].Not()
+    #                     ])
 
     # Add constraint to limit classes per time slot to a maximum of 15
-    for time_slot, vars in time_slot_count_vars.items():
-        model.Add(sum(vars) <= 15)
+    # for time_slot, vars in time_slot_count_vars.items():
+    #     model.Add(sum(vars) <= 15)
 
-    num_courses = len(courses.keys()) * 2  # Total number of courses, assuming each course is scheduled twice
-    num_days = 5  # Number of days in the schedule
-    # Define a maximum number of courses scheduled per day (for distribution)
-    max_courses_per_day = int((num_courses / num_days) * (1.3))
-    for day in days:
-        day_vars = []
-        for course_id, vars in course_day_vars.items():
-            day_vars.extend(vars[day])  # Collect all course variables for the day
-        excess_courses = model.NewIntVar(0, num_courses, f'excess_courses_{day}')
-        model.Add(sum(day_vars) <= max_courses_per_day + excess_courses)        # Limit courses scheduled per day
-        all_penalty_vars.append(excess_courses)
+    # num_courses = len(courses.keys()) * 2  # Total number of courses, assuming each course is scheduled twice
+    # num_days = 5  # Number of days in the schedule
+    # # Define a maximum number of courses scheduled per day (for distribution)
+    # max_courses_per_day = int((num_courses / num_days) * (1.3))
+    # for day in days:
+    #     day_vars = []
+    #     for course_id, vars in course_day_vars.items():
+    #         day_vars.extend(vars[day])  # Collect all course variables for the day
+    #     excess_courses = model.NewIntVar(0, num_courses, f'excess_courses_{day}')
+    #     model.Add(sum(day_vars) <= max_courses_per_day + excess_courses)        # Limit courses scheduled per day
+    #     all_penalty_vars.append(excess_courses)
 
-    # Distribute the total classes evenly across time slots
-    total_classes = sum(len(course_info['time_slots']) for course_info in courses.values())
-    num_time_slots = len(time_slot_count_vars)
-    max_classes_per_time_slot = total_classes // num_time_slots + 1  # Allow for slight overage
+    # # Distribute the total classes evenly across time slots
+    # total_classes = sum(len(course_info['time_slots']) for course_info in courses.values())
+    # num_time_slots = len(time_slot_count_vars)
+    # max_classes_per_time_slot = total_classes // num_time_slots + 1  # Allow for slight overage
 
-    for time_slot, vars in time_slot_count_vars.items():
-        # Define an integer variable to track excess classes in this time slot
-        excess_classes = model.NewIntVar(0, total_classes, f'excess_classes_{time_slot}')
+    # for time_slot, vars in time_slot_count_vars.items():
+    #     # Define an integer variable to track excess classes in this time slot
+    #     excess_classes = model.NewIntVar(0, total_classes, f'excess_classes_{time_slot}')
 
-        # Add a soft constraint: number of classes in this time slot can exceed the limit by 'excess_classes'
-        model.Add(sum(vars) <= max_classes_per_time_slot + excess_classes)
+    #     # Add a soft constraint: number of classes in this time slot can exceed the limit by 'excess_classes'
+    #     model.Add(sum(vars) <= max_classes_per_time_slot + excess_classes)
 
-        # Penalize excess classes in the minimization objective
-        all_penalty_vars.append(excess_classes) # Limit classes per time slot
+    #     # Penalize excess classes in the minimization objective
+    #     all_penalty_vars.append(excess_classes) # Limit classes per time slot
 
     # Minimize penalties for conflicts
     if all_penalty_vars:
