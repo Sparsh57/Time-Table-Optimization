@@ -1,5 +1,0 @@
-- install Python 3.x and FastAPI
-- navigate to the folder titled frontend
-- install dependencies from requirements.txt by running pip install -r requirements.txt
-- run the FastAPI server with uvicorn main:app --reload
-- open https://localhost:4000/ to see the home page
