@@ -25,4 +25,5 @@ registration = pd.read_csv(r'C:\Users\Vatsalya Betala\OneDrive\Documents\Reposit
 faculty_pref = pd.read_csv(r'C:\Users\Vatsalya Betala\OneDrive\Documents\Repositories\Time-Table-Optimization\data\faculty_pref.csv')
 courses = pd.read_csv(r'C:\Users\Vatsalya Betala\OneDrive\Documents\Repositories\Time-Table-Optimization\data\Students - Courses Offere List - AY 2024-25 - Term 1 - Sheet1.csv')
 
-gen_timetable(registration, courses, faculty_pref)
+schedule_data = gen_timetable(registration, courses, faculty_pref)
+schedule_data.to_csv("Timetable.csv", index = None) 
