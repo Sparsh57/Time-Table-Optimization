@@ -8,7 +8,8 @@ from itertools import combinations
 
 def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                      student_course_map: Dict[str, List[str]],
-                     course_professor_map: Dict[str, str]) -> pd.DataFrame:
+                     course_professor_map: Dict[str, str],
+                     course_credits: Dict[str, int]) -> pd.DataFrame:
     """
     Schedules courses for a given set of courses, students, and professors,
     ensuring each course is scheduled exactly twice without student conflicts,
@@ -53,9 +54,13 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
             time_slot_count_vars[time_slot].append(var)
         course_time_vars[course_id] = time_vars
 
-    # Constraint: Each course must be scheduled exactly twice
+    # Constraint: Schedule each course as per its credits
     for course_id, time_vars in course_time_vars.items():
-        model.Add(sum(time_vars.values()) == 2)
+        if course_id in course_credits:
+            model.Add(sum(time_vars.values()) == course_credits[course_id])
+        else:
+            print(f"Warning: No credit information for course {course_id}. Defaulting to 2 sessions.")
+            model.Add(sum(time_vars.values()) == 2)  # defaulting to 2 if no credit info is provided
 
     # Professor conflict constraints (if a professor teaches multiple courses)
     professor_courses = defaultdict(list)
