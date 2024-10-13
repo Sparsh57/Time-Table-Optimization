@@ -36,6 +36,7 @@ cursor.execute("""
         CourseName VARCHAR(255) UNIQUE NOT NULL,
         ProfessorID INT,
         CourseType VARCHAR(20),
+        Credits INT,
         FOREIGN KEY (ProfessorID) REFERENCES Users(UserID)
     );
 """)
