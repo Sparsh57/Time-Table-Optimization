@@ -1,3 +1,5 @@
+import pandas as pd
+
 def faculty_busy_slots(df_faculty_pref):
     return df_faculty_pref.groupby("Name")["Busy Slot"].agg(list).to_dict()
 
@@ -19,4 +21,6 @@ def create_course_dictionary(student_course_map, course_professor_map, professor
         }
     return course_availability
 
+def create_course_credit_map(df_courses):
+    return pd.Series(df_courses['Credit'].apply(lambda x: 1 if x in [1, 2] else 2).values, index=df_courses['Course code']).to_dict()
 

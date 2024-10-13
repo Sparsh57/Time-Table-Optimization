@@ -1,5 +1,5 @@
 from data_preprocessing import merge_data, prepare_student_course_map, create_course_professor_map
-from utilities import faculty_busy_slots, create_course_dictionary
+from utilities import faculty_busy_slots, create_course_dictionary, create_course_credit_map
 from schedule_model import schedule_courses
 from conflict_checker import check_conflicts
 import pandas as pd
@@ -20,10 +20,10 @@ def gen_timetable(df_registration, df_courses, df_faculty_pref):
     student_course_map = prepare_student_course_map(df_merged)
     course_professor_map = create_course_professor_map(df_merged)
     professor_busy_slots = faculty_busy_slots(df_faculty_pref)
-
+    course_credit_map = create_course_credit_map(df_courses)
     # Prepare courses and scheduleS
     courses = create_course_dictionary(student_course_map, course_professor_map, professor_busy_slots)
-    schedule_data = schedule_courses(courses, student_course_map, course_professor_map)
+    schedule_data = schedule_courses(courses, student_course_map, course_professor_map, course_credit_map)
     print("schedule_data")
     print(schedule_data)
     print('--------------------')
