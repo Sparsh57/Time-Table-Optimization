@@ -1,7 +1,7 @@
 from data_preprocessing import merge_data, prepare_student_course_map, create_course_professor_map
 from utilities import faculty_busy_slots, create_course_dictionary, create_course_credit_map
 from schedule_model import schedule_courses
-from conflict_checker import check_conflicts
+from conflict_checker import check_conflicts, find_courses_with_multiple_slots_on_same_day
 import pandas as pd
 import random 
 
@@ -24,31 +24,18 @@ def gen_timetable(df_registration, df_courses, df_faculty_pref):
     # Prepare courses and scheduleS
     courses = create_course_dictionary(student_course_map, course_professor_map, professor_busy_slots)
     schedule_data = schedule_courses(courses, student_course_map, course_professor_map, course_credit_map)
-    print("schedule_data")
+    print("Schedule Data")
+    print()
     print(schedule_data)
-    print('--------------------')
-    print("Conflicts")
-    print(check_conflicts(schedule_data, student_course_map))
-    return schedule_data
+    print()
+    print("Courses on the same day")
+    print(find_courses_with_multiple_slots_on_same_day(schedule_data))
+    return schedule_data, check_conflicts(schedule_data, student_course_map)
 
-# registration = pd.read_csv(r'C:\Users\Vatsalya Betala\OneDrive\Documents\Repositories\Time-Table-Optimization\data\Student Registration Data.csv')
-# faculty_pref = pd.read_csv(r'C:\Users\Vatsalya Betala\OneDrive\Documents\Repositories\Time-Table-Optimization\data\faculty_pref.csv')
-# courses = pd.read_csv(r'C:\Users\Vatsalya Betala\OneDrive\Documents\Repositories\Time-Table-Optimization\data\Students - Courses Offere List - AY 2024-25 - Term 1 - Sheet1.csv')
+courses = pd.read_csv(r"C:\Users\Vatsalya Betala\OneDrive\Documents\Repositories\Time-Table-Optimization-1\present\Courses.csv")
+registration = pd.read_csv(r"C:\Users\Vatsalya Betala\OneDrive\Documents\Repositories\Time-Table-Optimization-1\present\Student Registration TOP5.csv")
+faculty_pref = pd.read_csv(r"C:\Users\Vatsalya Betala\OneDrive\Documents\Repositories\Time-Table-Optimization-1\present\Faculty Pref.csv")
 
-
-courses = pd.read_csv(r"/home/akali/COMP350/Time-Table-Optimization/data/Student_Course.csv")
-registration = pd.read_csv(r"/home/akali/COMP350/Time-Table-Optimization/data/Test_Stud_reg.csv")
-faculty_pref = pd.read_csv(r"/home/akali/COMP350/Time-Table-Optimization/data/faculty_pref2.csv")
-
-
-student_list = registration["Roll No."].tolist()
-course_list = courses["Course code"].tolist()
-
-gen_student_csv(student_list,course_list)
-
-registration = pd.read_csv(r"Student Registration Data.csv")
-
-schedule_data = gen_timetable(registration, courses, faculty_pref)
-schedule_data.to_csv("Timetable.csv", index = None) 
-
-gen_timetable(registration,courses,faculty_pref)
+schedule_data, conflict_data = gen_timetable(registration, courses, faculty_pref)
+schedule_data.to_csv("Timetable.csv", index = None)
+conflict_data.to_csv('Conflicts.csv', index = None)
