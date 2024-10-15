@@ -20,9 +20,22 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                      course_professor_map: Dict[str, str],
                      course_credits: Dict[str, int]) -> pd.DataFrame:
     """
-    Schedules courses for a given set of courses, students, and professors,
+     Schedules courses for a given set of courses, students, and professors,
     ensuring each course is scheduled exactly twice without student conflicts,
     while considering time slot preferences and limiting classes per time slot.
+    
+    Parameters:
+    - courses (dict): A dictionary where each key is a course ID and its value
+                      is a dictionary containing course details, including
+                      available time slots.
+    - student_course_map (dict): A mapping of student roll numbers to their
+                                  enrolled courses.
+    - course_professor_map (dict): A mapping of course IDs to their respective
+                                    professors.
+    Returns:
+    - pd.DataFrame: A DataFrame containing scheduled courses with their
+                    corresponding time slots, or an empty DataFrame if no
+                    feasible solution is found.
     """
 
     # Initialize the constraint programming model
