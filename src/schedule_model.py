@@ -5,6 +5,15 @@ from collections import defaultdict
 import re
 from itertools import combinations
 
+def get_day_from_time_slot(time_slot):
+    """
+    Extracts the day from the time slot string.
+    Assumes that the day is the first word in the time slot string.
+    Modify this function based on the actual format of your time slots.
+    """
+    # Example time slot format: "Monday 9am-10am"
+    day = time_slot.split()[0]
+    return day
 
 def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                      student_course_map: Dict[str, List[str]],
@@ -14,20 +23,6 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
     Schedules courses for a given set of courses, students, and professors,
     ensuring each course is scheduled exactly twice without student conflicts,
     while considering time slot preferences and limiting classes per time slot.
-
-    Parameters:
-    - courses (dict): A dictionary where each key is a course ID and its value
-                      is a dictionary containing course details, including
-                      available time slots.
-    - student_course_map (dict): A mapping of student roll numbers to their
-                                  enrolled courses.
-    - course_professor_map (dict): A mapping of course IDs to their respective
-                                    professors.
-
-    Returns:
-    - pd.DataFrame: A DataFrame containing scheduled courses with their
-                    corresponding time slots, or an empty DataFrame if no
-                    feasible solution is found.
     """
 
     # Initialize the constraint programming model
@@ -104,14 +99,34 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
     for time_slot, vars_in_slot in time_slot_count_vars.items():
         model.Add(sum(vars_in_slot) <= 15)
 
-    # Add the Objective Function to Minimize Conflicts
-    # Objective: Minimize the total number of conflicts
-    model.Minimize(sum(conflict_penalty_vars))
+    # Soft Constraint: Avoid scheduling the same course more than once on the same day
+    penalty_vars = []
+
+    for course_id, time_vars in course_time_vars.items():
+        # Mapping from day to time slot variables
+        day_time_vars = defaultdict(list)
+        for time_slot, var in time_vars.items():
+            day = get_day_from_time_slot(time_slot)
+            day_time_vars[day].append(var)
+        for day, vars_on_day in day_time_vars.items():
+            if len(vars_on_day) > 1:
+                num_classes_on_day = model.NewIntVar(0, len(vars_on_day), f'num_classes_{course_id}_{day}')
+                model.Add(num_classes_on_day == sum(vars_on_day))
+                penalty_var = model.NewBoolVar(f'penalty_{course_id}_{day}')
+                # penalty_var = 1 if num_classes_on_day >= 2
+                model.Add(num_classes_on_day >= 2).OnlyEnforceIf(penalty_var)
+                model.Add(num_classes_on_day <= 1).OnlyEnforceIf(penalty_var.Not())
+                # Collect penalty_var to be added to the objective function
+                penalty_vars.append(penalty_var)
+
+    # Add the Objective Function to Minimize Conflicts and Penalties
+    # You can adjust the weights to prioritize one over the other
+    model.Minimize(1000 * sum(conflict_penalty_vars) + 750 * sum(penalty_vars))
 
     # Solve the model
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 300  # Set a time limit of 5 minutes
-    solver.parameters.num_search_workers = 8  # Adjust based on your CPU cores
+    solver.parameters.max_time_in_seconds = 15 * 60  
+    solver.parameters.num_search_workers = 10
     status = solver.Solve(model)
 
     # Creating a DataFrame to hold the schedule
