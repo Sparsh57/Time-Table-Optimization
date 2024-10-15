@@ -38,3 +38,29 @@ def check_conflicts(schedule_df, student_course_map):
                 })
     conflict_df = pd.DataFrame(conflict_rows, columns=['Roll No.', 'Conflict Time Slot', 'Conflicting Courses'])
     return conflict_df
+
+
+def find_courses_with_multiple_slots_on_same_day(schedule_df):
+    """
+    Identifies courses that are scheduled more than once on the same day and lists them.
+    """
+    def get_day_from_time_slot(time_slot):
+        """
+        Extracts the day from the time slot string.
+        """
+        return time_slot.split()[0]
+
+    day_course_map = defaultdict(lambda: defaultdict(int))
+    
+    for _, row in schedule_df.iterrows():
+        day = get_day_from_time_slot(row['Scheduled Time'])
+        course_id = row['Course ID']
+        day_course_map[day][course_id] += 1
+
+    courses_with_multiple_slots = defaultdict(list)
+    for day, course_counts in day_course_map.items():
+        for course_id, count in course_counts.items():
+            if count > 1:
+                courses_with_multiple_slots[day].append(course_id)
+
+    return courses_with_multiple_slots
