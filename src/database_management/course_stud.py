@@ -1,16 +1,13 @@
 from .databse_connection import DatabaseConnection
 import pandas as pd
 import numpy as np
-import os
-from pathlib import Path
 
 
-def insert_course_students(file, db_config):
+def insert_course_students(file):
     """
-    Inserts student course enrollments from a CSV file into the database.
+    Inserts student course enrollments from a CSV file into the SQLite database.
 
     :param file: The CSV file containing student registration data.
-    :param db_config: A dictionary containing the database configuration (host, user, password, database).
     """
 
     # Read the CSV into a DataFrame
@@ -59,7 +56,6 @@ def insert_course_students(file, db_config):
             df_merged.loc[index, "CourseID"] = int(dict_course[course])
 
         except KeyError:
-            #print(f"Course not found for G CODE: {g_code} after processing, skipping.")
             continue
 
     # Drop rows where either UserID or CourseID is missing (NaN values)
@@ -73,7 +69,7 @@ def insert_course_students(file, db_config):
     # SQL query to insert data into the Course_Stud table
     insert_query = """
         INSERT INTO Course_Stud (StudentID, CourseID)
-        VALUES (%s, %s)
+        VALUES (?, ?)
     """
 
     # Iterate over each row in the DataFrame and insert the data into the database

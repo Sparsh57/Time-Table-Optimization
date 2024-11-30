@@ -1,42 +1,29 @@
-import mariadb
-from dotenv import load_dotenv
 import os
-
+import sqlite3
+from dotenv import load_dotenv
 load_dotenv()
-mydb_dict = {'host': os.getenv("DATABASE_HOST"),
-             'user': os.getenv("DATABASE_USER"),
-             'password': os.getenv("DATABASE_PASSWORD"),
-             'database': os.getenv("DATABASE_REF"),
-             'port': os.getenv("DATABASE_PORT")}
-
-mydb = mariadb.connect(
-    host=mydb_dict["host"],
-    port=int(mydb_dict["port"]),
-    user=mydb_dict["user"],
-    password=mydb_dict["password"],
-    database=mydb_dict["database"]  # Added database parameter
-)
-
+# Connect to the SQLite database (creates the file if it doesn't exist)
+db_path = os.path.join(os.getcwd(),os.getenv("SQLITE_DB_PATH"))
+mydb = sqlite3.connect(db_path)
 cursor = mydb.cursor()
-
 
 # Create the Users table
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS Users (
-        UserID INT AUTO_INCREMENT PRIMARY KEY,
-        Email VARCHAR(255) UNIQUE NOT NULL,
-        Role VARCHAR(50)
+        UserID INTEGER PRIMARY KEY AUTOINCREMENT,
+        Email TEXT UNIQUE NOT NULL,
+        Role TEXT
     );
 """)
 
 # Create the Courses table
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS Courses (
-        CourseID INT AUTO_INCREMENT PRIMARY KEY,
-        CourseName VARCHAR(255) UNIQUE NOT NULL,
-        ProfessorID INT,
-        CourseType VARCHAR(20),
-        Credits INT,
+        CourseID INTEGER PRIMARY KEY AUTOINCREMENT,
+        CourseName TEXT UNIQUE NOT NULL,
+        ProfessorID INTEGER,
+        CourseType TEXT,
+        Credits INTEGER,
         FOREIGN KEY (ProfessorID) REFERENCES Users(UserID)
     );
 """)
@@ -44,21 +31,21 @@ cursor.execute("""
 # Create the Course_Stud table
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS Course_Stud (
-        CourseID INT,
-        StudentID INT,
+        CourseID INTEGER,
+        StudentID INTEGER,
+        PRIMARY KEY (CourseID, StudentID),
         FOREIGN KEY (CourseID) REFERENCES Courses(CourseID),
-        FOREIGN KEY (StudentID) REFERENCES Users(UserID),
-        PRIMARY KEY (CourseID, StudentID)
+        FOREIGN KEY (StudentID) REFERENCES Users(UserID)
     );
 """)
 
 # Create the Slots table
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS Slots (
-        SlotID INT AUTO_INCREMENT PRIMARY KEY,
-        StartTime VARCHAR(10) NOT NULL,
-        EndTime VARCHAR(10) NOT NULL,
-        Day VARCHAR(50) NOT NULL,
+        SlotID INTEGER PRIMARY KEY AUTOINCREMENT,
+        StartTime TEXT NOT NULL,
+        EndTime TEXT NOT NULL,
+        Day TEXT NOT NULL,
         UNIQUE (StartTime, EndTime, Day)
     );
 """)
@@ -66,23 +53,28 @@ cursor.execute("""
 # Create the Professor_BusySlots table
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS Professor_BusySlots (
-        ProfessorID INT,
-        SlotID INT,
+        ProfessorID INTEGER,
+        SlotID INTEGER,
+        PRIMARY KEY (ProfessorID, SlotID),
         FOREIGN KEY (ProfessorID) REFERENCES Users(UserID),
-        FOREIGN KEY (SlotID) REFERENCES Slots(SlotID),
-        PRIMARY KEY (ProfessorID, SlotID)
+        FOREIGN KEY (SlotID) REFERENCES Slots(SlotID)
     );
 """)
 
 # Create the Schedule table
-cursor.execute("""CREATE TABLE IF NOT EXISTS Schedule (
-    CourseID INT,
-    SlotID INT,
-    FOREIGN KEY (CourseID) REFERENCES Courses(CourseID),
-    FOREIGN KEY (SlotID) REFERENCES Slots(SlotID),
-    PRIMARY KEY (CourseID, SlotID)
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS Schedule (
+        CourseID INTEGER,
+        SlotID INTEGER,
+        PRIMARY KEY (CourseID, SlotID),
+        FOREIGN KEY (CourseID) REFERENCES Courses(CourseID),
+        FOREIGN KEY (SlotID) REFERENCES Slots(SlotID)
     );
 """)
 
+# Close the connection
 cursor.close()
+mydb.commit()
 mydb.close()
+
+print(f"Database and tables created successfully in {db_path}.")

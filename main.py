@@ -9,7 +9,7 @@ import os
 import httpx
 from fastapi.responses import FileResponse
 from io import BytesIO
-from src.database_management.databse_connection import DatabaseConnection
+
 from src.database_management.Users import insert_user_data
 from src.database_management.Courses import insert_courses_professors
 from src.database_management.busy_slot import insert_professor_busy_slots
@@ -38,11 +38,6 @@ class TimeSlot(BaseModel):
     days: list
     times: list
 
-db_config = {'host': os.getenv("DATABASE_HOST"),
-             'user': os.getenv("DATABASE_USER"),
-             'port': os.getenv("DATABASE_PORT"),
-             'password': os.getenv("DATABASE_PASSWORD"),
-             'database': os.getenv("DATABASE_REF"),}
 
 @app.post("/send_admin_data")
 async def send_admin_data(
@@ -50,7 +45,7 @@ async def send_admin_data(
         faculty_preferences_file: UploadFile = File(...),
         student_courses_file: UploadFile = File(...)
 ):
-    truncate_detail(db_config)
+    truncate_detail()
     responses = {}
     files = {
         "courses_file": courses_file,
@@ -76,7 +71,7 @@ async def send_admin_data(
     }
     for file_key, (file, db_function) in files.items():
             try:
-                db_function(file, db_config)
+                db_function(file)
                 responses[file_key] = "Data inserted successfully"
             except Exception as e:
                 responses[file_key] = str(e)

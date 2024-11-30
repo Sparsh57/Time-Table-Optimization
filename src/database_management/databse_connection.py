@@ -1,104 +1,48 @@
-import mariadb
-import mysql.connector
-from mariadb import Error as MariadbError
-from mysql.connector import Error as MySQLError
+import sqlite3
 import os
-from dotenv import load_dotenv
+from pathlib import Path
 
-load_dotenv()
 
 
 class DatabaseConnection:
-    def __init__(self, host, user, password, database, port):
+    def __init__(self, db_path="data/timetable.db"):
         """
-        Initializes the database connection class with necessary database parameters.
+        Initializes the SQLite database connection class.
 
         Args:
-        host (str): The server address of the database (MariaDB or MySQL).
-        user (str): Username used to authenticate with the database.
-        password (str): Password used to authenticate with the database.
-        database (str): The name of the database to connect to.
-        port (int): The port number for the database connection.
+        db_path (str): The file path to the SQLite database.
         """
-        self.host = host
-        self.user = user
-        self.password = password
-        self.database = database
-        self.port = int(port)
+        self.db_path = Path(os.getcwd()) / db_path
+        print(self.db_path)
         self.connection = None
 
     def connect(self):
-        """
-        Establishes a connection to the MariaDB database. If it fails, it falls back to a MySQL database connection.
-
-        Returns:
-        connection: The established database connection or None if both connections fail.
-        """
         try:
-            self.connection = mariadb.connect(
-                host=self.host,
-                port=self.port,
-                user=self.user,
-                password=self.password,
-                database=self.database
-            )
-            if self.is_connected():
-                cursor = self.connection.cursor()
-                cursor.execute("SELECT VERSION();")
-                db_info = cursor.fetchone()
-                print(f"Successfully connected to MariaDB Server version: {db_info[0]}")
-                cursor.execute("SELECT DATABASE();")
-                record = cursor.fetchone()
-                print("You're connected to MariaDB database: ", record)
-                return self.connection
-        except MariadbError as e:
-            print("Error while connecting to MariaDB:", e)
-            print("Attempting to connect to MySQL database as a backup...")
-        return self.connect_to_mysql()
-
-    def connect_to_mysql(self):
-        """
-        Attempts to connect to a MySQL database as a backup.
-
-        Returns:
-        connection: The established MySQL database connection or None if it fails.
-        """
-        try:
-            self.connection = mysql.connector.connect(
-                host=os.getenv("MYSQL_HOST"),
-                user=os.getenv("MYSQL_USER"),
-                password=os.getenv("MYSQL_PASSWORD"),
-                database=os.getenv("MYSQL_DATABASE")
-            )
-            if self.is_connected():
-                cursor = self.connection.cursor()
-                cursor.execute("SELECT VERSION();")
-                db_info = cursor.fetchone()
-                print(f"Successfully connected to MySQL Server version: {db_info[0]}")
-                cursor.execute("SELECT DATABASE();")
-                record = cursor.fetchone()
-                print("You're connected to MySQL database: ", record)
-                return self.connection
-        except MySQLError as e:
-            print("Error while connecting to MySQL:", e)
+            print(self.db_path)
+            self.connection = sqlite3.connect(self.db_path)
+            print(f"Connected to SQLite database at: {self.db_path}")
+            return self.connection
+        except sqlite3.Error as e:
+            print(f"Error connecting to SQLite database: {e}")
             return None
-
     def is_connected(self):
         """
-        Checks if the database connection is active and reconnects if needed.
+        Checks if the SQLite database connection is active.
 
         Returns:
         bool: True if the connection is active, False otherwise.
         """
         try:
-            self.connection.ping(reconnect=True)
-        except:
-            return False
-        return True
+            if self.connection:
+                self.connection.execute("SELECT 1;")
+                return True
+        except sqlite3.Error as e:
+            print(f"Connection check failed: {e}")
+        return False
 
     def execute_query(self, query, params=None):
         """
-        Executes a SQL query on the connected database.
+        Executes a SQL query on the connected SQLite database.
 
         Args:
         query (str): The SQL query to execute.
@@ -110,15 +54,15 @@ class DatabaseConnection:
 
         try:
             cursor = self.connection.cursor()
+            print(f"Executing query: {query}")  # Log the query
             if params:
                 cursor.execute(query, params)
             else:
                 cursor.execute(query)
             self.connection.commit()
             print("Query executed successfully")
-        except (MariadbError, MySQLError) as e:
+        except sqlite3.Error as e:
             print(f"Failed to execute query: {e}")
-            self.connection.rollback()
 
     def fetch_query(self, query, params=None):
         """
@@ -137,51 +81,39 @@ class DatabaseConnection:
 
         try:
             cursor = self.connection.cursor()
+            print(f"Fetching data with query: {query}")  # Log the query
             if params:
                 cursor.execute(query, params)
             else:
                 cursor.execute(query)
             results = cursor.fetchall()
+            print(results)
             return results
-        except (MariadbError, MySQLError) as e:
+        except sqlite3.Error as e:
             print(f"Failed to fetch data: {e}")
             return None
 
     def close(self):
         """
-        Closes the database connection if it is open.
+        Closes the SQLite database connection if it is open.
         """
-        if self.connection and self.is_connected():
+        if self.connection:
             try:
-                cursor = self.connection.cursor()
-                cursor.close()
                 self.connection.close()
-                print("Database connection closed.")
-            except (MariadbError, MySQLError) as e:
+                print("SQLite database connection closed.")
+            except sqlite3.Error as e:
                 print(f"Failed to close connection: {e}")
 
     @staticmethod
     def get_connection():
         """
-        Retrieves the database connection using environment variables.
+        Retrieves the SQLite database connection using an environment variable.
 
         Returns:
         db: An instance of DatabaseConnection.
         """
-        mydb_dict = {
-            'host': os.getenv("DATABASE_HOST"),
-            'user': os.getenv("DATABASE_USER"),
-            'password': os.getenv("DATABASE_PASSWORD"),
-            'database': os.getenv("DATABASE_REF"),
-            'port': os.getenv("DATABASE_PORT")
-        }
-
-        db = DatabaseConnection(
-            host=mydb_dict["host"],
-            port=int(mydb_dict["port"]),
-            user=mydb_dict["user"],
-            password=mydb_dict["password"],
-            database=mydb_dict["database"]
-        )
+        db_path = Path(os.getcwd()) / "data/timetable.db"
+        db = DatabaseConnection(db_path)
         db.connect()
         return db
+DatabaseConnection()

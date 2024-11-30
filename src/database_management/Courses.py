@@ -16,16 +16,16 @@ def map_course_type(course_type):
         return 'Required'
 
 
-def insert_courses_professors(file, db_config):
-    print("INSETING COURSES")
+def insert_courses_professors(file):
     """
-    Inserts course information associated with professors from a CSV file into the database.
+    Inserts course information associated with professors from a CSV file into the SQLite database.
 
     :param file: The CSV file containing courses and faculty names.
-    :param db_config: A dictionary containing the database configuration (host, user, password, database).
     """
+    print("INSERTING COURSES")
     # Read the CSV into a DataFrame
     df_courses = file
+
     # Initialize the database connection
     db = DatabaseConnection.get_connection()
 
@@ -33,8 +33,9 @@ def insert_courses_professors(file, db_config):
     fetch_user = db.fetch_query("SELECT UserID, Email FROM Users WHERE Role='Professor'")
     # Create a dictionary mapping faculty names (values) to UserIDs (keys)
     dict_user = {value: key for key, value in fetch_user}
+
     # Create a new DataFrame with relevant columns (Course code and Faculty Name)
-    df_merged = df_courses[['Course code', 'Faculty Name', 'Course Type']].copy()
+    df_merged = df_courses[['Course code', 'Faculty Name', 'Course Type', 'Credits']].copy()
     df_merged['UserID'] = np.nan  # Initialize UserID column as NaN
 
     # Map Faculty Name to UserID
@@ -48,7 +49,7 @@ def insert_courses_professors(file, db_config):
     df_merged['Course Type'] = df_merged['Course Type'].apply(map_course_type)
 
     # Keep only relevant columns and rename
-    df_merged = df_merged[['Course code', 'UserID', 'Course Type']]
+    df_merged = df_merged[['Course code', 'UserID', 'Course Type', 'Credits']]
     df_merged.rename(columns={'Course code': 'Course', 'Course Type': 'Type'}, inplace=True)
 
     # Drop rows with missing UserID
@@ -57,29 +58,33 @@ def insert_courses_professors(file, db_config):
 
     # SQL query to insert data into the Courses table
     insert_query = """
-        INSERT INTO Courses (CourseName, ProfessorID, CourseType)
-        VALUES (%s, %s, %s)
+        INSERT INTO Courses (CourseName, ProfessorID, CourseType, Credits)
+        VALUES (?, ?, ?, ?)
     """
 
     # Iterate over each row in the DataFrame and insert the data into the database
     for row in df_merged.itertuples(index=False):
         try:
-            db.execute_query(insert_query, (row.Course, row.UserID, row.Type))  # Insert Course and UserID
+            db.execute_query(insert_query, (row.Course, row.UserID, row.Type, row.Credits))  # Insert Course and UserID
         except Exception as e:
             print(f"Error inserting row {row}: {e}")  # Print error if insertion fails
 
     # Close the database connection once all operations are complete
     db.close()
 
+
 def fetch_course_data():
+    """
+    Fetches all course data from the Courses table in the SQLite database.
+
+    :return: List of all course data.
+    """
     db = DatabaseConnection.get_connection()
     try:
         query = """
-        SELECT * from Courses
+        SELECT * FROM Courses
         """
         result = db.fetch_query(query)
         return result
     finally:
         db.close()
-
-print(fetch_course_data())

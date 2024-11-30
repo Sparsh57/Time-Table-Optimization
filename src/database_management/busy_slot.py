@@ -2,12 +2,11 @@ from .databse_connection import DatabaseConnection
 import numpy as np
 
 
-def insert_professor_busy_slots(file, db_config):
+def insert_professor_busy_slots(file):
     """
     Inserts professor busy slots from a CSV file into a database.
 
     :param file: The CSV file containing faculty preferences.
-    :param db_config: A dictionary containing the database configuration (host, user, password, database).
     """
     df_courses = file  # Read the CSV into a DataFrame
 
@@ -54,7 +53,7 @@ def insert_professor_busy_slots(file, db_config):
     # SQL query to insert data into the Professor_BusySlots table
     insert_query = """
         INSERT INTO Professor_BusySlots (ProfessorID, SlotID)
-        VALUES (%s, %s)
+        VALUES (?, ?)
     """
 
     # Iterate over each row in the DataFrame and insert the data into the database
@@ -67,25 +66,37 @@ def insert_professor_busy_slots(file, db_config):
     # Close the database connection once all operations are complete
     db.close()
 
-def empty_professor_busy_slots(db_config):
+
+def empty_professor_busy_slots():
+    """
+    Empties all records from the Professor_BusySlots table.
+    """
     db = DatabaseConnection.get_connection()
-    cursor = db.cursor()
-    cursor = db.cursor()
     delete_query = "DELETE FROM Professor_BusySlots"
-    cursor.execute(delete_query)
-    db.commit()
-    print(f"{cursor.rowcount} records deleted successfully")
-    cursor.close()
-    db.close()
+    try:
+        db.execute_query(delete_query)
+        print("All records deleted successfully from Professor_BusySlots.")
+    except Exception as e:
+        print(f"Error while deleting records: {e}")
+    finally:
+        db.close()
+
 
 def fetch_professor_busy_slots():
-    db = DatabaseConnection.get_connection()
-    query = """
-    SELECT * FROM Professor_BusySlots
     """
-    result = db.fetch_query(query)
-    print(result)
-    db.close()
-    return result
+    Fetches all records from the Professor_BusySlots table.
 
-fetch_professor_busy_slots()
+    Returns:
+    list: List of records from the Professor_BusySlots table.
+    """
+    db = DatabaseConnection.get_connection()
+    query = "SELECT * FROM Professor_BusySlots"
+    try:
+        result = db.fetch_query(query)
+        print(result)
+        return result
+    except Exception as e:
+        print(f"Error fetching records: {e}")
+        return []
+    finally:
+        db.close()

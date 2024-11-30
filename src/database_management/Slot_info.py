@@ -1,15 +1,15 @@
-from .databse_connection import DatabaseConnection
+from databse_connection import DatabaseConnection
 import pandas as pd
-import os
 from dotenv import load_dotenv
+import os
 
 load_dotenv()
 
-def insert_time_slots(db_config, input_data):
-    """
-    Inserts dynamic time slots into the database based on the input data.
 
-    :param db_config: A dictionary containing the database configuration (host, user, password, database).
+def insert_time_slots(input_data):
+    """
+    Inserts dynamic time slots into the SQLite database based on the input data.
+
     :param input_data: A dictionary with keys "days" and "times".
                        "days" is a list of week days,
                        "times" is a list of tuples containing start and end times.
@@ -31,12 +31,13 @@ def insert_time_slots(db_config, input_data):
     print(df)
 
     # Initialize the database connection
-    db = DatabaseConnection.get_connection()
+    db = DatabaseConnection()
+    db = db.get_connection()
 
     # Insert time slots into the database
     for index, row in df.iterrows():
         try:
-            query = """INSERT INTO Slots (StartTime, EndTime, Day) VALUES (%s, %s, %s)"""
+            query = """INSERT INTO Slots (StartTime, EndTime, Day) VALUES (?, ?, ?)"""
             params = (row['StartTime'], row['EndTime'], row['Day'])
             db.execute_query(query, params)
         except Exception as e:
@@ -45,36 +46,37 @@ def insert_time_slots(db_config, input_data):
     db.close()  # Close the database connection
 
 
-
-
-
 def fetch_slot_data():
-    db = DatabaseConnection.get_connection()
+    """
+    Fetches all time slot data from the SQLite database.
+
+    :return: List of tuples containing time slot data.
+    """
+    db = DatabaseConnection().get_connection()
     try:
-        query = """
-        SELECT * from Slots
-        """
+        query = "SELECT * FROM Slots"
         result = db.fetch_query(query)
         return result
     finally:
         db.close()
 
-db_config = {'host': os.getenv("DATABASE_HOST"),
-             'user': os.getenv("DATABASE_USER"),
-             'port': os.getenv("DATABASE_PORT"),
-             'password': os.getenv("DATABASE_PASSWORD"),
-             'database': os.getenv("DATABASE_REF"),}
 
+# Input Data
 insert_time = {
-  "days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-  "times": [
-    ["08:30", "10:30"],
-    ["10:30", "12:30"],
-    ["12:30", "14:30"],
-    ["14:30", "16:30"],
-    ["16:30", "18:30"],
-    ["18:30", "20:30"]
-  ]
+    "days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+    "times": [
+        ["08:30", "10:30"],
+        ["10:30", "12:30"],
+        ["12:30", "14:30"],
+        ["14:30", "16:30"],
+        ["16:30", "18:30"],
+        ["18:30", "20:30"]
+    ]
 }
-#insert_time_slots(db_config, insert_time)
-print(fetch_slot_data())
+
+# Uncomment to insert time slots into the database
+insert_time_slots(insert_time)
+
+# Fetch and display slot data
+slot_data = fetch_slot_data()
+print(slot_data)
