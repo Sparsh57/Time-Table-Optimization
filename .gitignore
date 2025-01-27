@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 
 timetable_env/
+data/
+present/
 # C extensions
 *.so
 
