@@ -22,5 +22,12 @@ def create_course_dictionary(student_course_map, course_professor_map, professor
     return course_availability
 
 def create_course_credit_map(df_courses):
-    return pd.Series(df_courses['Credit'].apply(lambda x: 1 if x in [1] else 2).values, index=df_courses['Course code']).to_dict()
+    try:
+        # More efficient way to convert to numeric, handling errors and NaNs
+        df_courses['Credit'] = pd.to_numeric(df_courses['Credit'], errors='coerce').fillna(2).astype(int)
+    except (KeyError, TypeError):  # Handle missing or incorrect column names
+        return {}  # or raise error as you see fit
 
+    return df_courses.set_index('Course code')['Credit'].to_dict()
+def create_course_elective_map(df_courses):
+    return pd.Series(df_courses['Type'].values, index=df_courses['Course code']).to_dict()

@@ -130,3 +130,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 .env
+
+.idea
+src/Conflicts.csv
+src/Timetable.csv
+data/Student_Course.csv
+src/timetable_optimization-algorithm.ipynb
