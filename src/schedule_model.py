@@ -16,7 +16,8 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                      student_course_map: Dict[str, List[str]],
                      course_professor_map: Dict[str, str],
                      course_credits: Dict[str, int],
-                     course_type: Dict[str, str]) -> pd.DataFrame:
+                     course_type: Dict[str, str], 
+                     non_preferred_slots: List[str]) -> pd.DataFrame:
     """
     Debug-friendly scheduling function with incremental constraint phases:
 
@@ -39,7 +40,7 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
     MAX_CLASSES_PER_SLOT = 24
     STUDENT_CONFLICT_WEIGHT = 1000  # penalty weight for each student conflict
     REQUIRED_CONFLICT_WEIGHT = 10    # very soft penalty for a clash between two Required courses
-
+    NON_PREFERRED_SLOTS = 50
     # ---------------------------------------------------------
     # Quick Pre-Check for "credits > available slots" problems
     # ---------------------------------------------------------
@@ -154,6 +155,15 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                 for day, var_list in day_map.items():
                     if len(var_list) > 1:
                         model.Add(sum(var_list) <= 1)
+                        
+        slot_penalty_vars = []
+        # We retrieve the course_id and the dictionary 
+        # with key as the timeslots and the values as the boolean decision variables 
+        for c_id, slot_dict in course_time_vars.items(): 
+            # We retieve the timeslot and the boolean associated with that
+            for s, var in slot_dict.items(): 
+                if s in non_preferred_slots: 
+                    slot_penalty_vars.append(var)
 
         # Objective: minimize student conflicts (with additional required course penalty, if any)
         total_penalty = 0
@@ -161,6 +171,8 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
             total_penalty += STUDENT_CONFLICT_WEIGHT * sum(conflict_vars)
         if conflict_required_vars:
             total_penalty += REQUIRED_CONFLICT_WEIGHT * sum(conflict_required_vars)
+        if slot_penalty_vars: 
+            total_penalty += NON_PREFERRED_SLOTS * sum(slot_penalty_vars)
         model.Minimize(total_penalty)
 
         solver = cp_model.CpSolver()
