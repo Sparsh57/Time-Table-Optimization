@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professor Schedule</title>
+    <style>
+        .slot {
+            width: 100px;
+            height: 50px;
+            margin: 5px;
+            display: inline-block;
+            text-align: center;
+            line-height: 50px;
+            cursor: pointer;
+        }
+        .green { background-color: green; }
+        .red { background-color: red; }
+    </style>
+</head>
+<body>
+    <h1>Professor Schedule</h1>
+    <div id="professors"></div>
+    <script>
+        async function fetchProfessors() {
+            const response = await fetch('/professors');
+            const professors = await response.json();
+            const professorsDiv = document.getElementById('professors');
+            professors.forEach(professor => {
+                const professorDiv = document.createElement('div');
+                professorDiv.innerHTML = `<h2>${professor[1]}</h2>`;
+                professorDiv.id = `professor-${professor[0]}`;
+                professorsDiv.appendChild(professorDiv);
+                fetchProfessorBusySlots(professor[0]);
+            });
+        }
+
+        async function fetchProfessorBusySlots(professorId) {
+            const response = await fetch(`/professor_busy_slots/${professorId}`);
+            const busySlots = await response.json();
+            const professorDiv = document.getElementById(`professor-${professorId}`);
+            busySlots.forEach(slot => {
+                const slotDiv = document.createElement('div');
+                slotDiv.className = 'slot green';
+                slotDiv.innerHTML = `${slot[1]} - ${slot[2]}<br>${slot[3]}`;
+                slotDiv.onclick = () => toggleSlot(slotDiv);
+                professorDiv.appendChild(slotDiv);
+            });
+        }
+
+        function toggleSlot(slotDiv) {
+            if (slotDiv.classList.contains('green')) {
+                slotDiv.classList.remove('green');
+                slotDiv.classList.add('red');
+            } else {
+                slotDiv.classList.remove('red');
+                slotDiv.classList.add('green');
+            }
+        }
+
+        fetchProfessors();
+    </script>
+</body>
+</html>

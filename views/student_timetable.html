@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Compiled and minified Materialize CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="/static/main.css" rel="stylesheet">
+    <title>Student Timetable</title>
+    <!-- Compiled and minified Materialize JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <style>
+        bbody {
+            background-color: #e3f2fd;
+            font-family: 'Roboto', sans-serif;
+        }
+        nav {
+            background-color: #3f51b5; /* Indigo theme */
+        }
+        .brand-logo, .nav-wrapper ul li a {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: bold;
+        }
+        .brand-logo {
+            font-size: 1.8rem;
+        }
+        .btn, .btn:active, .btn:focus{
+            background-color: #3949ab; /* Lighter indigo for buttons */
+            transition: background-color 0.3s ease;
+        }
+        .btn:hover {
+            background-color: #1f2760; /* Slightly darker on hover */
+        }
+        .btn:pre {
+            background-color: #5260b7; /* Slightly darker on hover */
+        }
+        .header {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-top: 40px;
+            text-align: center;
+            color: #1a237e; /* Deep indigo text for headers */
+        }
+        table {
+            box-shadow: 0px 4px 15px rgba(0,0,0,0.1);
+        }
+        td {
+            border: 1px solid;
+        }
+        table thead {
+            background-color: #3949ab; /* Darker indigo for table headers */
+            color: #fff;
+        }
+        table tbody tr:hover {
+            background-color: #eceff1; /* Very light grey for hover */
+            transition: background-color 0.3s ease;
+        }
+        .card-panel {
+            border-radius: 10px;
+            padding: 15px 25px;
+        }
+        footer {
+            background-color: #3f51b5; /* Consistent indigo footer */
+            padding: 40px 0;
+        }
+        footer a {
+            color: #bdc3c7;
+        }
+        footer a:hover {
+            color: #fff;
+        }
+        footer .white-text {
+            font-size: 1.2rem;
+        }
+        .spacer {
+            height: 50px; /* Adjust the height as needed */
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <<nav class="nav-wrapper indigo darken-4">
+            <div class="container">
+                <a href="/" class="brand-logo"><i class="material-icons left">schedule</i>Timetable</a>
+                <a href="#" data-target="mobile-demo" class="sidenav-trigger"><i class="material-icons">menu</i></a>
+                <ul class="right hide-on-med-and-down">
+                    <li><a href="/dashboard">Dashboard</a></li>
+                    <li><a href="/logout">Logout</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <div class="container center-flex">
+            <h4 class="header center-align">Timetable for {{ roll_number }}</h4>
+            <button class="btn waves-effect waves-light indigo" id="download-csv">Download CSV<i class="material-icons right">download</i></button>
+            {% if schedule_data %}
+            <table class="highlight responsive-table">
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Courses</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in schedule_data %}
+                    <tr>
+                        <td>{{ row[0] }}</td>
+                        <td>{{ row[1] }}</td>
+                        <td>{{ row[2] }}</td>
+                        <td>{{ row[3] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="card-panel red lighten-4">No timetable data available.</div>
+            {% endif %}
+        </div>
+    </main>
+
+    <footer class="page-footer indigo darken-3">
+        <div class="container">
+            <div class="row">
+                <div class="col l6 s12">
+                    <h5 class="white-text">About the Timetable System</h5>
+                    <p class="grey-text text-lighten-4">This page is tailored to show your specific class schedule.</p>
+                </div>
+                <div class="col l6 s12">
+                    <h5 class="white-text">Quick Links</h5>
+                    <ul>
+                        <li><a class="grey-text text-lighten-3" href="#!">Help</a></li>
+                        <li><a class="grey-text text-lighten-3" href="#!">Contact</a></li>
+                        <li><a class="grey-text text-lighten-3" href="#!">About</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </footer>
+    <script>
+        document.getElementById('download-csv').onclick = function() {
+            window.location.href = '/download-timetable/{roll_number}';
+        };
+    </script>
+</body>
+</html>

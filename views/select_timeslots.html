@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Timeslot Picker</title>
+    <!-- Material Design Lite CSS -->
+    <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css">
+    <!-- Material Icons -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <style>
+        body {
+            font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            margin: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        #timeslots {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .timeslot {
+            border: 1px solid #E0E0E0;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            position: relative;
+        }
+        .timeslot .mdl-textfield, .timeslot .mdl-selectfield {
+            margin-right: 20px;
+            width: 150px;
+        }
+        .timeslot-buttons {
+            margin-top: 20px;
+        }
+        #addTimeslotBtn {
+            display: block;
+            margin: 30px auto;
+        }
+        #submitBtn {
+            display: block;
+            margin: 30px auto;
+        }
+        .mdl-textfield__label {
+            top: -14px;
+        }
+        .mdl-textfield__input {
+            padding-left: 0;
+        }
+        .move-buttons {
+            display: flex;
+            flex-direction: column;
+            position: absolute;
+            right: 10px;
+            top: 10px;
+        }
+        .move-buttons button {
+            margin-bottom: 5px;
+            min-width: 0;
+            padding: 5px;
+        }
+    </style>
+    <!-- Material Design Lite JS -->
+    <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+</head>
+<body>
+
+<h1>Timeslot Picker</h1>
+
+<div id="timeslots"></div>
+
+<button id="addTimeslotBtn" class="mdl-button mdl-js-button mdl-button--fab mdl-button--colored">
+    <i class="material-icons">add</i>
+</button>
+
+<button id="submitBtn" class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored">
+    Submit
+</button>
+
+<script>
+    const timeslotsContainer = document.getElementById('timeslots');
+    const addTimeslotBtn = document.getElementById('addTimeslotBtn');
+    const submitBtn = document.getElementById('submitBtn');
+
+    function createTimeslot(day='', startTime='', endTime='') {
+        const timeslotDiv = document.createElement('div');
+        timeslotDiv.className = 'timeslot mdl-shadow--2dp';
+
+        const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+        // Day of the week selector
+        const daySelect = document.createElement('div');
+        daySelect.className = 'mdl-textfield mdl-js-textfield mdl-textfield--floating-label';
+
+        const daySelectInput = document.createElement('select');
+        daySelectInput.className = 'mdl-textfield__input';
+        daySelectInput.id = 'day-select-' + Date.now();
+
+        daysOfWeek.forEach(d => {
+            const option = document.createElement('option');
+            option.value = d;
+            option.text = d;
+            if (d === day) option.selected = true;
+            daySelectInput.appendChild(option);
+        });
+
+        const daySelectLabel = document.createElement('label');
+        daySelectLabel.className = 'mdl-textfield__label';
+        daySelectLabel.htmlFor = daySelectInput.id;
+        daySelectLabel.textContent = 'Day of the Week';
+
+        daySelect.appendChild(daySelectInput);
+        daySelect.appendChild(daySelectLabel);
+
+        // Start time input
+        const startTimeDiv = document.createElement('div');
+        startTimeDiv.className = 'mdl-textfield mdl-js-textfield mdl-textfield--floating-label';
+
+        const startTimeInput = document.createElement('input');
+        startTimeInput.className = 'mdl-textfield__input';
+        startTimeInput.type = 'time';
+        startTimeInput.value = startTime;
+        startTimeInput.id = 'start-time-' + Date.now();
+
+        const startTimeLabel = document.createElement('label');
+        startTimeLabel.className = 'mdl-textfield__label';
+        startTimeLabel.htmlFor = startTimeInput.id;
+        startTimeLabel.textContent = 'Start Time';
+
+        startTimeDiv.appendChild(startTimeInput);
+        startTimeDiv.appendChild(startTimeLabel);
+
+        // End time input
+        const endTimeDiv = document.createElement('div');
+        endTimeDiv.className = 'mdl-textfield mdl-js-textfield mdl-textfield--floating-label';
+
+        const endTimeInput = document.createElement('input');
+        endTimeInput.className = 'mdl-textfield__input';
+        endTimeInput.type = 'time';
+        endTimeInput.value = endTime;
+        endTimeInput.id = 'end-time-' + Date.now();
+
+        const endTimeLabel = document.createElement('label');
+        endTimeLabel.className = 'mdl-textfield__label';
+        endTimeLabel.htmlFor = endTimeInput.id;
+        endTimeLabel.textContent = 'End Time';
+
+        endTimeDiv.appendChild(endTimeInput);
+        endTimeDiv.appendChild(endTimeLabel);
+
+        // Button container
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'timeslot-buttons';
+
+        // Delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.onclick = function() {
+            timeslotsContainer.removeChild(timeslotDiv);
+            updateMoveButtons();
+        };
+
+        // Duplicate button
+        const duplicateBtn = document.createElement('button');
+        duplicateBtn.className = 'mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect';
+        duplicateBtn.textContent = 'Duplicate for All Days';
+        duplicateBtn.onclick = function() {
+            daysOfWeek.forEach(d => {
+                if (d !== daySelectInput.value) {
+                    const newTimeslot = createTimeslot(d, startTimeInput.value, endTimeInput.value);
+                    timeslotsContainer.appendChild(newTimeslot);
+                    componentHandler.upgradeAllRegistered();
+                }
+            });
+            updateMoveButtons();
+        };
+
+        buttonContainer.appendChild(duplicateBtn);
+        buttonContainer.appendChild(deleteBtn);
+
+        // Move buttons container
+        const moveButtonsContainer = document.createElement('div');
+        moveButtonsContainer.className = 'move-buttons';
+
+        // Move Up button
+        const moveUpBtn = document.createElement('button');
+        moveUpBtn.className = 'mdl-button mdl-js-button mdl-button--icon move-up-btn';
+        moveUpBtn.innerHTML = '<i class="material-icons">arrow_upward</i>';
+        moveUpBtn.onclick = function() {
+            const previousSibling = timeslotDiv.previousElementSibling;
+            if (previousSibling && previousSibling.classList.contains('timeslot')) {
+                timeslotsContainer.insertBefore(timeslotDiv, previousSibling);
+                updateMoveButtons();
+            }
+        };
+
+        // Move Down button
+        const moveDownBtn = document.createElement('button');
+        moveDownBtn.className = 'mdl-button mdl-js-button mdl-button--icon move-down-btn';
+        moveDownBtn.innerHTML = '<i class="material-icons">arrow_downward</i>';
+        moveDownBtn.onclick = function() {
+            const nextSibling = timeslotDiv.nextElementSibling;
+            if (nextSibling && nextSibling.classList.contains('timeslot')) {
+                timeslotsContainer.insertBefore(nextSibling, timeslotDiv);
+                updateMoveButtons();
+            }
+        };
+
+        moveButtonsContainer.appendChild(moveUpBtn);
+        moveButtonsContainer.appendChild(moveDownBtn);
+
+        // Assemble timeslot div
+        timeslotDiv.appendChild(moveButtonsContainer);
+        timeslotDiv.appendChild(daySelect);
+        timeslotDiv.appendChild(startTimeDiv);
+        timeslotDiv.appendChild(endTimeDiv);
+        timeslotDiv.appendChild(buttonContainer);
+
+        // Upgrade newly added elements
+        componentHandler.upgradeAllRegistered();
+
+        return timeslotDiv;
+    }
+
+    // Function to update the disabled state of move buttons
+    function updateMoveButtons() {
+        const timeslotDivs = document.querySelectorAll('.timeslot');
+        timeslotDivs.forEach((div, index) => {
+            const moveUpBtn = div.querySelector('.move-up-btn');
+            const moveDownBtn = div.querySelector('.move-down-btn');
+            moveUpBtn.disabled = index === 0;
+            moveDownBtn.disabled = index === timeslotDivs.length - 1;
+        });
+    }
+
+    // Add timeslot button functionality
+    addTimeslotBtn.onclick = function() {
+        const newTimeslot = createTimeslot();
+        timeslotsContainer.appendChild(newTimeslot);
+        componentHandler.upgradeAllRegistered();
+        updateMoveButtons();
+    };
+
+    // Submit button functionality
+    submitBtn.onclick = function() {
+        const timeslots = [];
+        document.querySelectorAll('.timeslot').forEach(timeslotDiv => {
+            const day = timeslotDiv.querySelector('select').value;
+            const startTime = timeslotDiv.querySelector('input[type="time"]').value;
+            const endTime = timeslotDiv.querySelectorAll('input[type="time"]')[1].value;
+            timeslots.push({ day, startTime, endTime });
+        });
+
+        // Send data to API
+        fetch('https://your-api-endpoint.com/submit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ timeslots }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Success:', data);
+            alert('Timeslots submitted successfully!');
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+            alert('Error submitting timeslots.');
+        });
+    };
+
+    // Initialize with one empty timeslot
+    timeslotsContainer.appendChild(createTimeslot());
+    updateMoveButtons();
+</script>
+
+</body>
+</html>
