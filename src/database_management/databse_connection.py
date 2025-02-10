@@ -116,4 +116,3 @@ class DatabaseConnection:
         db = DatabaseConnection(db_path)
         db.connect()
         return db
-DatabaseConnection()

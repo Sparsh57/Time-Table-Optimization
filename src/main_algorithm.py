@@ -1,7 +1,10 @@
-from data_preprocessing import merge_data, prepare_student_course_map, create_course_professor_map
-from utilities import faculty_busy_slots, create_course_dictionary, create_course_credit_map, create_course_elective_map
-from schedule_model import schedule_courses
-from conflict_checker import check_conflicts, find_courses_with_multiple_slots_on_same_day
+from .data_preprocessing import merge_data, prepare_student_course_map, create_course_professor_map
+from .utilities import faculty_busy_slots, create_course_dictionary, create_course_credit_map, create_course_elective_map
+from .schedule_model import schedule_courses
+from .database_management.schedule import schedule
+from .database_management.Courses import fetch_course_data
+from .conflict_checker import check_conflicts, find_courses_with_multiple_slots_on_same_day
+from .database_management.database_retrieval import registration_data, faculty_pref
 import pandas as pd
 import random
 
@@ -37,19 +40,18 @@ def diagnose_same_day_constraints(courses, course_credits):
                   f"but only has {day_count} unique day(s): {sorted(slot_days)}")
     print("[DIAGNOSTIC] Done checking same-day constraints.")
 
-def gen_timetable(df_registration, df_courses, df_faculty_pref):
-    print(df_courses.head(2))
-    df_merged = merge_data(df_registration, df_courses)
+def gen_timetable():
+    df_merged = registration_data()
     student_course_map = prepare_student_course_map(df_merged)
     course_professor_map = create_course_professor_map(df_merged)
-    professor_busy_slots = faculty_busy_slots(df_faculty_pref)
-    course_credit_map = create_course_credit_map(df_courses)
-    course_type_map = create_course_elective_map(df_courses)
+    professor_busy_slots = faculty_pref()
+    course_credit_map = create_course_credit_map(df_merged)
+    course_type_map = create_course_elective_map(df_merged)
 
     # Preprocess courses and schedule
     courses = create_course_dictionary(student_course_map, course_professor_map, professor_busy_slots)
     diagnose_same_day_constraints(courses, course_credit_map)
-    schedule_data = schedule_courses(courses, student_course_map, course_professor_map, course_credit_map, course_type_map)
+    schedule_data = schedule_courses(courses, student_course_map, course_professor_map, course_credit_map, course_type_map, [])
 
     print("Schedule Data")
     print(schedule_data)
@@ -58,17 +60,5 @@ def gen_timetable(df_registration, df_courses, df_faculty_pref):
     print(find_courses_with_multiple_slots_on_same_day(schedule_data))
     print("Conflicts")
     print(check_conflicts(schedule_data, student_course_map))
-
+    schedule(schedule_data)
     return schedule_data, check_conflicts(schedule_data, student_course_map)
-
-
-courses = pd.read_csv(
-    r"/Users/sparshmakharia/Downloads/Course-Faculty - Course List_Faculty Email ID.csv")
-registration = pd.read_csv(
-    r"/Users/sparshmakharia/Downloads/Course-Faculty - Enrolment list_TOP5.csv")
-faculty_pref = pd.read_csv(
-    r"/Users/sparshmakharia/Downloads/Latest.csv")
-
-schedule_data, conflict_data = gen_timetable(registration, courses, faculty_pref)
-schedule_data.to_csv("Timetable.csv", index=None)
-conflict_data.to_csv('Conflicts.csv', index=None)

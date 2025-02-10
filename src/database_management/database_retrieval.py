@@ -4,7 +4,7 @@ from .databse_connection import DatabaseConnection
 def registration_data():
     db = DatabaseConnection.get_connection()
     query = """
-    SELECT u.Email AS 'Roll No.', c.CourseName AS 'G CODE', p.Email AS 'Professor'
+    SELECT u.Email AS 'Roll No.', c.CourseName AS 'G CODE', p.Email AS 'Professor', c.CourseType AS 'Type', c.Credits AS 'Credit'
     FROM Course_Stud cs
     JOIN Users u ON cs.StudentID = u.UserID
     JOIN Courses c ON cs.CourseID = c.CourseID
@@ -12,7 +12,7 @@ def registration_data():
     """
     try:
         result = db.fetch_query(query)
-        return pd.DataFrame(result, columns=['Roll No.', 'G CODE', 'Professor'])
+        return pd.DataFrame(result, columns=['Roll No.', 'G CODE', 'Professor', 'Type', 'Credit'])
     except Exception as e:
         print("Error fetching registration data:", e)
     finally:
@@ -46,6 +46,40 @@ def faculty_pref():
         # Execute the query using the fetch_query method from DatabaseConnection
         result = db.fetch_query(query)
 
+        # Convert the result to a pandas DataFrame
+        df = pd.DataFrame(result, columns=['Name', 'Busy Slot'])
+
+    finally:
+        # Ensure the database connection is closed after query execution
+        db.close()
+
+    return df
+
+def student_pref():
+    """
+    Fetch student preferences for busy slots.
+
+    Returns:
+        pd.DataFrame: DataFrame containing student names and their busy time slots.
+    """
+    # Initialize the database connection
+    db = DatabaseConnection.get_connection()
+
+    if db is None:
+        return pd.DataFrame()  # Return an empty DataFrame if connection fails
+
+    query = """
+    SELECT 
+        u.Email AS 'Name'
+    FROM Users u
+    JOIN Courses s ON u.CourseID = s.CourseID
+    WHERE u.Role = 'Student'
+    ORDER BY u.Email;
+    """
+
+    try:
+        # Execute the query using the fetch_query method from DatabaseConnection
+        result = db.fetch_query(query)
         # Convert the result to a pandas DataFrame
         df = pd.DataFrame(result, columns=['Name', 'Busy Slot'])
 
