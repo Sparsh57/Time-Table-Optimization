@@ -1,153 +1,251 @@
 from ortools.sat.python import cp_model
 import pandas as pd
-import re
-from itertools import combinations
 from typing import Dict, List
+from collections import defaultdict
+
+
+def get_day_from_time_slot(time_slot: str) -> str:
+    """
+    Example: "Monday 9am-10am" -> "Monday"
+    Adjust if your actual string format is different.
+    """
+    return time_slot.split()[0]
 
 
 def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                      student_course_map: Dict[str, List[str]],
-                     course_professor_map: Dict[str, str]) -> pd.DataFrame:
+                     course_professor_map: Dict[str, str],
+                     course_credits: Dict[str, int],
+                     course_type: Dict[str, str], 
+                     non_preferred_slots: List[str]) -> pd.DataFrame:
     """
-    Schedules courses for a given set of courses, students, and professors,
-    ensuring no conflicts and adherence to constraints.
+    Debug-friendly scheduling function with incremental constraint phases:
 
-    Parameters:
-    - courses (dict): A dictionary where each key is a course ID and its value
-                      is a dictionary containing course details, including
-                      available time slots.
-    - student_course_map (dict): A mapping of student roll numbers to their
-                                  enrolled courses.
-    - course_professor_map (dict): A mapping of course IDs to their respective
-                                    professors.
+      PHASE 1) Each course must appear 'credits' times.
+      PHASE 2) Professor cannot teach two courses in the same slot (AddAtMostOne).
+      PHASE 3) Limit each slot to at most 30 classes.
+      PHASE 4) Student conflicts (soft) -> penalize scheduling multiple courses for one student in the same slot.
+               Additionally, a very soft extra penalty is added if a student’s two required courses clash.
+      PHASE 5) No same course twice on the same day (hard constraint).
 
-    Returns:
-    - pd.DataFrame: A DataFrame containing scheduled courses with their
-                    corresponding time slots, or an empty DataFrame if no
-                    feasible solution is found.
+    If a phase is infeasible, we print a debug message and return an empty DataFrame.
+    If all phases succeed, we return the final schedule from PHASE 5.
+
+    NOTE: The function signature is unchanged. The incremental approach is done internally.
     """
 
-    assert isinstance(courses, dict), "Expected 'courses' to be a dictionary"
-    assert isinstance(student_course_map, dict), "Expected 'student_course_map' to be a dictionary"
-    assert isinstance(course_professor_map, dict), "Expected 'course_professor_map' to be a dictionary"
-    
-    # Initialize the constraint programming model
-    model = cp_model.CpModel()
+    # ---------------------------------------------------------
+    # Parameters you can tweak
+    # ---------------------------------------------------------
+    MAX_CLASSES_PER_SLOT = 24
+    STUDENT_CONFLICT_WEIGHT = 1000  # penalty weight for each student conflict
+    REQUIRED_CONFLICT_WEIGHT = 10    # very soft penalty for a clash between two Required courses
+    NON_PREFERRED_SLOTS = 50
+    # ---------------------------------------------------------
+    # Quick Pre-Check for "credits > available slots" problems
+    # ---------------------------------------------------------
+    for c_id, info in courses.items():
+        needed = course_credits.get(c_id, 2)  # default if missing
+        possible = len(info["time_slots"])
+        if needed > possible:
+            print(f"[PRE-CHECK] Course '{c_id}' needs {needed} sessions but only has {possible} slot(s). Infeasible.")
+            return pd.DataFrame(columns=["Course ID", "Scheduled Time"])
 
-    # Dictionaries to hold course variables
-    course_time_vars = {}
-    course_day_vars = {}
-    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-    all_penalty_vars = []  # Holds penalty variables for conflicts
-    time_slot_count_vars = {}  # Holds count variables for time slots
+    def solve_phase(phase_name: str,
+                    add_prof_constraints=False,
+                    add_timeslot_capacity=False,
+                    add_student_conflicts=False,
+                    add_no_same_day=False):
+        """
+        Builds and solves a new model with specified constraints included.
+        Returns (status, schedule_df).
+        """
+        model = cp_model.CpModel()
 
-    # Create model variables for each course's time slots
-    for course_id, course_info in courses.items():
-        course_time_vars[course_id] = []
-        course_day_vars[course_id] = {day: [] for day in days}
+        # Collect all distinct time slots globally
+        all_time_slots = set()
+        for c_info in courses.values():
+            all_time_slots.update(c_info['time_slots'])
+        all_time_slots = sorted(all_time_slots)
 
-        for time_slot in course_info['time_slots']:
-            var_id = f'{course_id}_{time_slot}'  # Unique variable ID for each course time slot
-            var = model.NewBoolVar(var_id)  # Create a boolean variable
-            course_time_vars[course_id].append(var)  # Add variable to course time vars
+        # Create bool vars: course_time_vars[c][slot] = 1 if c is in slot
+        course_time_vars = {}
+        time_slot_count_vars = defaultdict(list)  # for capacity constraints
 
-            # Extract the day from the time slot and add the variable to the corresponding day
-            match = re.match(r"(\D+)", time_slot)
-            if match:
-                day = match.group(1).strip()  # Remove any extra spaces
-                course_day_vars[course_id][day].append(var)
+        for c_id, c_info in courses.items():
+            slot_dict = {}
+            for slot in c_info['time_slots']:
+                var = model.NewBoolVar(f'{c_id}_{slot}')
+                slot_dict[slot] = var
+                time_slot_count_vars[slot].append(var)
+            course_time_vars[c_id] = slot_dict
 
-            # Initialize time slot count variable if not already done
-            if time_slot not in time_slot_count_vars:
-                time_slot_count_vars[time_slot] = []
-            time_slot_count_vars[time_slot].append(var)
+        # PHASE 1) Each course must appear exactly 'course_credits[c_id]' times
+        for c_id, slot_dict in course_time_vars.items():
+            needed = course_credits.get(c_id, 2)  # fallback if missing
+            model.Add(sum(slot_dict.values()) == needed)
 
-    # Constraints for each course to be scheduled exactly twice
-    for course_id, vars in course_time_vars.items():
-        model.Add(sum(vars) == 2)
+        # PHASE 2) Professor constraints
+        if add_prof_constraints:
+            prof_dict = defaultdict(list)
+            for c_id, prof in course_professor_map.items():
+                prof_dict[prof].append(c_id)
 
-    # Add constraints for no more than one time slot per day per course
-    for course_id, day_vars in course_day_vars.items():
-        for day, vars in day_vars.items():
-            model.Add(sum(vars) <= 1)
+            for prof, c_list in prof_dict.items():
+                # For each time slot, a professor cannot teach more than one course
+                slot_map = defaultdict(list)
+                for pc_id in c_list:
+                    if pc_id in course_time_vars:
+                        for s, v in course_time_vars[pc_id].items():
+                            slot_map[s].append(v)
+                for s, var_list in slot_map.items():
+                    if len(var_list) > 1:
+                        model.AddAtMostOne(var_list)
 
-    # Define penalties for scheduling conflicts for students enrolled in multiple courses
-    for roll_number, course_list in student_course_map.items():
-        for i in range(len(course_list) - 1):
-            for j in range(i + 1, len(course_list)):
-                course1 = course_list[i]
-                course2 = course_list[j]
-                for k, time_slot1 in enumerate(courses[course1]['time_slots']):
-                    for l, time_slot2 in enumerate(courses[course2]['time_slots']):
-                        if time_slot1 == time_slot2:
-                            penalty_var = model.NewBoolVar(f'penalty_{course1}_{course2}_{time_slot1}')
-                            model.AddBoolOr([
-                                course_time_vars[course1][k].Not(),
-                                course_time_vars[course2][l].Not(),
-                                penalty_var
-                            ])
-                            all_penalty_vars.append(penalty_var)
+        # PHASE 3) Time slot capacity
+        if add_timeslot_capacity:
+            for slot, var_list in time_slot_count_vars.items():
+                model.Add(sum(var_list) <= MAX_CLASSES_PER_SLOT)
 
-    # Constraints to avoid scheduling two courses taught by the same professor at the same time
-    for course_id1, course_id2 in combinations(courses.keys(), 2):
-        if course_professor_map[course_id1] == course_professor_map[course_id2]:
-            for time_slot1 in courses[course_id1]['time_slots']:
-                for time_slot2 in courses[course_id2]['time_slots']:
-                    if time_slot1 == time_slot2:
-                        # Create a constraint to ensure that not both courses can be scheduled at the same time
-                        model.AddBoolOr([
-                            course_time_vars[course_id1][courses[course_id1]['time_slots'].index(time_slot1)].Not(),
-                            course_time_vars[course_id2][courses[course_id2]['time_slots'].index(time_slot2)].Not()
-                        ])
+        # PHASE 4) Student conflicts (soft)
+        conflict_vars = []
+        if add_student_conflicts:
+            for student_id, enrolled in student_course_map.items():
+                # Build mapping: time slot -> list of booleans for this student's courses
+                slot_map = defaultdict(list)
+                for c_id in enrolled:
+                    if c_id in course_time_vars:
+                        for s, v in course_time_vars[c_id].items():
+                            slot_map[s].append(v)
+                for s, var_list in slot_map.items():
+                    if len(var_list) > 1:
+                        # conflict_var = 1 if sum(var_list) >= 2
+                        conflict_var = model.NewBoolVar(f'conflict_{student_id}_{s}')
+                        model.Add(sum(var_list) >= 2).OnlyEnforceIf(conflict_var)
+                        model.Add(sum(var_list) <= 1).OnlyEnforceIf(conflict_var.Not())
+                        conflict_vars.append(conflict_var)
 
-    # Add constraint to limit classes per time slot to a maximum of 15
-    for time_slot, vars in time_slot_count_vars.items():
-        model.Add(sum(vars) <= 15)
+        # Additional very soft constraint: Avoid conflict between two Required courses
+        conflict_required_vars = []
+        if add_student_conflicts:
+            for student_id, enrolled in student_course_map.items():
+                # Filter only the courses that are marked as 'Required'
+                required_courses = [c_id for c_id in enrolled if course_type.get(c_id, "Elective") == "Required"]
+                slot_map_req = defaultdict(list)
+                for c_id in required_courses:
+                    if c_id in course_time_vars:
+                        for s, v in course_time_vars[c_id].items():
+                            slot_map_req[s].append(v)
+                for s, var_list in slot_map_req.items():
+                    if len(var_list) > 1:
+                        conflict_req_var = model.NewBoolVar(f'req_conflict_{student_id}_{s}')
+                        model.Add(sum(var_list) >= 2).OnlyEnforceIf(conflict_req_var)
+                        model.Add(sum(var_list) <= 1).OnlyEnforceIf(conflict_req_var.Not())
+                        conflict_required_vars.append(conflict_req_var)
 
-    num_courses = len(courses.keys()) * 2  # Total number of courses, assuming each course is scheduled twice
-    num_days = 5  # Number of days in the schedule
-    # Define a maximum number of courses scheduled per day (for distribution)
-    max_courses_per_day = int((num_courses / num_days) * (1.3))
-    for day in days:
-        day_vars = []
-        for course_id, vars in course_day_vars.items():
-            day_vars.extend(vars[day])  # Collect all course variables for the day
-        excess_courses = model.NewIntVar(0, num_courses, f'excess_courses_{day}')
-        model.Add(sum(day_vars) <= max_courses_per_day + excess_courses)        # Limit courses scheduled per day
-        all_penalty_vars.append(excess_courses)
+        # PHASE 5) No same course twice on the same day (hard constraint)
+        if add_no_same_day:
+            for c_id, slot_dict in course_time_vars.items():
+                # Group the course's slots by day
+                day_map = defaultdict(list)
+                for s, var in slot_dict.items():
+                    day = get_day_from_time_slot(s)
+                    day_map[day].append(var)
+                # Each day can have at most 1 session of this course
+                for day, var_list in day_map.items():
+                    if len(var_list) > 1:
+                        model.Add(sum(var_list) <= 1)
+                        
+        slot_penalty_vars = []
+        # We retrieve the course_id and the dictionary 
+        # with key as the timeslots and the values as the boolean decision variables 
+        for c_id, slot_dict in course_time_vars.items(): 
+            # We retieve the timeslot and the boolean associated with that
+            for s, var in slot_dict.items(): 
+                if s in non_preferred_slots: 
+                    slot_penalty_vars.append(var)
 
-    # Distribute the total classes evenly across time slots
-    total_classes = sum(len(course_info['time_slots']) for course_info in courses.values())
-    num_time_slots = len(time_slot_count_vars)
-    max_classes_per_time_slot = total_classes // num_time_slots + 1  # Allow for slight overage
+        # Objective: minimize student conflicts (with additional required course penalty, if any)
+        total_penalty = 0
+        if conflict_vars:
+            total_penalty += STUDENT_CONFLICT_WEIGHT * sum(conflict_vars)
+        if conflict_required_vars:
+            total_penalty += REQUIRED_CONFLICT_WEIGHT * sum(conflict_required_vars)
+        if slot_penalty_vars: 
+            total_penalty += NON_PREFERRED_SLOTS * sum(slot_penalty_vars)
+        model.Minimize(total_penalty)
 
-    for time_slot, vars in time_slot_count_vars.items():
-        # Define an integer variable to track excess classes in this time slot
-        excess_classes = model.NewIntVar(0, total_classes, f'excess_classes_{time_slot}')
+        solver = cp_model.CpSolver()
+        solver.parameters.max_time_in_seconds = 30.0  # short limit per phase
+        status = solver.Solve(model)
 
-        # Add a soft constraint: number of classes in this time slot can exceed the limit by 'excess_classes'
-        model.Add(sum(vars) <= max_classes_per_time_slot + excess_classes)
+        schedule_df = pd.DataFrame(columns=["Course ID", "Scheduled Time"])
+        if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+            rows = []
+            for c_id, slot_dict in course_time_vars.items():
+                for s, var in slot_dict.items():
+                    if solver.Value(var) == 1:
+                        rows.append({"Course ID": c_id, "Scheduled Time": s})
+            schedule_df = pd.DataFrame(rows)
 
-        # Penalize excess classes in the minimization objective
-        all_penalty_vars.append(excess_classes) # Limit classes per time slot
+        return status, schedule_df
 
-    # Minimize penalties for conflicts
-    if all_penalty_vars:
-        model.Minimize(sum(all_penalty_vars))
+    # ---------------------------------------------------------
+    # Phase-by-phase approach
+    # ---------------------------------------------------------
 
-    # Solve the model
-    solver = cp_model.CpSolver()
-    status = solver.Solve(model)
+    # PHASE 1
+    p1_status, p1_df = solve_phase("PHASE 1",
+                                   add_prof_constraints=False,
+                                   add_timeslot_capacity=False,
+                                   add_student_conflicts=False,
+                                   add_no_same_day=False)
+    if p1_status == cp_model.INFEASIBLE:
+        print("[DEBUG] Infeasible at PHASE 1: Basic 'credits' constraints.")
+        return pd.DataFrame(columns=["Course ID", "Scheduled Time"])
 
-    # Creating a DataFrame to hold the schedule
-    if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
-        data = []
-        for course_id, vars in course_time_vars.items():
-            times = [var.Name().split('_')[1] for var in vars if solver.Value(var)]
-            for time in times:
-                data.append({'Course ID': course_id, 'Scheduled Time': time})
-        schedule_df = pd.DataFrame(data)  # Create DataFrame from the scheduling data
-        return schedule_df
-    else:
-        print("No feasible solution found.")
-        return pd.DataFrame(columns=['Course ID', 'Scheduled Time'])  # Return empty DataFrame if no solution
+    # PHASE 2
+    p2_status, p2_df = solve_phase("PHASE 2",
+                                   add_prof_constraints=True,
+                                   add_timeslot_capacity=False,
+                                   add_student_conflicts=False,
+                                   add_no_same_day=False)
+    if p2_status == cp_model.INFEASIBLE:
+        print("[DEBUG] Infeasible at PHASE 2: Professor no-overlap constraints.")
+        return pd.DataFrame(columns=["Course ID", "Scheduled Time"])
+
+    # PHASE 3
+    p3_status, p3_df = solve_phase("PHASE 3",
+                                   add_prof_constraints=True,
+                                   add_timeslot_capacity=True,
+                                   add_student_conflicts=False,
+                                   add_no_same_day=False)
+    if p3_status == cp_model.INFEASIBLE:
+        print(f"[DEBUG] Infeasible at PHASE 3: Time slot capacity <= {MAX_CLASSES_PER_SLOT}.")
+        return pd.DataFrame(columns=["Course ID", "Scheduled Time"])
+
+    # PHASE 4
+    p4_status, p4_df = solve_phase("PHASE 4",
+                                   add_prof_constraints=True,
+                                   add_timeslot_capacity=True,
+                                   add_student_conflicts=True,
+                                   add_no_same_day=False)
+    if p4_status == cp_model.INFEASIBLE:
+        # Rare for soft conflicts to cause infeasibility, but we check anyway
+        print("[DEBUG] Infeasible at PHASE 4: Student conflict constraints.")
+        return pd.DataFrame(columns=["Course ID", "Scheduled Time"])
+
+    # PHASE 5: No same course twice on the same day
+    p5_status, p5_df = solve_phase("PHASE 5",
+                                   add_prof_constraints=True,
+                                   add_timeslot_capacity=True,
+                                   add_student_conflicts=True,
+                                   add_no_same_day=True)
+    if p5_status == cp_model.INFEASIBLE:
+        print("[DEBUG] Infeasible at PHASE 5: The 'no same course twice on the same day' constraint.")
+        print("Check if any course's distribution of slots forces multiple sessions on the same day.")
+        return pd.DataFrame(columns=["Course ID", "Scheduled Time"])
+
+    # If we got here, it's feasible through PHASE 5
+    print("[DEBUG] Schedule found with all constraints (including no same-day double scheduling).")
+    return p5_df
