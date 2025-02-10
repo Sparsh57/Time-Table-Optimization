@@ -1,6 +1,6 @@
 # Algorithm Notes
 
-Person: Siya Jethliya, Vatsalya Betala
+Person: Siya Jethliya, Vatsalya Betala, Sparsh Makharia
 
 # Components of a Constraint Programming Model
 
@@ -269,3 +269,36 @@ To visualize how constraint propagation works in this setup, let’s assume some
 - Suppose `History301_Friday11AM = 1` is chosen:
     - This sets `History301_Monday9AM = 0` and `History301_Wednesday10AM = 0`
     - For Student C, this decision impacts `Science401` scheduling, preventing a Friday 11 AM slot.
+
+### Debugging Approach: Incremental Constraint Phases
+
+When building a course-scheduling model with multiple interdependent constraints, it can be difficult to see which constraint (or combination of constraints) causes the model to become infeasible. To address this, we use an **incremental “phased” approach** to debugging:
+
+1. **Phase 1: Basic “Credits” Constraint**  
+   - **What It Does**: Ensures each course is scheduled the required number of times (e.g., `credits` = 2).  
+   - **Reason**: If a course has fewer available time slots than its required sessions, it will fail here. This is the most fundamental check.
+
+2. **Phase 2: Professor Non-Overlap**  
+   - **What It Does**: For each professor who teaches multiple courses, ensures no two of their courses occupy the same time slot.  
+   - **Reason**: If the professor is over-committed or the time slots overlap too heavily, the model becomes infeasible here.
+
+3. **Phase 3: Time-Slot Capacity**  
+   - **What It Does**: Imposes a maximum number of classes (e.g., 15 or 30) in any single time slot.  
+   - **Reason**: If the total number of required sessions across all courses is too large to fit under this limit, the model fails at this phase.
+
+4. **Phase 4: Student Conflict (Soft)**  
+   - **What It Does**: Penalizes, rather than forbids, a student taking two classes at the same time. We introduce “penalty” variables that can be activated if a conflict is unavoidable.  
+   - **Reason**: Since this is a soft constraint, it usually does *not* cause infeasibility by itself. If it does, that indicates another hidden contradiction in how the penalty variables were added.
+
+5. **Phase 5: “One Session per Day” Constraint**  
+   - **What It Does**: Ensures a course is not scheduled more than once on the same day.  
+   - **Reason**: If a course requires more sessions than there are available days in its time-slot list, it fails here.
+
+At each phase, we solve the model independently:
+
+1. **Build a New Model** with all constraints up to that phase.  
+2. **Run the Solver**.  
+   - If **feasible**, we proceed to the next phase.  
+   - If **infeasible**, we know exactly **which** newly introduced constraint caused the issue.
+
+**Incremental debugging** reduces the complexity of diagnosing scheduling conflicts by systematically layering constraints and checking feasibility after each layer is added.
