@@ -1,0 +1,1 @@
+[Our Clock](https://github.com/Sparsh57/Time-Table-Optimization) 2024 by Sparsh Makharia, Vatsalya Betala, Aarav Akali, Siya Jethliya is licensed under Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International. To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-nd/4.0/
