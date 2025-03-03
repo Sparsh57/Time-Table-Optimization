@@ -4,11 +4,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def truncate_detail():
+def truncate_detail(db_path):
     """
     Deletes all data from the tables in the SQLite database while handling foreign key constraints.
     """
-    db = DatabaseConnection.get_connection()
+    db = DatabaseConnection.get_connection(db_path)
 
     # Queries to disable foreign key checks, delete data, and re-enable foreign key checks
     queries = [
@@ -17,7 +17,7 @@ def truncate_detail():
         "DELETE FROM Course_Stud;",
         "DELETE FROM Professor_BusySlots;",
         "DELETE FROM Schedule;",
-        "DELETE FROM Users;",
+        "DELETE FROM Users WHERE Role != 'Admin';",
         "PRAGMA foreign_keys = ON;"  # Re-enable foreign key checks
     ]
 
@@ -30,6 +30,3 @@ def truncate_detail():
     finally:
         db.close()
 
-
-# Usage
-truncate_detail()

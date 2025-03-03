@@ -18,7 +18,7 @@ class DatabaseConnection:
 
     def connect(self):
         try:
-            print(self.db_path)
+            print("Connect", self.db_path)
             self.connection = sqlite3.connect(self.db_path)
             print(f"Connected to SQLite database at: {self.db_path}")
             return self.connection
@@ -105,14 +105,13 @@ class DatabaseConnection:
                 print(f"Failed to close connection: {e}")
 
     @staticmethod
-    def get_connection():
+    def get_connection(db_path="data/timetable.db"):
         """
         Retrieves the SQLite database connection using an environment variable.
 
         Returns:
         db: An instance of DatabaseConnection.
         """
-        db_path = Path(os.getcwd()) / "data/timetable.db"
         db = DatabaseConnection(db_path)
         db.connect()
         return db

@@ -1,8 +1,8 @@
 import pandas as pd
 from .databse_connection import DatabaseConnection
 
-def registration_data():
-    db = DatabaseConnection.get_connection()
+def registration_data(db_path):
+    db = DatabaseConnection.get_connection(db_path)
     query = """
     SELECT u.Email AS 'Roll No.', c.CourseName AS 'G CODE', p.Email AS 'Professor', c.CourseType AS 'Type', c.Credits AS 'Credit'
     FROM Course_Stud cs
@@ -18,7 +18,7 @@ def registration_data():
     finally:
         db.close()
 
-def faculty_pref():
+def faculty_pref(db_path):
     """
     Fetch professor preferences for busy slots.
 
@@ -26,7 +26,7 @@ def faculty_pref():
         pd.DataFrame: DataFrame containing professor names and their busy time slots.
     """
     # Initialize the database connection
-    db = DatabaseConnection.get_connection()
+    db = DatabaseConnection.get_connection(db_path)
 
     if db is None:
         return pd.DataFrame()  # Return an empty DataFrame if connection fails
@@ -55,7 +55,7 @@ def faculty_pref():
 
     return df
 
-def student_pref():
+def student_pref(db_path):
     """
     Fetch student preferences for busy slots.
 
@@ -63,7 +63,7 @@ def student_pref():
         pd.DataFrame: DataFrame containing student names and their busy time slots.
     """
     # Initialize the database connection
-    db = DatabaseConnection.get_connection()
+    db = DatabaseConnection.get_connection(db_path)
 
     if db is None:
         return pd.DataFrame()  # Return an empty DataFrame if connection fails
@@ -88,3 +88,25 @@ def student_pref():
         db.close()
 
     return df
+
+def get_all_time_slots(db_path):
+    """
+    Retrieves all time slots from the Slots table in the given database.
+    Returns a list of strings in the format "Day HH:MM".
+    """
+    db = DatabaseConnection.get_connection(db_path)
+    query = """
+    SELECT Day, TIME(StartTime) AS StartTime 
+    FROM Slots 
+    ORDER BY Day, StartTime;
+    """
+    try:
+        result = db.fetch_query(query)
+        # Construct a list of time slot strings
+        time_slots = [f"{row[0]} {row[1]}" for row in result]
+        return time_slots
+    except Exception as e:
+        print("Error fetching time slots:", e)
+        return []
+    finally:
+        db.close()

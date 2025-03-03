@@ -1,88 +1,67 @@
-import sys
+import os
+import sqlite3
+import tempfile
+import unittest
 from pathlib import Path
 
-current_file_path = Path(__file__)
-# Get the parent's parent's path
-grandparent_path = current_file_path.parent.parent
+# Import the DatabaseConnection class.
+# Adjust the import if your class is in a different module.
+from src.database_management.databse_connection import DatabaseConnection
 
-# Convert to a string and add to system path
-sys.path.append(str(grandparent_path))
-from src.database_management.databse_connection import DatabaseConnection  # Assuming your file is named database_connection.py
-import unittest
-from unittest.mock import patch, MagicMock
 
 class TestDatabaseConnection(unittest.TestCase):
+    def setUp(self):
+        # Create a temporary directory and set it as the current working directory.
+        self.test_dir = tempfile.TemporaryDirectory()
+        self.original_cwd = os.getcwd()
+        os.chdir(self.test_dir.name)
 
-    @patch('mariadb.connect')
-    def test_mariadb_connection_success(self, mock_connect):
-        # Mock the connection and cursor
-        mock_connection = MagicMock()
-        mock_cursor = MagicMock()
-        mock_connect.return_value = mock_connection
-        mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.return_value = ['10.5.12-MariaDB']
+        # Create the "data" directory to match the expected db_path structure.
+        os.mkdir("data")
 
-        db = DatabaseConnection(host="localhost", user="user", password="pass", database="test_db", port=3306)
-        db.connect()
+        # Use a test database file in the temporary directory.
+        self.db_path = "data/test_timetable.db"
+        self.db = DatabaseConnection(db_path=self.db_path)
+        self.db.connect()
 
-        # Assert the connection and query execution
-        mock_connect.assert_called_once_with(
-            host="localhost", port=3306, user="user", password="pass", database="test_db"
-        )
-        mock_cursor.execute.assert_any_call("SELECT VERSION();")
+    def tearDown(self):
+        # Close the database connection and revert the working directory.
+        self.db.close()
+        os.chdir(self.original_cwd)
+        self.test_dir.cleanup()
+
+    def test_connection(self):
+        """Test that the database connection is active."""
+        self.assertTrue(self.db.is_connected(), "The database connection should be active.")
+
+    def test_execute_query_and_fetch(self):
+        """Test executing a query and then fetching data."""
+        # Create a simple table.
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS timetable (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject TEXT NOT NULL
+        );
+        """
+        self.db.execute_query(create_table_query)
+
+        # Insert a record into the table.
+        insert_query = "INSERT INTO timetable (subject) VALUES (?);"
+        self.db.execute_query(insert_query, params=("Mathematics",))
+
+        # Fetch the inserted record.
+        select_query = "SELECT subject FROM timetable;"
+        results = self.db.fetch_query(select_query)
+
+        self.assertIsNotNone(results, "The fetch query should return results.")
+        self.assertEqual(len(results), 1, "There should be exactly one record in the table.")
+        self.assertEqual(results[0][0], "Mathematics", "The subject should be 'Mathematics'.")
+
+    def test_close_connection(self):
+        """Test that the connection is properly closed."""
+        self.db.close()
+        self.assertFalse(self.db.is_connected(), "The database connection should be closed.")
 
 
-    @patch('mariadb.connect')
-    def test_execute_query_success(self, mock_connect):
-        # Mock the connection and cursor
-        mock_connection = MagicMock()
-        mock_cursor = MagicMock()
-        mock_connect.return_value = mock_connection
-        mock_connection.cursor.return_value = mock_cursor
-
-        db = DatabaseConnection(host="localhost", user="user", password="pass", database="test_db", port=3306)
-        db.connect()
-
-        query = "CREATE TABLE test (id INT PRIMARY KEY)"
-        db.execute_query(query)
-
-        # Assert the correct query execution
-        mock_cursor.execute.assert_any_call(query)
-
-    @patch('mariadb.connect')
-    def test_fetch_query_success(self, mock_connect):
-        # Mock the connection and cursor
-        mock_connection = MagicMock()
-        mock_cursor = MagicMock()
-        mock_connect.return_value = mock_connection
-        mock_connection.cursor.return_value = mock_cursor
-        mock_cursor.fetchall.return_value = [('result1',), ('result2',)]
-
-        db = DatabaseConnection(host="localhost", user="user", password="pass", database="test_db", port=3306)
-        db.connect()
-
-        query = "SELECT * FROM test"
-        results = db.fetch_query(query)
-
-        # Assert the correct query execution and fetched results
-        mock_cursor.execute.assert_any_call(query)
-        self.assertEqual(results, [('result1',), ('result2',)])
-
-    @patch('mariadb.connect')
-    def test_close_connection(self, mock_connect):
-        # Mock connection and cursor
-        mock_connection = MagicMock()
-        mock_cursor = MagicMock()
-        mock_connect.return_value = mock_connection
-        mock_connection.cursor.return_value = mock_cursor
-
-        # Instantiate DatabaseConnection and connect
-        db = DatabaseConnection(host="localhost", user="user", password="pass", database="test_db", port=3306)
-        db.connect()
-
-        # Close the connection
-        db.close()
-
-        # Assert that cursor and connection were closed
-        mock_cursor.close.assert_called_once()
-        mock_connection.close.assert_called_once()
+if __name__ == "__main__":
+    unittest.main()

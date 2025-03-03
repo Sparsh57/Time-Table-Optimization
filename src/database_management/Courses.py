@@ -16,7 +16,7 @@ def map_course_type(course_type):
         return 'Required'
 
 
-def insert_courses_professors(file):
+def insert_courses_professors(file, db_path):
     """
     Inserts course information associated with professors from a CSV file into the SQLite database.
 
@@ -27,7 +27,7 @@ def insert_courses_professors(file):
     df_courses = file
 
     # Initialize the database connection
-    db = DatabaseConnection.get_connection()
+    db = DatabaseConnection.get_connection(db_path)
 
     # Fetch user information (UserID and Email) for professors
     fetch_user = db.fetch_query("SELECT UserID, Email FROM Users WHERE Role='Professor'")
@@ -72,13 +72,13 @@ def insert_courses_professors(file):
     db.close()
 
 
-def fetch_course_data():
+def fetch_course_data(db_path):
     """
     Fetches all course data from the Courses table in the SQLite database.
 
     :return: List of all course data.
     """
-    db = DatabaseConnection.get_connection()
+    db = DatabaseConnection.get_connection(db_path)
     try:
         query = """
         SELECT * FROM Courses

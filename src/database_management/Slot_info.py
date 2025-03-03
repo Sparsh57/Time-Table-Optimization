@@ -5,12 +5,13 @@ import os
 
 load_dotenv()
 
-def insert_time_slots(input_data):
+def insert_time_slots(input_data, db_path):
     """
     Deletes existing time slots and inserts new dynamic time slots into the SQLite database based on the input data.
 
     :param input_data: A dictionary where keys are week days and values are lists of tuples containing start and end times.
     """
+    print(db_path)
     # Create the data for the pandas DataFrame
     data = []
     for day, time_slots in input_data.items():
@@ -24,8 +25,7 @@ def insert_time_slots(input_data):
     print(df)
 
     # Initialize the database connection
-    db = DatabaseConnection().get_connection()
-
+    db = DatabaseConnection.get_connection(db_path)
     # Delete existing time slots in the database
     try:
         delete_query = """DELETE FROM Slots"""

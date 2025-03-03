@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 
 
-def insert_course_students(file):
+def insert_course_students(file, db_path):
     """
     Inserts student course enrollments from a CSV file into the SQLite database.
 
@@ -12,9 +12,9 @@ def insert_course_students(file):
 
     # Read the CSV into a DataFrame
     df_courses = file
-
+    print(db_path)
     # Initialize the database connection
-    db = DatabaseConnection.get_connection()
+    db = DatabaseConnection.get_connection(db_path)
 
     # Fetch user information (UserID and Email) for students
     fetch_user = db.fetch_query("SELECT UserID, Email FROM Users WHERE Role='Student'")

@@ -2,7 +2,7 @@ from .databse_connection import DatabaseConnection
 import numpy as np
 
 
-def insert_professor_busy_slots(file):
+def insert_professor_busy_slots(file, db_path):
     """
     Inserts professor busy slots from a CSV file into a database.
 
@@ -11,7 +11,7 @@ def insert_professor_busy_slots(file):
     df_courses = file  # Read the CSV into a DataFrame
 
     # Initialize the database connection
-    db = DatabaseConnection.get_connection()
+    db = DatabaseConnection.get_connection(db_path)
 
     # Fetch the user information (UserID and Email) for professors
     fetch_user = db.fetch_query("SELECT UserID, Email FROM Users WHERE Role='Professor'")
@@ -67,11 +67,11 @@ def insert_professor_busy_slots(file):
     db.close()
 
 
-def empty_professor_busy_slots():
+def empty_professor_busy_slots(db_path):
     """
     Empties all records from the Professor_BusySlots table.
     """
-    db = DatabaseConnection.get_connection()
+    db = DatabaseConnection.get_connection(db_path)
     delete_query = "DELETE FROM Professor_BusySlots"
     try:
         db.execute_query(delete_query)
@@ -82,14 +82,14 @@ def empty_professor_busy_slots():
         db.close()
 
 
-def fetch_professor_busy_slots():
+def fetch_professor_busy_slots(db_path):
     """
     Fetches all records from the Professor_BusySlots table.
 
     Returns:
     list: List of records from the Professor_BusySlots table.
     """
-    db = DatabaseConnection.get_connection()
+    db = DatabaseConnection.get_connection(db_path)
     query = "SELECT * FROM Professor_BusySlots"
     try:
         result = db.fetch_query(query)

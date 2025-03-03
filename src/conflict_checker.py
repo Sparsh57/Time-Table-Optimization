@@ -14,7 +14,7 @@ def check_conflicts(schedule_df, student_course_map):
     - pd.DataFrame: A DataFrame with columns ['Roll No.', 'Conflict Time Slot', 'Conflicting Courses']
                     listing all the conflicts for each student.
     """
-
+    print(schedule_df)
     schedule = schedule_df.groupby('Course ID')['Scheduled Time'].apply(list).to_dict()
 
     conflict_rows = []
