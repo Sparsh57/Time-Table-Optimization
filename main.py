@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from fastapi import FastAPI, Request, Form, UploadFile, File, HTTPException, status, Depends
+from fastapi import FastAPI, Request, Form, UploadFile, File, HTTPException, status, Depends, Form, Body
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -10,6 +10,8 @@ import httpx
 import pandas as pd
 from io import BytesIO
 import uvicorn
+import json
+from typing import Optional
 
 # -------------------- Import your local modules --------------------
 # For demonstration, these are placeholders. Update them with your own modules.
@@ -45,7 +47,6 @@ templates = Jinja2Templates(directory="views")
 
 
 # -------------------- Utility / DB Helpers --------------------
-
 def get_db_path_for_org(org_name: str) -> str:
     """
     Look up the organization's db_path from the meta-database (organizations_meta.db).
@@ -86,7 +87,6 @@ def fetch_user_role_from_org_db(email: str, db_path: str) -> str:
 
 
 # -------------------- Role Check Helpers --------------------
-
 def is_admin(request: Request) -> bool:
     """
     Return True if the currently logged-in user is an Admin; else False.
@@ -112,12 +112,8 @@ def require_admin(request: Request):
 
 
 # -------------------- OAuth / Auth Endpoints --------------------
-
 @app.get("/auth/google")
 async def login_with_google():
-    """
-    Initiates Google sign-in by redirecting the user to Google's OAuth consent screen.
-    """
     redirect_uri = "http://localhost:4000/auth/google/callback"
     return RedirectResponse(
         f"https://accounts.google.com/o/oauth2/v2/auth?client_id={client_id}&response_type=code"
@@ -127,10 +123,6 @@ async def login_with_google():
 
 @app.get("/auth/google/callback")
 async def google_callback(request: Request, code: str):
-    """
-    Handles the Google OAuth callback. Retrieves user info, checks the email domain,
-    finds the organization's db_path, fetches the user's role, and stores all in session.
-    """
     redirect_uri = "http://localhost:4000/auth/google/callback"
     token_url = "https://oauth2.googleapis.com/token"
     data = {
@@ -206,7 +198,6 @@ async def logout(request: Request):
 
 
 # -------------------- Organization Registration --------------------
-
 @app.get("/register-organization", response_class=HTMLResponse)
 async def show_register_organization(request: Request):
     """
@@ -263,39 +254,13 @@ async def register_organization(
 
 
 # -------------------- Admin-Only Data Insertion / Upload Endpoints --------------------
-
-@app.post("/insert_timeslots")
-async def insert_timeslots(request: Request, timeslot_data: dict):
-    """
-    Inserts time slots into the organization's database. Admin-only route.
-    """
-    # 1. Admin check
-    if not is_admin(request):
-        raise HTTPException(status_code=403, detail="Access forbidden: Admins only.")
-
-    # 2. Proceed
-    db_path = request.session.get("db_path")
-    if not db_path:
-        raise HTTPException(status_code=422, detail="Database path not provided in session.")
-
-    try:
-        formatted_data = {}
-        for day, slots in timeslot_data.items():
-            formatted_data[day] = []
-            for slot in slots:
-                formatted_data[day].append([slot[0], slot[1]])
-        insert_time_slots(formatted_data, db_path)
-        return JSONResponse(status_code=200, content={"message": "Timeslots inserted successfully!"})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e)})
-
-
 @app.post("/send_admin_data")
 async def send_admin_data(
         request: Request,
         courses_file: UploadFile = File(...),
         faculty_preferences_file: UploadFile = File(...),
-        student_courses_file: UploadFile = File(...)
+        student_courses_file: UploadFile = File(...),
+        column_mappings: Optional[str] = Form(None)
 ):
     """
     Processes admin data uploads, inserts data, generates the timetable, redirects to the dashboard.
@@ -519,6 +484,31 @@ async def download_student_schedule_csv(request: Request, roll_number: str):
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
+@app.post("/insert_timeslots")
+async def insert_timeslots(request: Request, timeslot_data: dict):
+    """
+    Inserts time slots into the organization's database. Admin-only route.
+    """
+    # 1. Admin check
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Access forbidden: Admins only.")
+
+    # 2. Proceed
+    db_path = request.session.get("db_path")
+    if not db_path:
+        raise HTTPException(status_code=422, detail="Database path not provided in session.")
+
+    try:
+        formatted_data = {}
+        for day, slots in timeslot_data.items():
+            formatted_data[day] = []
+            for slot in slots:
+                formatted_data[day].append([slot[0], slot[1]])
+        insert_time_slots(formatted_data, db_path)
+        return JSONResponse(status_code=200, content={"message": "Timeslots inserted successfully!"})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
+
 
 @app.get("/timetable/{roll_number}", response_class=HTMLResponse)
 async def show_student_timetable(request: Request, roll_number: str):
@@ -534,10 +524,6 @@ async def show_student_timetable(request: Request, roll_number: str):
     user_role = user_info.get("role")
     user_roll_in_session = user_info.get("roll_number")
 
-    # If not admin, ensure the roll_number matches the user's roll_number
-    #if user_role != "Admin" and roll_number != user_roll_in_session:
-    #    raise HTTPException(status_code=403, detail="Access forbidden: not your roll number.")
-
     schedule_data = get_student_schedule(roll_number, db_path)
     return templates.TemplateResponse(
         "student_timetable.html",
@@ -550,8 +536,50 @@ async def show_student_timetable(request: Request, roll_number: str):
     )
 
 
-# -------------------- Main --------------------
+@app.post("/upload/")
+async def upload_csv(file_type: str = Form(...), file: UploadFile = File(...)):
+    """
+    Single-file preview route.
+    Returns:
+      - preview: first 5 rows as JSON,
+      - missing_cols: list of expected columns missing,
+      - extra_cols: list of columns in CSV not expected,
+      - error: error message if any required columns are missing.
+    """
+    try:
+        content = await file.read()
+        df = pd.read_csv(BytesIO(content))
+        PREVIEW_COLUMNS = {
+            "courses": ["Course code", "Faculty Name", "Type","Credits"],
+            "students":  ["Roll No.", "G CODE", "Sections"],
+            "faculty": ["Name", "Busy Slot"]
+        }
+        expected_cols = PREVIEW_COLUMNS.get(file_type, [])
+    
+        #Alternatively, if you're sure about formatting, you could simply use:
+        missing_cols = [c for c in expected_cols if c not in df.columns];
+        extra_cols = [c for c in df.columns if c not in expected_cols];
 
+        response = {
+            "preview": df.head(5).to_dict(orient="records"),
+            "missing_cols": missing_cols,
+            "extra_cols": extra_cols
+        }
+        if (len(missing_cols) > 0):
+            response["error"] = "Missing required columns: " + ", ".join(missing_cols)
+        return response
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.post("/map-columns")
+async def map_columns(mapping: dict = Body(...)):
+    """
+    Receives column mapping from the user.
+    For now, simply returns the mapping.
+    """
+    return {"message": "Column mapping received", "mapping": mapping}
+
+# -------------------- Main --------------------
 if __name__ == "__main__":
     # Run with:  uvicorn main:app --reload  (or python main.py)
     uvicorn.run(app, host="localhost", port=4000)
