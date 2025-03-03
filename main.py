@@ -46,8 +46,16 @@ async def insert_timeslots(timeslot_data: dict = Body(...)):
     :param timeslot_data: A dictionary where keys are week days and values are lists of tuples containing start and end times.
     """
     try:
-        insert_time_slots(timeslot_data)
-        return RedirectResponse(url="/home", status_code=303)
+        # Ensure the data is in the correct format
+        formatted_data = {}
+        for day, slots in timeslot_data.items():
+            formatted_data[day] = []
+            for slot in slots:
+                formatted_data[day].append([slot[0], slot[1]])
+
+        # Insert the formatted data into the database
+        insert_time_slots(formatted_data)
+        return JSONResponse(status_code=200, content={"message": "Timeslots inserted successfully!"})
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
 

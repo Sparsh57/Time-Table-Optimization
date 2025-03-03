@@ -362,42 +362,51 @@
     };
 
     // Submit button functionality
-    submitBtn.onclick = function() {
-        const timeslots = [];
-        document.querySelectorAll('.timeslot').forEach(timeslotDiv => {
-            const day = timeslotDiv.querySelector('select').value;
-            const startTime = timeslotDiv.querySelector('input[type="time"]').value;
-            const endTime = timeslotDiv.querySelectorAll('input[type="time"]')[1].value;
-            timeslots.push({ day, startTime, endTime });
-        });
+// Submit button functionality
+submitBtn.onclick = function () {
+    const timeslots = [];
+    document.querySelectorAll('.timeslot').forEach(timeslotDiv => {
+        const day = timeslotDiv.querySelector('select').value;
+        const startTime = timeslotDiv.querySelector('input[type="time"]').value;
+        const endTime = timeslotDiv.querySelectorAll('input[type="time"]')[1].value;
+        timeslots.push({ day, startTime, endTime });
+    });
 
-        // Convert timeslots array to dictionary format
-        const timeslotsDict = timeslots.reduce((acc, slot) => {
-            if (!acc[slot.day]) {
-                acc[slot.day] = [];
+    // Convert timeslots array to the required dictionary format
+    const timeslotsDict = timeslots.reduce((acc, slot) => {
+        if (!acc[slot.day]) {
+            acc[slot.day] = [];
+        }
+        acc[slot.day].push([slot.startTime, slot.endTime]);
+        return acc;
+    }, {});
+
+    // Send data to the backend API
+    fetch('/insert_timeslots', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(timeslotsDict),
+    })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            } else {
+                throw new Error('Error submitting timeslots.');
             }
-            acc[slot.day].push([slot.startTime, slot.endTime]);
-            return acc;
-        }, {});
-
-        // Send data to API
-        fetch('/insert_timeslots', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(timeslotsDict),
         })
-        .then(response => response.json())
         .then(data => {
             console.log('Success:', data);
             alert('Timeslots submitted successfully!');
+            // Redirect to the home page or another page after successful submission
+            window.location.href = '/home';
         })
         .catch((error) => {
             console.error('Error:', error);
             alert('Error submitting timeslots.');
         });
-    };
+};
 
 
     // Initialize with one empty timeslot
