@@ -1,93 +1,95 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard</title>
-    <!-- Materialize CSS and JS from CDN for styling and components -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-    <link rel="stylesheet" href="/static/main.css">
+  <meta charset="UTF-8">
+  <title>Admin Dashboard - Data Entry</title>
+  <!-- Materialize CSS and JS for styling -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <link rel="stylesheet" href="/static/main.css">
 </head>
 <body>
-    <header>
-        <nav>
-            <div class="nav-wrapper">
-                <a href="/" class="brand-logo left">Timetable</a>
-                <ul class="right hide-on-med-and-down">
-                    <li><a href="/dashboard">Dashboard</a></li>
-                    <li><a href="/logout">Logout</a></li>
-                    <li><a href="/select_timeslot">Select Timeslots</a></li>
-                </ul>
-            </div>
-        </nav>
+  <header>
+    <nav>
+      <div class="nav-wrapper">
+        <a href="/" class="brand-logo left">Timetable</a>
+        <ul class="right hide-on-med-and-down">
+          <li><a href="/dashboard">Dashboard</a></li>
+          <li><a href="/logout">Logout</a></li>
+          <li><a href="/select_timeslot">Select Timeslots</a></li>
+        </ul>
+      </div>
+    </nav>
+  </header>
 
-    <main>
-        <div class="container">
-            <h4>Upload Data Files</h4>
-            <form action="/send_admin_data" method="post" enctype="multipart/form-data">
-                <!-- Courses File Upload -->
-                <div class="file-field input-field">
-                    <div class="btn blue">
-                        <span>Upload Courses</span>
-                        <input type="file" name="courses_file" required>
-                    </div>
-                    <div class="file-path-wrapper">
-                        <input class="file-path validate" type="text" placeholder="Upload courses file">
-                    </div>
-                </div>
-                <!-- Faculty Preferences File Upload -->
-                <div class="file-field input-field">
-                    <div class="btn blue">
-                        <span>Upload Faculty Preferences</span>
-                        <input type="file" name="faculty_preferences_file" required>
-                    </div>
-                    <div class="file-path-wrapper">
-                        <input class="file-path validate" type="text" placeholder="Upload faculty preferences file">
-                    </div>
-                </div>
-                <!-- Student Courses File Upload -->
-                <div class="file-field input-field">
-                    <div class="btn blue">
-                        <span>Upload Student Courses</span>
-                        <input type="file" name="student_courses_file" required>
-                    </div>
-                    <div class="file-path-wrapper">
-                        <input class="file-path validate" type="text" placeholder="Upload student courses file">
-                    </div>
-                </div>
-                <button class="btn waves-effect waves-light blue" type="submit" name="action">Submit<i class="material-icons right">send</i></button>
-            </form>
-        </div>
-    </main>
+  <main class="container">
+    <h4>Upload, Preview & Map Files</h4>
 
-    <footer class="page-footer blue">
-        <div class="container">
-            <div class="row">
-                <div class="col l6 s12">
-                    <h5 class="white-text">Useful Links</h5>
-                    <p class="grey-text text-lighten-4">Quick access to various administrative functions.</p>
-                </div>
-                <div class="col l4 offset-l2 s12">
-                    <h5 class="white-text">Resources</h5>
-                    <ul>
-                        <li><a class="grey-text text-lighten-3" href="#!">Help</a></li>
-                        <li><a class="grey-text text-lighten-3" href="#!">Support</a></li>
-                        <li><a class="grey-text text-lighten-3" href="#!">Contact</a></li>
-                    </ul>
-                </div>
-            </div>
+    <!-- Courses Section -->
+    <div class="card-panel">
+      <h5>Courses File</h5>
+      <input type="file" id="coursesInput" accept=".csv,.xlsx">
+      <button class="btn blue" onclick="previewFile('courses')">Preview & Map</button>
+      <div id="coursesError" class="red-text"></div>
+      <table class="striped">
+        <thead><tr id="coursesHeader"></tr></thead>
+        <tbody id="coursesBody"></tbody>
+      </table>
+      <div id="coursesMapping"></div>
+    </div>
+
+    <!-- Faculty Section -->
+    <div class="card-panel">
+      <h5>Faculty Preferences File</h5>
+      <input type="file" id="facultyInput" accept=".csv,.xlsx">
+      <button class="btn blue" onclick="previewFile('faculty')">Preview & Map</button>
+      <div id="facultyError" class="red-text"></div>
+      <table class="striped">
+        <thead><tr id="facultyHeader"></tr></thead>
+        <tbody id="facultyBody"></tbody>
+      </table>
+      <div id="facultyMapping"></div>
+    </div>
+
+    <!-- Students Section -->
+    <div class="card-panel">
+      <h5>Student Courses File</h5>
+      <input type="file" id="studentsInput" accept=".csv,.xlsx">
+      <button class="btn blue" onclick="previewFile('students')">Preview & Map</button>
+      <div id="studentsError" class="red-text"></div>
+      <table class="striped">
+        <thead><tr id="studentsHeader"></tr></thead>
+        <tbody id="studentsBody"></tbody>
+      </table>
+      <div id="studentsMapping"></div>
+    </div>
+
+    <!-- Final Submit All -->
+    <div class="section center">
+      <button class="btn green" onclick="submitAll()">Submit All Files</button>
+    </div>
+  </main>
+
+  <footer class="page-footer blue">
+    <div class="container">
+      <div class="row">
+        <div class="col l6 s12">
+          <h5 class="white-text">Timetable Admin</h5>
+          <p class="grey-text text-lighten-4">Manage your academic scheduling efficiently.</p>
         </div>
-    </footer>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var elems = document.querySelectorAll('.dropdown-trigger');
-            M.Dropdown.init(elems);
-            var elems = document.querySelectorAll('.timepicker');
-            M.Timepicker.init(elems);
-        });
-    </script>
+        <div class="col l4 offset-l2 s12">
+          <h5 class="white-text">Resources</h5>
+          <ul>
+            <li><a class="grey-text text-lighten-3" href="#!">Support</a></li>
+            <li><a class="grey-text text-lighten-3" href="#!">Documentation</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/static/script.js"></script>
 </body>
-</html> 
+</html>
