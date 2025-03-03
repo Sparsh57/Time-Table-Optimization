@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Organization</title>
+
+    <!-- Materialize CSS and Google Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
+        /* General styling */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+        }
+
+        /* Header Styling */
+        nav {
+            background-color: #1a237e;
+        }
+
+        nav a.brand-logo {
+            font-size: 1.5rem;
+            margin-left: 10px;
+        }
+
+        /* Container Styling */
+        .container {
+            margin-top: 50px;
+            max-width: 600px;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        h3 {
+            text-align: center;
+            color: #1a237e;
+        }
+
+        .input-field label {
+            color: #1a237e;
+        }
+
+        .btn-submit {
+            background-color: #1a237e;
+            color: white;
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .btn-submit:hover {
+            box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .note {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #777;
+            margin-top: 10px;
+        }
+
+        /* Footer Styling */
+        footer {
+            background-color: #1a237e;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-wrapper">
+            <a href="/" class="brand-logo left">Timetable</a>
+        </div>
+    </nav>
+
+    <!-- Register Organization Form -->
+    <div class="container">
+        <h3>Register Your Organization</h3>
+
+        <form action="/register-organization" method="POST">
+
+            <!-- User Email (Auto-filled, Read-only) -->
+            <div class="input-field">
+                <input type="email" id="email" name="email" value="{{ user.email }}" readonly>
+                <label for="email">Your Email</label>
+            </div>
+
+            <!-- Extracted Domain (Auto-filled, Read-only) -->
+            <div class="input-field">
+                <input type="text" id="domain" name="domain" value="{{ user.email.split('@')[-1] }}" readonly>
+                <label for="domain">Detected Domain</label>
+            </div>
+
+            <!-- Organization Name -->
+            <div class="input-field">
+                <input type="text" id="org_name" name="org_name" required>
+                <label for="org_name">Organization Name</label>
+            </div>
+
+            <!-- Allowed Email Extensions -->
+            <div class="input-field">
+                <input type="text" id="allowed_domains" name="allowed_domains" value="{{ user.email.split('@')[-1] }}" required>
+                <label for="allowed_domains">Allowed Email Domains (comma-separated)</label>
+            </div>
+
+            <!-- User Name -->
+            <div class="input-field">
+                <input type="text" id="user_name" name="user_name" required>
+                <label for="user_name">Your Name</label>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn-submit">Register Organization</button>
+        </form>
+
+        <p class="note">Once registered, you will be set as the admin of this organization.</p>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        © 2024 Timetable System. All rights reserved.
+    </footer>
+
+    <!-- Materialize JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
+</body>
+</html>
