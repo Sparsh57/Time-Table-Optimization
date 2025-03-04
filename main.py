@@ -12,14 +12,19 @@ from io import BytesIO
 import uvicorn
 import json
 from typing import Optional
+import logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+from collections import defaultdict
+from typing import List
 
-# -------------------- Import your local modules --------------------
-# For demonstration, these are placeholders. Update them with your own modules.
+# -------------------- Importing your local modules --------------------
 from create_database_tables import get_or_create_org_database  # Make sure this creates a Users table with 'role'
-from src.database_management.Users import insert_user_data, add_admin
+from src.database_management.Users import insert_user_data, add_admin, fetch_user_data,fetch_professor_emails, fetch_admin_emails
 from src.database_management.Courses import insert_courses_professors
-from src.database_management.busy_slot import insert_professor_busy_slots
+from src.database_management.busy_slot import insert_professor_busy_slots, insert_professor_busy_slots_from_ui,fetch_user_id
 from src.database_management.course_stud import insert_course_students
+from src.database_management.Slot_info import fetch_slots
 from src.database_management.schedule import (
     timetable_made,
     fetch_schedule_data,
@@ -361,7 +366,10 @@ async def dashboard(request: Request):
         if timetable_made(db_path):
             return RedirectResponse(url="/timetable")
         else:
-            return RedirectResponse(url="/get_admin_data")
+            if fetch_slots(db_path) == []:
+                return RedirectResponse(url="/select_timeslot")
+            else:
+                return RedirectResponse(url="/get_admin_data")
     else:
         # Non-admin logic (e.g., a Student)
         if not timetable_made(db_path):
@@ -579,6 +587,43 @@ async def map_columns(mapping: dict = Body(...)):
     """
     return {"message": "Column mapping received", "mapping": mapping}
 
+
+@app.get("/professor_slots")
+async def choose_busy_slots(request: Request):
+    logger.debug("here")
+    user_info = request.session.get("user")
+    email = user_info.get("email")
+    db_path = request.session.get("db_path")
+    prof_email_list = fetch_professor_emails(db_path)
+    admin_email_list = fetch_admin_emails(db_path)
+    if (email in prof_email_list) or (email in admin_email_list):
+        slots = fetch_slots(db_path)
+        slots_by_day = defaultdict(list)
+        for slot in slots:
+            slots_by_day[slot[1]].append({
+                "SlotID": slot[0],
+                "StartTime": slot[2],
+                "EndTime": slot[3]
+            })
+        return templates.TemplateResponse("prof_busy_slot_selection.html", {"request": request, "slots_by_day": slots_by_day})
+    else:
+        return templates.TemplateResponse("access_denied.html", {"request": request})
+
+@app.post("/submit_slots")
+async def submit_slots(request: Request, slots: List[int] = Form(...), status: List[str] = Form(...)):
+    db_path = request.session.get("db_path")
+    user_info = request.session.get("user")
+    professor_id = fetch_user_id(user_info.get("email"), db_path)
+    if professor_id:
+        busy_slots = [slot for slot, stat in zip(slots, status) if stat == "Busy"]
+        insert_professor_busy_slots_from_ui(busy_slots, professor_id, db_path)
+        return RedirectResponse(url="/", status_code=303)
+    else:
+        return {"status": "error", "message": "User not found"}
+                
+@app.get("/test")
+async def testing(request: Request):
+    return templates.TemplateResponse("test.html", {"request": request})
 # -------------------- Main --------------------
 if __name__ == "__main__":
     # Run with:  uvicorn main:app --reload  (or python main.py)

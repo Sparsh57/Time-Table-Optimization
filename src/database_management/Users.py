@@ -56,6 +56,40 @@ def fetch_user_data(db_path):
     finally:
         db.close()
 
+def fetch_professor_emails(db_path):
+    """
+    Fetches email addresses of professors from the SQLite database.
+
+    :return: List of email addresses.
+    """
+    db = DatabaseConnection.get_connection(db_path)
+    try:
+        query = """
+        SELECT Email FROM Users
+        WHERE Role = 'Professor';
+        """
+        result = db.fetch_query(query)
+        emails = [row[0] for row in result]  # Assuming result is a list of tuples
+        return emails
+    finally:
+        db.close()
+def fetch_admin_emails(db_path):
+    """
+    Fetches email addresses of admins from the SQLite database.
+
+    :return: List of email addresses.
+    """
+    db = DatabaseConnection.get_connection(db_path)
+    try:
+        query = """
+        SELECT Email FROM Users
+        WHERE Role = 'Admin';
+        """
+        result = db.fetch_query(query)
+        emails = [row[0] for row in result]  # Assuming result is a list of tuples
+        return emails
+    finally:
+        db.close()
 
 def add_admin(user_name: str, email:str, db_path: str, role: str):
     """

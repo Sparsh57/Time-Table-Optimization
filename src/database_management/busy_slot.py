@@ -100,3 +100,43 @@ def fetch_professor_busy_slots(db_path):
         return []
     finally:
         db.close()
+
+def insert_professor_busy_slots_from_ui(slots, professor_id, db_path):
+    """
+    Inserts professor busy slots into the database.
+
+    :param slots: List of SlotIDs.
+    :param professor_id: Professor's UserID.
+    """
+    db = DatabaseConnection.get_connection(db_path)
+    insert_query = """
+        INSERT INTO Professor_BusySlots (ProfessorID, SlotID)
+        VALUES (?, ?)
+    """
+    for slot in slots:
+        try:
+            db.execute_query(insert_query, (professor_id, slot))
+        except Exception as e:
+            print(f"Error inserting slot {slot}: {e}")
+    db.close()
+
+def fetch_user_id(email, db_path):
+    """
+    Fetches the UserID of a professor based on email.
+
+    :param email: Email of the professor.
+    :param db_path: Path to the SQLite database.
+    :return: UserID of the professor.
+    """
+    db = DatabaseConnection.get_connection(db_path)
+    try:
+        query = """
+        SELECT UserID FROM Users
+        WHERE Email = ?;
+        """
+        result = db.fetch_query(query, (email,))
+        if result:
+            return result[0][0]
+        return None
+    finally:
+        db.close()

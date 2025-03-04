@@ -45,15 +45,18 @@ def insert_time_slots(input_data, db_path):
 
     db.close()  # Close the database connection
 
-def fetch_slot_data():
+def fetch_slots(db_path):
     """
-    Fetches all time slot data from the SQLite database.
+    Fetches slot data from the SQLite database.
 
-    :return: List of tuples containing time slot data.
+    :return: List of tuples containing slot data.
     """
-    db = DatabaseConnection().get_connection()
+    db = DatabaseConnection.get_connection(db_path)
     try:
-        query = "SELECT * FROM Slots"
+        query = """
+        SELECT SlotID, Day, StartTime, EndTime FROM Slots
+        ORDER BY Day;
+        """
         result = db.fetch_query(query)
         return result
     finally:
