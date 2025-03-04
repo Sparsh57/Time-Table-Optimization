@@ -21,7 +21,7 @@ body {
 
 body {
   font-family: Lato;
-  background-color: #fcfcfc; }
+  background-color: #E1EBEE; }
 
 :focus {
   outline: none; }
@@ -33,7 +33,7 @@ body {
   width: 80%; }
 
 nav {
-  background-color: #714AB4;
+  background-color: #4B9CD3;
   height: 80px;
   line-height: 80px; }
   nav .button-collapse i {
