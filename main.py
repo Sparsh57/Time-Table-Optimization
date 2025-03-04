@@ -371,22 +371,25 @@ async def dashboard(request: Request):
             else:
                 return RedirectResponse(url="/get_admin_data")
     else:
-        # Non-admin logic (e.g., a Student)
-        if not timetable_made(db_path):
-            # If no timetable is generated yet, user can’t see schedule
-            # Just redirect them home or show a message
-            return RedirectResponse(url="/home")
+        if user_role == "Professor":
+            return RedirectResponse(url="/professor_slots")
+        else:
+            # Non-admin logic (e.g., a Student)
+            if not timetable_made(db_path):
+                # If no timetable is generated yet, user can’t see schedule
+                # Just redirect them home or show a message
+                return RedirectResponse(url="/home")
 
-        # If you store the student’s roll_number in session or DB, retrieve it:
-        # (Below is just an example if you have user_info["roll_number"])
-        roll_number = user_info.get("roll_number")
-        if not roll_number:
-            # If for some reason you don't store roll_number in session,
-            # you might ask them to enter it or handle differently
-            return RedirectResponse(url="/get_role_no")
+            # If you store the student’s roll_number in session or DB, retrieve it:
+            # (Below is just an example if you have user_info["roll_number"])
+            roll_number = user_info.get("roll_number")
+            if not roll_number:
+                # If for some reason you don't store roll_number in session,
+                # you might ask them to enter it or handle differently
+                return RedirectResponse(url="/get_role_no")
 
-        # Show the student's personal schedule
-        return RedirectResponse(url=f"/timetable/{roll_number}")
+            # Show the student's personal schedule
+            return RedirectResponse(url=f"/timetable/{roll_number}")
 
 
 @app.get("/get_role_no", response_class=HTMLResponse)
@@ -607,7 +610,7 @@ async def choose_busy_slots(request: Request):
             })
         return templates.TemplateResponse("prof_busy_slot_selection.html", {"request": request, "slots_by_day": slots_by_day})
     else:
-        return templates.TemplateResponse("access_denied.html", {"request": request})
+        raise HTTPException(status_code=403, detail="Access forbidden: Admins only.")
 
 @app.post("/submit_slots")
 async def submit_slots(request: Request, slots: List[int] = Form(...), status: List[str] = Form(...)):
