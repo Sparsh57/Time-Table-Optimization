@@ -4,26 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Professor Slot Selection</title>
+
+    <!-- Materialize CSS & Google Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
+            font-family: 'Poppins', sans-serif;
             background-color: #f4f4f4;
+            margin: 0;
+        }
+        nav {
+            background-color: #1a237e;
+        }
+        nav .brand-logo {
+            font-size: 1.5rem;
+            margin-left: 10px;
         }
         .container {
             width: 80%;
             margin: auto;
             overflow: hidden;
+            padding-bottom: 50px;
         }
-        h1 {
-            text-align: center;
-            color: #333;
+        h1, h2 {
+            color: #1a237e;
         }
         .day-title {
             font-size: 1.5em;
             margin-top: 20px;
-            color: #555;
         }
         .slot {
             display: flex;
@@ -49,7 +59,7 @@
         }
         .submit-button {
             padding: 10px 20px;
-            background-color: blue;
+            background-color: #1a237e;
             color: white;
             border: none;
             cursor: pointer;
@@ -61,8 +71,20 @@
     </style>
 </head>
 <body>
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-wrapper">
+            <a href="/" class="brand-logo left">Timetable</a>
+            <ul class="right hide-on-med-and-down">
+                <li><a href="/dashboard">Dashboard</a></li>
+                <li><a href="/logout">Logout</a></li>
+                <li><a href="/select_timeslot">Select Timeslots</a></li>
+            </ul>
+        </div>
+    </nav>
+
     <div class="container">
-        <h1>Professor Slot Selection</h1>
+        <h1 class="center-align">Professor Slot Selection</h1>
         <form id="slotForm" method="post" action="/submit_slots">
             {% for day, slots in slots_by_day.items() %}
             <div class="day">
@@ -94,5 +116,8 @@
             }
         }
     </script>
+
+    <!-- Materialize JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 </body>
 </html>
