@@ -7,8 +7,8 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="/static/main.css" rel="stylesheet">
     <title>Timetable Dashboard</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <style>
         body {
             display: flex;
@@ -72,26 +72,10 @@
             height: 130px;
         }
     </style>
-    <script>
-        function redirectToTimetable(event) {
-            event.preventDefault();
-            const rollNumber = document.getElementById('rollNumber').value;
-            window.location.href = `/timetable/${rollNumber}`;
-        }
-        document.getElementById('download-csv').onclick = function() {
-            window.location.href = '/download-timetable';
-        };
-        document.getElementById('get-data').onclick = function() {
-            window.location.href = '/get_admin_data';
-        };
-        document.getElementById('send-schedule').onclick = function() {
-            window.location.href = '/get_role_no';
-        };
-    </script>
 </head>
 <body>
     <header>
-        <nav class="nav-wrapper indigo darken-4">
+        <nav class="nav-wrapper">
             <div class="container">
                 <a href="/" class="brand-logo">Timetable</a>
                 <ul class="right hide-on-med-and-down">
@@ -105,8 +89,8 @@
 
     <div class="container">
         <h4 class="header">Weekly Timetable</h4>
-        <div class="row">
-            <button id="download-csv" class="btn waves-effect waves-light tooltipped" data-position="left">
+        <div class="row center-align">
+            <button id="download-csv" class="btn waves-effect waves-light">
                 Download CSV
                 <i class="material-icons right">downloading</i>
             </button>
@@ -115,37 +99,53 @@
                 <i class="material-icons right">post_add</i>
             </button>
         </div>
-        <div class="row s8">
-            <div class="col s2"></div>
-            <div class="col">
-                <form onsubmit="redirectToTimetable(event)">
-                    <div class="input-field">
+        <div class="row">
+            <form onsubmit="redirectToTimetable(event)" class="col s12">
+                <div class="row">
+                    <div class="input-field col s6 offset-s3">
                         <input type="text" id="rollNumber" name="rollNumber" required>
                         <label for="rollNumber">Roll Number</label>
                     </div>
+                </div>
+                <div class="row center-align">
                     <button class="btn waves-effect waves-light" type="submit">Submit</button>
-                </form>
-            </div>
+                </div>
+            </form>
         </div>
         <div class="row spacer"></div>
+    </div>
 
-        <footer class="page-footer">
-            <div class="container">
-                <div class="row">
-                    <div class="col l6 s12">
-                        <h5 class="white-text">About the Timetable System</h5>
-                        <p class="grey-text text-lighten-4">Efficiently manage and view academic schedules with our advanced system.</p>
-                    </div>
-                    <div class="col l4 offset-l2 s12">
-                        <h5 class="white-text">Quick Links</h5>
-                        <ul>
-                            <li><a href="#!">Help</a></li>
-                            <li><a href="#!">Contact</a></li>
-                            <li><a href="#!">Suggestions</a></li>
-                        </ul>
-                    </div>
+    <footer class="page-footer">
+        <div class="container">
+            <div class="row">
+                <div class="col l6 s12">
+                    <h5 class="white-text">About the Timetable System</h5>
+                    <p class="grey-text text-lighten-4">Efficiently manage and view academic schedules with our advanced system.</p>
+                </div>
+                <div class="col l4 offset-l2 s12">
+                    <h5 class="white-text">Quick Links</h5>
+                    <ul>
+                        <li><a class="grey-text text-lighten-3" href="#!">Help</a></li>
+                        <li><a class="grey-text text-lighten-3" href="#!">Contact</a></li>
+                        <li><a class="grey-text text-lighten-3" href="#!">Suggestions</a></li>
+                    </ul>
                 </div>
             </div>
-        </footer> 
+        </div>
+    </footer>
+
+    <script>
+        function redirectToTimetable(event) {
+            event.preventDefault();
+            const rollNumber = document.getElementById('rollNumber').value;
+            window.location.href = `/timetable/${rollNumber}`;
+        }
+        document.getElementById('download-csv').onclick = function() {
+            window.location.href = '/download-timetable';
+        };
+        document.getElementById('get-data').onclick = function() {
+            window.location.href = '/get_admin_data';
+        };
+    </script>
 </body>
 </html>
