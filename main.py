@@ -536,6 +536,7 @@ async def show_student_timetable(request: Request, roll_number: str):
     user_roll_in_session = user_info.get("roll_number")
 
     schedule_data = get_student_schedule(roll_number, db_path)
+    print("Schedule Data:", schedule_data)  # Add this line for debugging
     return templates.TemplateResponse(
         "student_timetable.html",
         {
@@ -545,6 +546,7 @@ async def show_student_timetable(request: Request, roll_number: str):
             "roll_number": roll_number
         }
     )
+
 
 
 @app.post("/upload/")

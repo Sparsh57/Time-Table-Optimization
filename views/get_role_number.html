@@ -86,7 +86,8 @@
         function redirectToTimetable(event) {
             event.preventDefault();
             const rollNumber = document.getElementById('rollNumber').value;
-            window.location.href = /timetable/${rollNumber};
+            const url = `http://localhost:4000/timetable/${rollNumber}`;
+            window.location.href = url;
         }
         document.getElementById('download-csv').onclick = function() {
             window.location.href = '/download-timetable';
@@ -120,10 +121,6 @@
                 Download CSV
                 <i class="material-icons right">downloading</i>
             </button>
-            <button id="get-data" class="btn waves-effect waves-light tooltipped" data-position="left" name="Generate new table">
-                Generate New Schedule
-                <i class="material-icons right">post_add</i>
-            </button>
             
         </div>
         <div class="row s8">
@@ -141,25 +138,6 @@
         <div class="row"></div>
         <div class="row"></div>
         <div class="row spacer"></div>
-        
-        <footer class="page-footer indigo darken-3">
-            <div class="container">
-                <div class="row">
-                    <div class="col l6 s12">
-                        <h5 class="white-text">About the Timetable System</h5>
-                        <p class="grey-text text-lighten-4">Efficiently manage and view academic schedules with our advanced system.</p>
-                    </div>
-                    <div class="col l4 offset-l2 s12">
-                        <h5 class="white-text">Quick Links</h5>
-                        <ul>
-                            <li><a class="grey-text text-lighten-3" href="#!">Help</a></li>
-                            <li><a class="grey-text text-lighten-3" href="#!">Contact</a></li>
-                            <li><a class="grey-text text-lighten-3" href="#!">Suggestions</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </footer> 
     </div>
     <script>
         document.getElementById('download-csv').onclick = function() {
