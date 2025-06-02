@@ -1,5 +1,4 @@
 import os
-import sqlite3
 from fastapi import FastAPI, Request, Form, UploadFile, File, HTTPException, status, Depends, Form, Body
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -19,7 +18,7 @@ from collections import defaultdict
 from typing import List
 
 # -------------------- Importing your local modules --------------------
-from create_database_tables import get_or_create_org_database  # Make sure this creates a Users table with 'role'
+from create_database_tables import get_or_create_org_database, init_meta_database
 from src.database_management.Users import insert_user_data, add_admin, fetch_user_data,fetch_professor_emails, fetch_admin_emails
 from src.database_management.Courses import insert_courses_professors
 from src.database_management.busy_slot import insert_professor_busy_slots, insert_professor_busy_slots_from_ui,fetch_user_id
@@ -35,6 +34,12 @@ from src.database_management.schedule import (
 from src.database_management.Slot_info import insert_time_slots
 from src.database_management.truncate_db import truncate_detail
 from src.main_algorithm import gen_timetable
+from src.database_management.dbconnection import (
+    get_organization_by_domain, 
+    get_organization_by_name, 
+    get_db_session
+)
+from src.database_management.models import User
 
 load_dotenv()
 
@@ -42,6 +47,20 @@ client_id = os.getenv("CLIENT_ID")
 client_secret = os.getenv("CLIENT_SECRET")
 
 app = FastAPI()
+
+# -------------------- Initialize meta-database on startup --------------------
+@app.on_event("startup")
+async def startup_event():
+    """Initialize the meta-database only if it does not already exist."""
+    try:
+        meta_db_path = "organizations_meta.db"
+        if not os.path.exists(meta_db_path):
+            init_meta_database()
+            logger.info("Meta-database initialized successfully")
+        else:
+            logger.info("Meta-database already exists, skipping initialization")
+    except Exception as e:
+        logger.error(f"Failed to initialize meta-database: {e}")
 
 # -------------------- Middleware and static files --------------------
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY"))
@@ -54,16 +73,12 @@ templates = Jinja2Templates(directory="views")
 # -------------------- Utility / DB Helpers --------------------
 def get_db_path_for_org(org_name: str) -> str:
     """
-    Look up the organization's db_path from the meta-database (organizations_meta.db).
+    Look up the organization's db_path from the meta-database using SQLAlchemy.
     """
     try:
-        conn = sqlite3.connect("organizations_meta.db")
-        cursor = conn.cursor()
-        cursor.execute("SELECT DatabasePath FROM Organizations WHERE OrgName = ?", (org_name,))
-        row = cursor.fetchone()
-        conn.close()
-        if row:
-            return row[0]
+        org = get_organization_by_name(org_name)
+        if org:
+            return org.DatabasePath
         else:
             return None
     except Exception as e:
@@ -72,21 +87,17 @@ def get_db_path_for_org(org_name: str) -> str:
 
 def fetch_user_role_from_org_db(email: str, db_path: str) -> str:
     """
-    Fetch the user's role from the organization's DB by email.
+    Fetch the user's role from the organization's DB by email using SQLAlchemy.
     Returns the role or 'Student' if not found.
     """
     try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        cursor.execute("SELECT role FROM Users WHERE email=?", (email,))
-        row = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        if row:
-            return row[0]
-        else:
-            # If user not in table, you might default them to 'Student'
-            return "Student"
+        with get_db_session(db_path) as session:
+            user = session.query(User).filter_by(Email=email).first()
+            if user:
+                return user.Role
+            else:
+                # If user not in table, default them to 'Student'
+                return "Student"
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Error fetching user role: {exc}")
 
@@ -153,25 +164,24 @@ async def google_callback(request: Request, code: str):
     org_found = None
     db_path = None
 
-    # -- Check if user_email matches any org domains
+    # -- Check if user_email matches any org domains using SQLAlchemy
     try:
-        conn = sqlite3.connect("organizations_meta.db")
-        cursor = conn.cursor()
-        cursor.execute("SELECT OrgName, OrgDomains, DatabasePath FROM Organizations")
-        rows = cursor.fetchall()
-        conn.close()
+        # Ensure meta-database is initialized
+        init_meta_database()
+        
+        # Find organization by email domain using SQLAlchemy
+        org = get_organization_by_domain(user_email)
+        if org:
+            org_found = org.OrgName
+            db_path = org.DatabasePath
+            
     except Exception as e:
-        return templates.TemplateResponse("error.html", {"request": request, "error": str(e)}, status_code=500)
-
-    for org_name, org_domains, path in rows:
-        allowed_domains = [d.strip() for d in org_domains.split(",")]
-        for domain in allowed_domains:
-            if user_email.endswith("@" + domain):
-                org_found = org_name
-                db_path = path
-                break
-        if org_found:
-            break
+        logger.error(f"Error accessing meta-database: {e}")
+        # Return a simple error response instead of using a template
+        return JSONResponse(
+            status_code=500, 
+            content={"error": f"Database error: {str(e)}"}
+        )
 
     if org_found and db_path:
         # -- Fetch the user's role from the org DB
@@ -243,8 +253,6 @@ async def register_organization(
             db_path=db_path
         )
 
-        # Update meta-database (organizations_meta.db) if needed, or ensure it's already done in get_or_create_org_database
-
         # Store in session
         request.session["db_path"] = db_path
         request.session["user"] = {
@@ -255,7 +263,11 @@ async def register_organization(
 
         return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
     except Exception as e:
-        return templates.TemplateResponse("error.html", {"request": request, "error": str(e)}, status_code=500)
+        # Return a simple error response instead of using a template
+        return JSONResponse(
+            status_code=500, 
+            content={"error": f"Registration error: {str(e)}"}
+        )
 
 
 # -------------------- Admin-Only Data Insertion / Upload Endpoints --------------------
@@ -376,11 +388,11 @@ async def dashboard(request: Request):
         else:
             # Non-admin logic (e.g., a Student)
             if not timetable_made(db_path):
-                # If no timetable is generated yet, user can’t see schedule
+                # If no timetable is generated yet, user can't see schedule
                 # Just redirect them home or show a message
                 return RedirectResponse(url="/home")
 
-            # If you store the student’s roll_number in session or DB, retrieve it:
+            # If you store the student's roll_number in session or DB, retrieve it:
             # (Below is just an example if you have user_info["roll_number"])
             roll_number = user_info.get("roll_number")
             if not roll_number:

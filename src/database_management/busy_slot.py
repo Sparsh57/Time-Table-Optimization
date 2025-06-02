@@ -1,142 +1,143 @@
-from .databse_connection import DatabaseConnection
+from .dbconnection import get_db_session
+from .models import User, Slot, ProfessorBusySlot
+from sqlalchemy.exc import SQLAlchemyError
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def insert_professor_busy_slots(file, db_path):
     """
-    Inserts professor busy slots from a CSV file into a database.
+    Inserts professor busy slots from a CSV file into database using SQLAlchemy.
 
     :param file: The CSV file containing faculty preferences.
+    :param db_path: Path to the database file.
     """
-    df_courses = file  # Read the CSV into a DataFrame
+    df_courses = file
+    logger.info(f"Starting busy slot insertion for database: {db_path}")
 
-    # Initialize the database connection
-    db = DatabaseConnection.get_connection(db_path)
-
-    # Fetch the user information (UserID and Email) for professors
-    fetch_user = db.fetch_query("SELECT UserID, Email FROM Users WHERE Role='Professor'")
-    # Create a dictionary mapping emails (values) to UserIDs (keys)
-    dict_user = {value: key for key, value in fetch_user}
-
-    # Fetch available slots (SlotID, Day, StartTime)
-    fetch_slot = db.fetch_query("SELECT SlotID, Day, StartTime FROM Slots")
-    # Create a dictionary mapping day and time (concatenated as string) to SlotID
-    dict_slot = {days + " " + start: key for key, days, start in fetch_slot}
-
-    # Create a copy of relevant columns from the dataframe (Name and Busy Slot)
-    df_merged = df_courses[['Name', 'Busy Slot']].copy()
-    df_merged['ProfessorID'] = np.nan  # Initialize ProfessorID column as NaN
-    df_merged['SlotID'] = np.nan  # Initialize SlotID column as NaN
-
-    # Loop through each professor's name and assign their corresponding UserID from the dictionary
-    for name in df_merged["Name"]:
+    with get_db_session(db_path) as session:
         try:
-            df_merged.loc[df_merged["Name"] == name, "ProfessorID"] = int(dict_user[name])
-        except KeyError:
-            continue  # If the professor's name is not found in the dictionary, skip
+            # Fetch professors and slots
+            professors = session.query(User).filter_by(Role='Professor').all()
+            slots = session.query(Slot).all()
+            
+            # Create dictionaries for mapping
+            prof_dict = {prof.Email: prof.UserID for prof in professors}
+            slot_dict = {f"{slot.Day} {slot.StartTime}": slot.SlotID for slot in slots}
 
-    # Loop through each busy slot and assign corresponding SlotID from the dictionary
-    for time in df_merged["Busy Slot"]:
-        try:
-            df_merged.loc[df_merged["Busy Slot"] == time, "SlotID"] = int(dict_slot[time])
-        except KeyError:
-            continue  # If the slot is not found in the dictionary, skip
+            # Process the data
+            df_merged = df_courses[['Name', 'Busy Slot']].copy()
+            
+            for index, row in df_merged.iterrows():
+                try:
+                    prof_id = prof_dict.get(row['Name'])
+                    slot_id = slot_dict.get(row['Busy Slot'])
+                    
+                    if prof_id and slot_id:
+                        # Check if busy slot already exists
+                        existing = session.query(ProfessorBusySlot).filter_by(
+                            ProfessorID=prof_id, SlotID=slot_id).first()
+                        
+                        if not existing:
+                            new_busy_slot = ProfessorBusySlot(
+                                ProfessorID=prof_id,
+                                SlotID=slot_id
+                            )
+                            session.add(new_busy_slot)
+                            
+                except Exception as e:
+                    logger.error(f"Error processing row {index}: {e}")
 
-    # Drop rows where either ProfessorID or SlotID is missing (NaN values)
-    df_merged.dropna(subset=['ProfessorID', 'SlotID'], inplace=True)
-    df_merged = df_merged[['ProfessorID', 'SlotID']]  # Keep only relevant columns
+            session.commit()
+            logger.info("Professor busy slots inserted successfully")
 
-    # Convert ProfessorID and SlotID to integers
-    df_merged['ProfessorID'] = df_merged['ProfessorID'].astype(int)
-    df_merged['SlotID'] = df_merged['SlotID'].astype(int)
-
-    # SQL query to insert data into the Professor_BusySlots table
-    insert_query = """
-        INSERT INTO Professor_BusySlots (ProfessorID, SlotID)
-        VALUES (?, ?)
-    """
-
-    # Iterate over each row in the DataFrame and insert the data into the database
-    for row in df_merged.itertuples(index=False, name=None):
-        try:
-            db.execute_query(insert_query, (row[0], row[1]))  # Insert ProfessorID and SlotID into the table
-        except Exception as e:
-            print(f"Error inserting row {row}: {e}")  # Print error if insertion fails
-
-    # Close the database connection once all operations are complete
-    db.close()
+        except SQLAlchemyError as e:
+            session.rollback()
+            logger.error(f"Error inserting busy slots: {e}")
+            raise
 
 
 def empty_professor_busy_slots(db_path):
     """
-    Empties all records from the Professor_BusySlots table.
+    Empties all records from the Professor_BusySlots table using SQLAlchemy.
+    
+    :param db_path: Path to the database file.
     """
-    db = DatabaseConnection.get_connection(db_path)
-    delete_query = "DELETE FROM Professor_BusySlots"
-    try:
-        db.execute_query(delete_query)
-        print("All records deleted successfully from Professor_BusySlots.")
-    except Exception as e:
-        print(f"Error while deleting records: {e}")
-    finally:
-        db.close()
+    with get_db_session(db_path) as session:
+        try:
+            deleted_count = session.query(ProfessorBusySlot).delete()
+            session.commit()
+            logger.info(f"Deleted {deleted_count} professor busy slot records")
+            print(f"All {deleted_count} records deleted successfully from Professor_BusySlots.")
+        except SQLAlchemyError as e:
+            session.rollback()
+            logger.error(f"Error deleting busy slots: {e}")
+            raise
 
 
 def fetch_professor_busy_slots(db_path):
     """
-    Fetches all records from the Professor_BusySlots table.
+    Fetches all records from the Professor_BusySlots table using SQLAlchemy.
 
-    Returns:
-    list: List of records from the Professor_BusySlots table.
+    :param db_path: Path to the database file.
+    :return: List of tuples (ProfessorID, SlotID).
     """
-    db = DatabaseConnection.get_connection(db_path)
-    query = "SELECT * FROM Professor_BusySlots"
-    try:
-        result = db.fetch_query(query)
-        print(result)
-        return result
-    except Exception as e:
-        print(f"Error fetching records: {e}")
-        return []
-    finally:
-        db.close()
+    with get_db_session(db_path) as session:
+        try:
+            busy_slots = session.query(ProfessorBusySlot).all()
+            result = [(bs.ProfessorID, bs.SlotID) for bs in busy_slots]
+            print(result)
+            return result
+        except SQLAlchemyError as e:
+            logger.error(f"Error fetching busy slots: {e}")
+            return []
+
 
 def insert_professor_busy_slots_from_ui(slots, professor_id, db_path):
     """
-    Inserts professor busy slots into the database.
+    Inserts professor busy slots into the database from UI input using SQLAlchemy.
 
     :param slots: List of SlotIDs.
     :param professor_id: Professor's UserID.
+    :param db_path: Path to the database file.
     """
-    db = DatabaseConnection.get_connection(db_path)
-    insert_query = """
-        INSERT INTO Professor_BusySlots (ProfessorID, SlotID)
-        VALUES (?, ?)
-    """
-    for slot in slots:
+    with get_db_session(db_path) as session:
         try:
-            db.execute_query(insert_query, (professor_id, slot))
-        except Exception as e:
-            print(f"Error inserting slot {slot}: {e}")
-    db.close()
+            for slot_id in slots:
+                # Check if busy slot already exists
+                existing = session.query(ProfessorBusySlot).filter_by(
+                    ProfessorID=professor_id, SlotID=slot_id).first()
+                
+                if not existing:
+                    new_busy_slot = ProfessorBusySlot(
+                        ProfessorID=professor_id,
+                        SlotID=slot_id
+                    )
+                    session.add(new_busy_slot)
+                    
+            session.commit()
+            logger.info(f"Inserted busy slots for professor {professor_id}")
+            
+        except SQLAlchemyError as e:
+            session.rollback()
+            logger.error(f"Error inserting busy slots from UI: {e}")
+            raise
+
 
 def fetch_user_id(email, db_path):
     """
-    Fetches the UserID of a professor based on email.
+    Fetches the UserID of a professor based on email using SQLAlchemy.
 
     :param email: Email of the professor.
-    :param db_path: Path to the SQLite database.
-    :return: UserID of the professor.
+    :param db_path: Path to the database file.
+    :return: UserID of the professor or None.
     """
-    db = DatabaseConnection.get_connection(db_path)
-    try:
-        query = """
-        SELECT UserID FROM Users
-        WHERE Email = ?;
-        """
-        result = db.fetch_query(query, (email,))
-        if result:
-            return result[0][0]
-        return None
-    finally:
-        db.close()
+    with get_db_session(db_path) as session:
+        try:
+            user = session.query(User).filter_by(Email=email).first()
+            return user.UserID if user else None
+        except SQLAlchemyError as e:
+            logger.error(f"Error fetching user ID: {e}")
+            return None

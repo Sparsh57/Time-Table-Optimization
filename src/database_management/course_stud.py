@@ -1,83 +1,95 @@
-from .databse_connection import DatabaseConnection
+from .dbconnection import get_db_session
+from .models import User, Course, CourseStud
+from sqlalchemy.exc import SQLAlchemyError
 import pandas as pd
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def insert_course_students(file, db_path):
     """
-    Inserts student course enrollments from a CSV file into the SQLite database.
+    Inserts student course enrollments from a CSV file into the database using SQLAlchemy.
 
     :param file: The CSV file containing student registration data.
+    :param db_path: Path to the database file.
     """
-
-    # Read the CSV into a DataFrame
     df_courses = file
-    print(db_path)
-    # Initialize the database connection
-    db = DatabaseConnection.get_connection(db_path)
+    print(f"Inserting course students into database: {db_path}")
 
-    # Fetch user information (UserID and Email) for students
-    fetch_user = db.fetch_query("SELECT UserID, Email FROM Users WHERE Role='Student'")
-    # Create a dictionary mapping emails (values) to UserIDs (keys)
-    dict_user = {value: key for key, value in fetch_user}
-
-    # Fetch available courses (CourseID and CourseName)
-    fetch_course = db.fetch_query("SELECT CourseID, CourseName FROM Courses")
-    # Create a dictionary mapping course names (values) to CourseIDs (keys)
-    dict_course = {value: key for key, value in fetch_course}
-
-    # Create a new DataFrame with relevant columns (G CODE and Roll No.)
-    df_merged = df_courses[['G CODE', 'Roll No.', 'Sections']].copy()
-    df_merged['UserID'] = np.nan  # Initialize UserID column as NaN
-    df_merged['CourseID'] = np.nan  # Initialize CourseID column as NaN
-
-    # Map Roll No. to UserID using the dict_user dictionary
-    for roll_no in df_merged["Roll No."]:
+    with get_db_session(db_path) as session:
         try:
-            df_merged.loc[df_merged["Roll No."] == roll_no, "UserID"] = int(dict_user[roll_no])
-        except KeyError:
-            continue  # Skip if Roll No. is not found in dict_user
+            # Fetch user information (UserID and Email) for students
+            students = session.query(User).filter_by(Role='Student').all()
+            student_dict = {student.Email: student.UserID for student in students}
 
-    # Map G CODE to CourseID using the dict_course dictionary
-    for index, row in df_merged.iterrows():
-        g_code = row["G CODE"]
-        section = row["Sections"]
+            # Fetch available courses (CourseID and CourseName)
+            courses = session.query(Course).all()
+            course_dict = {course.CourseName: course.CourseID for course in courses}
 
-        # Try removing the section part from the G CODE
-        try:
-            # Assuming the section is in parentheses like G CODE (Section)
-            course = g_code.replace(f"({section})", "").strip()
+            # Create a new DataFrame with relevant columns (G CODE and Roll No.)
+            df_merged = df_courses[['G CODE', 'Roll No.', 'Sections']].copy()
+            df_merged['UserID'] = np.nan
+            df_merged['CourseID'] = np.nan
 
-            # Debugging output
-            if course != g_code:
-                print(f"Original G CODE: {g_code}, Processed Course: {course}")
+            # Map Roll No. to UserID using the student_dict
+            for roll_no in df_merged["Roll No."]:
+                try:
+                    df_merged.loc[df_merged["Roll No."] == roll_no, "UserID"] = int(student_dict[roll_no])
+                except KeyError:
+                    continue
 
-            # Map the cleaned course to CourseID
-            df_merged.loc[index, "CourseID"] = int(dict_course[course])
+            # Map G CODE to CourseID using the course_dict
+            for index, row in df_merged.iterrows():
+                g_code = row["G CODE"]
+                section = row["Sections"]
 
-        except KeyError:
-            continue
+                try:
+                    # Assuming the section is in parentheses like G CODE (Section)
+                    course = g_code.replace(f"({section})", "").strip()
 
-    # Drop rows where either UserID or CourseID is missing (NaN values)
-    df_merged.dropna(subset=['UserID', 'CourseID'], inplace=True)
-    df_merged = df_merged[['UserID', 'CourseID']]  # Keep only relevant columns
+                    # Debugging output
+                    if course != g_code:
+                        print(f"Original G CODE: {g_code}, Processed Course: {course}")
 
-    # Convert UserID and CourseID to integers
-    df_merged['UserID'] = df_merged['UserID'].astype(int)
-    df_merged['CourseID'] = df_merged['CourseID'].astype(int)
+                    # Map the cleaned course to CourseID
+                    df_merged.loc[index, "CourseID"] = int(course_dict[course])
 
-    # SQL query to insert data into the Course_Stud table
-    insert_query = """
-        INSERT INTO Course_Stud (StudentID, CourseID)
-        VALUES (?, ?)
-    """
+                except KeyError:
+                    continue
 
-    # Iterate over each row in the DataFrame and insert the data into the database
-    for row in df_merged.itertuples(index=False, name=None):
-        try:
-            db.execute_query(insert_query, (row[0], row[1]))  # Insert UserID (StudentID) and CourseID
-        except Exception as e:
-            print(f"Error inserting row {row}: {e}")  # Print error if insertion fails
+            # Drop rows where either UserID or CourseID is missing (NaN values)
+            df_merged.dropna(subset=['UserID', 'CourseID'], inplace=True)
+            df_merged = df_merged[['UserID', 'CourseID']]
 
-    # Close the database connection once all operations are complete
-    db.close()
+            # Convert UserID and CourseID to integers
+            df_merged['UserID'] = df_merged['UserID'].astype(int)
+            df_merged['CourseID'] = df_merged['CourseID'].astype(int)
+
+            # Insert course-student relationships into the database
+            for row in df_merged.itertuples(index=False, name=None):
+                try:
+                    # Check if relationship already exists
+                    existing_enrollment = session.query(CourseStud).filter_by(
+                        StudentID=row[0], 
+                        CourseID=row[1]
+                    ).first()
+                    
+                    if not existing_enrollment:
+                        new_enrollment = CourseStud(
+                            StudentID=row[0],
+                            CourseID=row[1]
+                        )
+                        session.add(new_enrollment)
+                except Exception as e:
+                    logger.error(f"Error inserting enrollment for student {row[0]}, course {row[1]}: {e}")
+
+            session.commit()
+            logger.info(f"Inserted course-student enrollments into database")
+            print("Course-student enrollments inserted successfully.")
+
+        except SQLAlchemyError as e:
+            session.rollback()
+            logger.error(f"Error inserting course-student data: {e}")
+            raise

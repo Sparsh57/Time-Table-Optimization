@@ -1,112 +1,138 @@
 import pandas as pd
-from .databse_connection import DatabaseConnection
+from .dbconnection import get_db_session
+from .models import User, Course, CourseStud, Slot, ProfessorBusySlot
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import func
+from sqlalchemy.orm import aliased
+import logging
+
+logger = logging.getLogger(__name__)
 
 def registration_data(db_path):
-    db = DatabaseConnection.get_connection(db_path)
-    query = """
-    SELECT u.Email AS 'Roll No.', c.CourseName AS 'G CODE', p.Email AS 'Professor', c.CourseType AS 'Type', c.Credits AS 'Credit'
-    FROM Course_Stud cs
-    JOIN Users u ON cs.StudentID = u.UserID
-    JOIN Courses c ON cs.CourseID = c.CourseID
-    JOIN Users p ON c.ProfessorID = p.UserID
     """
-    try:
-        result = db.fetch_query(query)
-        return pd.DataFrame(result, columns=['Roll No.', 'G CODE', 'Professor', 'Type', 'Credit'])
-    except Exception as e:
-        print("Error fetching registration data:", e)
-    finally:
-        db.close()
+    Fetch registration data (student enrollments) using SQLAlchemy.
+    
+    :param db_path: Path to the database file
+    :return: DataFrame containing registration data
+    """
+    with get_db_session(db_path) as session:
+        try:
+            # Create aliases for users table to distinguish between students and professors
+            Student = aliased(User)
+            Professor = aliased(User)
+            
+            # Query to get student registration data with joins
+            query = session.query(
+                Student.Email.label('Roll No.'),
+                Course.CourseName.label('G CODE'),
+                Professor.Email.label('Professor'),
+                Course.CourseType.label('Type'),
+                Course.Credits.label('Credit')
+            ).select_from(CourseStud)\
+             .join(Student, CourseStud.StudentID == Student.UserID)\
+             .join(Course, CourseStud.CourseID == Course.CourseID)\
+             .join(Professor, Course.ProfessorID == Professor.UserID)\
+             .filter(Student.Role == 'Student')\
+             .filter(Professor.Role == 'Professor')
+            
+            results = []
+            for row in query.all():
+                results.append({
+                    'Roll No.': row._asdict()['Roll No.'],
+                    'G CODE': row._asdict()['G CODE'],
+                    'Professor': row._asdict()['Professor'],
+                    'Type': row._asdict()['Type'],
+                    'Credit': row._asdict()['Credit']
+                })
+            
+            return pd.DataFrame(results)
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error fetching registration data: {e}")
+            return pd.DataFrame()
 
 def faculty_pref(db_path):
     """
-    Fetch professor preferences for busy slots.
+    Fetch professor preferences for busy slots using SQLAlchemy.
 
-    Returns:
-        pd.DataFrame: DataFrame containing professor names and their busy time slots.
+    :param db_path: Path to the database file
+    :return: DataFrame containing professor names and their busy time slots.
     """
-    # Initialize the database connection
-    db = DatabaseConnection.get_connection(db_path)
-
-    if db is None:
-        return pd.DataFrame()  # Return an empty DataFrame if connection fails
-
-    query = """
-    SELECT 
-        u.Email AS 'Name', 
-        s.Day || ' ' || TIME(s.StartTime) AS 'Busy Slot'
-    FROM Users u
-    JOIN Professor_BusySlots ps ON u.UserID = ps.ProfessorID
-    JOIN Slots s ON ps.SlotID = s.SlotID
-    WHERE u.Role = 'Professor'
-    ORDER BY u.Email, s.Day, s.StartTime;
-    """
-
-    try:
-        # Execute the query using the fetch_query method from DatabaseConnection
-        result = db.fetch_query(query)
-
-        # Convert the result to a pandas DataFrame
-        df = pd.DataFrame(result, columns=['Name', 'Busy Slot'])
-
-    finally:
-        # Ensure the database connection is closed after query execution
-        db.close()
-
-    return df
+    with get_db_session(db_path) as session:
+        try:
+            # Query to get professor busy slots
+            query = session.query(
+                User.Email.label('Name'),
+                func.concat(Slot.Day, ' ', Slot.StartTime).label('Busy Slot')
+            ).select_from(User)\
+             .join(ProfessorBusySlot, User.UserID == ProfessorBusySlot.ProfessorID)\
+             .join(Slot, ProfessorBusySlot.SlotID == Slot.SlotID)\
+             .filter(User.Role == 'Professor')\
+             .order_by(User.Email, Slot.Day, Slot.StartTime)
+            
+            results = []
+            for row in query.all():
+                results.append({
+                    'Name': row.Name,
+                    'Busy Slot': row._asdict()['Busy Slot']
+                })
+            
+            return pd.DataFrame(results)
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error fetching faculty preferences: {e}")
+            return pd.DataFrame()
 
 def student_pref(db_path):
     """
-    Fetch student preferences for busy slots.
+    Fetch student preferences for busy slots using SQLAlchemy.
+    Note: This function seems to have an incorrect query in the original.
+    Students don't have a CourseID field directly.
 
-    Returns:
-        pd.DataFrame: DataFrame containing student names and their busy time slots.
+    :param db_path: Path to the database file
+    :return: DataFrame containing student names and their busy time slots.
     """
-    # Initialize the database connection
-    db = DatabaseConnection.get_connection(db_path)
-
-    if db is None:
-        return pd.DataFrame()  # Return an empty DataFrame if connection fails
-
-    query = """
-    SELECT 
-        u.Email AS 'Name'
-    FROM Users u
-    JOIN Courses s ON u.CourseID = s.CourseID
-    WHERE u.Role = 'Student'
-    ORDER BY u.Email;
-    """
-
-    try:
-        # Execute the query using the fetch_query method from DatabaseConnection
-        result = db.fetch_query(query)
-        # Convert the result to a pandas DataFrame
-        df = pd.DataFrame(result, columns=['Name', 'Busy Slot'])
-
-    finally:
-        # Ensure the database connection is closed after query execution
-        db.close()
-
-    return df
+    with get_db_session(db_path) as session:
+        try:
+            # Query to get all students (the original query had an error)
+            query = session.query(User.Email.label('Name'))\
+                          .filter(User.Role == 'Student')\
+                          .order_by(User.Email)
+            
+            results = []
+            for row in query.all():
+                results.append({
+                    'Name': row.Name,
+                    'Busy Slot': None  # No busy slot information available for students
+                })
+            
+            return pd.DataFrame(results)
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error fetching student preferences: {e}")
+            return pd.DataFrame()
 
 def get_all_time_slots(db_path):
     """
-    Retrieves all time slots from the Slots table in the given database.
-    Returns a list of strings in the format "Day HH:MM".
+    Retrieves all time slots from the Slots table using SQLAlchemy.
+    
+    :param db_path: Path to the database file
+    :return: List of strings in the format "Day HH:MM".
     """
-    db = DatabaseConnection.get_connection(db_path)
-    query = """
-    SELECT Day, TIME(StartTime) AS StartTime 
-    FROM Slots 
-    ORDER BY Day, StartTime;
-    """
-    try:
-        result = db.fetch_query(query)
-        # Construct a list of time slot strings
-        time_slots = [f"{row[0]} {row[1]}" for row in result]
-        return time_slots
-    except Exception as e:
-        print("Error fetching time slots:", e)
-        return []
-    finally:
-        db.close()
+    with get_db_session(db_path) as session:
+        try:
+            # Query to get all time slots
+            query = session.query(
+                Slot.Day,
+                Slot.StartTime
+            ).order_by(Slot.Day, Slot.StartTime)
+            
+            time_slots = []
+            for row in query.all():
+                time_slots.append(f"{row.Day} {row.StartTime}")
+            
+            return time_slots
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error fetching time slots: {e}")
+            return []
