@@ -33,7 +33,7 @@ from src.database_management.schedule import (
 )
 from src.database_management.Slot_info import insert_time_slots
 from src.database_management.truncate_db import truncate_detail
-from src.main_algorithm import gen_timetable
+from src.main_algorithm import gen_timetable_auto
 from src.database_management.dbconnection import (
     get_organization_by_domain, 
     get_organization_by_name, 
@@ -327,7 +327,7 @@ async def send_admin_data(
             responses[file_key] = str(e)
 
     # -- Generate timetable
-    gen_timetable(db_path)
+    gen_timetable_auto(db_path)
 
     return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -575,7 +575,7 @@ async def upload_csv(file_type: str = Form(...), file: UploadFile = File(...)):
         content = await file.read()
         df = pd.read_csv(BytesIO(content))
         PREVIEW_COLUMNS = {
-            "courses": ["Course code", "Faculty Name", "Type","Credits"],
+            "courses": ["Course code", "Faculty Name", "Type","Credits", "Number of Sections"],
             "students":  ["Roll No.", "G CODE", "Sections"],
             "faculty": ["Name", "Busy Slot"]
         }

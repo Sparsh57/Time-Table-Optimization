@@ -1,6 +1,6 @@
 import pandas as pd
 from .dbconnection import get_db_session
-from .models import User, Course, CourseStud, Slot, ProfessorBusySlot, CourseProfessor
+from .models import User, Course, CourseStud, Slot, ProfessorBusySlot, CourseProfessor, CourseSection
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func
 from sqlalchemy.orm import aliased
@@ -55,6 +55,87 @@ def registration_data(db_path):
             logger.error(f"Error fetching registration data: {e}")
             return pd.DataFrame()
 
+def registration_data_with_sections(db_path):
+    """
+    Fetch registration data with section information for section-aware timetable generation.
+    
+    :param db_path: Path to the database file
+    :return: DataFrame containing registration data with section information
+    """
+    with get_db_session(db_path) as session:
+        try:
+            # Query to get student registration data with section information
+            query = session.query(
+                User.Email.label('Roll No.'),
+                Course.CourseName.label('BaseCourse'),
+                CourseStud.SectionNumber,
+                Course.CourseType.label('Type'),
+                Course.Credits.label('Credit'),
+                Course.NumberOfSections
+            ).select_from(CourseStud)\
+             .join(User, CourseStud.StudentID == User.UserID)\
+             .join(Course, CourseStud.CourseID == Course.CourseID)\
+             .filter(User.Role == 'Student')\
+             .order_by(User.Email, Course.CourseName, CourseStud.SectionNumber)
+            
+            results = []
+            for row in query.all():
+                # Create course identifier based on number of sections
+                base_course = row.BaseCourse
+                section_num = row.SectionNumber
+                num_sections = row.NumberOfSections
+                
+                if num_sections == 1:
+                    # Single section: just use course name
+                    course_identifier = base_course
+                else:
+                    # Multiple sections: use course-A, course-B format
+                    section_letter = chr(ord('A') + section_num - 1)  # Convert 1->A, 2->B, etc.
+                    course_identifier = f"{base_course}-{section_letter}"
+                
+                # Get professor for this specific section
+                section_prof = get_professor_for_section(session, base_course, section_num)
+                
+                results.append({
+                    'Roll No.': row._asdict()['Roll No.'],
+                    'G CODE': course_identifier,
+                    'BaseCourse': base_course,
+                    'SectionNumber': section_num,
+                    'Professor': section_prof,
+                    'Type': row._asdict()['Type'],
+                    'Credit': row._asdict()['Credit'],
+                    'NumberOfSections': num_sections
+                })
+            
+            return pd.DataFrame(results)
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error fetching registration data with sections: {e}")
+            return pd.DataFrame()
+
+def get_professor_for_section(session, course_name, section_number):
+    """
+    Get the professor assigned to a specific section of a course.
+    
+    :param session: Database session
+    :param course_name: Name of the course
+    :param section_number: Section number
+    :return: Professor email or None
+    """
+    try:
+        query = session.query(User.Email)\
+                      .join(CourseSection, User.UserID == CourseSection.ProfessorID)\
+                      .join(Course, CourseSection.CourseID == Course.CourseID)\
+                      .filter(Course.CourseName == course_name)\
+                      .filter(CourseSection.SectionNumber == section_number)
+        
+        result = query.first()
+        return result.Email if result else None
+        
+    except Exception as e:
+        logger.error(f"Error getting professor for section {section_number} of {course_name}: {e}")
+        return None
+
 def faculty_pref(db_path):
     """
     Fetch professor preferences for busy slots using SQLAlchemy.
@@ -67,7 +148,7 @@ def faculty_pref(db_path):
             # Query to get professor busy slots
             query = session.query(
                 User.Email.label('Name'),
-                func.concat(Slot.Day, ' ', Slot.StartTime).label('Busy Slot')
+                (Slot.Day + ' ' + Slot.StartTime).label('Busy Slot')
             ).select_from(User)\
              .join(ProfessorBusySlot, User.UserID == ProfessorBusySlot.ProfessorID)\
              .join(Slot, ProfessorBusySlot.SlotID == Slot.SlotID)\
@@ -141,7 +222,6 @@ def get_all_time_slots(db_path):
             logger.error(f"Error fetching time slots: {e}")
             return []
 
-
 def get_course_professor_mapping(db_path):
     """
     Get a mapping of courses to their professors (handles multiple professors per course).
@@ -173,4 +253,48 @@ def get_course_professor_mapping(db_path):
             
         except SQLAlchemyError as e:
             logger.error(f"Error fetching course-professor mapping: {e}")
+            return {}
+
+def get_course_section_professor_mapping(db_path):
+    """
+    Get a mapping of course sections to their professors.
+    
+    :param db_path: Path to the database file
+    :return: Dictionary mapping course identifiers to professor emails
+    """
+    with get_db_session(db_path) as session:
+        try:
+            query = session.query(
+                Course.CourseName,
+                Course.NumberOfSections,
+                CourseSection.SectionNumber,
+                User.Email
+            ).select_from(CourseSection)\
+             .join(Course, CourseSection.CourseID == Course.CourseID)\
+             .join(User, CourseSection.ProfessorID == User.UserID)\
+             .filter(User.Role == 'Professor')\
+             .order_by(Course.CourseName, CourseSection.SectionNumber)
+            
+            section_prof_mapping = {}
+            for row in query.all():
+                course_name = row.CourseName
+                section_num = row.SectionNumber
+                num_sections = row.NumberOfSections
+                prof_email = row.Email
+                
+                # Create course identifier based on number of sections
+                if num_sections == 1:
+                    # Single section: just use course name
+                    course_identifier = course_name
+                else:
+                    # Multiple sections: use course-A, course-B format
+                    section_letter = chr(ord('A') + section_num - 1)  # Convert 1->A, 2->B, etc.
+                    course_identifier = f"{course_name}-{section_letter}"
+                
+                section_prof_mapping[course_identifier] = prof_email
+            
+            return section_prof_mapping
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error fetching course-section-professor mapping: {e}")
             return {}

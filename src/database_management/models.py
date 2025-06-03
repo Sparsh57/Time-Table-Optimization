@@ -42,9 +42,11 @@ class Course(Base):
     CourseName = Column(String, unique=True, nullable=False)
     CourseType = Column(String)  # Elective, Required
     Credits = Column(Integer)
+    NumberOfSections = Column(Integer, default=1)  # New column for section count
     
     # Relationships
     professors = relationship("CourseProfessor", back_populates="course")
+    sections = relationship("CourseSection", back_populates="course")  # New relationship
     enrolled_students = relationship("CourseStud", back_populates="course")
     schedule_slots = relationship("Schedule", back_populates="course")
 
@@ -60,15 +62,37 @@ class CourseProfessor(Base):
     professor = relationship("User", back_populates="taught_courses")
 
 
+class CourseSection(Base):
+    __tablename__ = 'Course_Section'
+    
+    CourseSectionID = Column(Integer, primary_key=True, autoincrement=True)
+    CourseID = Column(Integer, ForeignKey('Courses.CourseID'), nullable=False)
+    SectionNumber = Column(Integer, nullable=False)
+    ProfessorID = Column(Integer, ForeignKey('Users.UserID'), nullable=False)
+    
+    # Relationships
+    course = relationship("Course", back_populates="sections")
+    professor = relationship("User")
+    
+    __table_args__ = (
+        UniqueConstraint('CourseID', 'SectionNumber'),
+    )
+
+
 class CourseStud(Base):
     __tablename__ = 'Course_Stud'
     
     CourseID = Column(Integer, ForeignKey('Courses.CourseID'), primary_key=True)
     StudentID = Column(Integer, ForeignKey('Users.UserID'), primary_key=True)
+    SectionNumber = Column(Integer, default=1)  # New column for section assignment
     
     # Relationships
     course = relationship("Course", back_populates="enrolled_students")
     student = relationship("User", back_populates="enrolled_courses")
+    
+    __table_args__ = (
+        UniqueConstraint('CourseID', 'StudentID'),  # One enrollment per student per course
+    )
 
 
 class Slot(Base):
@@ -104,6 +128,7 @@ class Schedule(Base):
     
     CourseID = Column(Integer, ForeignKey('Courses.CourseID'), primary_key=True)
     SlotID = Column(Integer, ForeignKey('Slots.SlotID'), primary_key=True)
+    SectionNumber = Column(Integer, primary_key=True, default=1)
     
     # Relationships
     course = relationship("Course", back_populates="schedule_slots")

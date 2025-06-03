@@ -1,5 +1,6 @@
 from .dbconnection import get_db_session
-from .models import User, Course, CourseProfessor
+from .models import User, Course, CourseProfessor, CourseSection
+from .migration import migrate_database_for_sections, check_migration_needed
 from sqlalchemy.exc import SQLAlchemyError
 import pandas as pd
 import numpy as np
@@ -32,20 +33,26 @@ def parse_faculty_names(faculty_name_str):
         return []
     
     # Split by comma and strip whitespace
-    faculty_names = [name.strip() for name in str(faculty_name_str).split('&')]
+    faculty_names = [name.strip() for name in str(faculty_name_str).split(',')]
     return [name for name in faculty_names if name]  # Remove empty strings
 
 
 def insert_courses_professors(file, db_path):
     """
-    Inserts course information associated with professors from a CSV file into the database using SQLAlchemy.
-    Handles multiple professors per course separated by commas.
+    Inserts course information with section support from a CSV file into the database using SQLAlchemy.
+    Handles multiple professors per course separated by commas and creates sections accordingly.
 
     :param file: The CSV file containing courses and faculty names.
     :param db_path: Path to the database file.
     """
     print("INSERTING COURSES")
     df_courses = file
+
+    # Check if migration is needed and run it
+    if check_migration_needed(db_path):
+        print("Database migration needed for sections support...")
+        migrate_database_for_sections(db_path)
+        print("Database migration completed.")
 
     with get_db_session(db_path) as session:
         try:
@@ -60,6 +67,12 @@ def insert_courses_professors(file, db_path):
                     faculty_names_str = row['Faculty Name']
                     course_type = map_course_type(row['Type'])
                     credits = row['Credits']
+                    
+                    # Get number of sections (default to 1 if not provided)
+                    num_sections = row.get('Number of Sections', 1)
+                    if pd.isna(num_sections):
+                        num_sections = 1
+                    num_sections = int(num_sections)
 
                     # Parse faculty names (handles comma-separated values)
                     faculty_names = parse_faculty_names(faculty_names_str)
@@ -74,15 +87,22 @@ def insert_courses_professors(file, db_path):
                         new_course = Course(
                             CourseName=course_code,
                             CourseType=course_type,
-                            Credits=credits
+                            Credits=credits,
+                            NumberOfSections=num_sections
                         )
                         session.add(new_course)
                         session.flush()  # Get the CourseID
                         course_id = new_course.CourseID
                     else:
                         course_id = existing_course.CourseID
+                        # Update existing course with new section count if different
+                        if existing_course.NumberOfSections != num_sections:
+                            existing_course.NumberOfSections = num_sections
 
-                    # Add professor associations
+                    # Create sections and assign professors
+                    _create_course_sections(session, course_id, num_sections, faculty_names, prof_dict, course_code)
+
+                    # Maintain backward compatibility: also add to CourseProfessor table
                     for faculty_name in faculty_names:
                         professor_id = prof_dict.get(faculty_name)
                         if professor_id:
@@ -98,19 +118,50 @@ def insert_courses_professors(file, db_path):
                                     ProfessorID=professor_id
                                 )
                                 session.add(course_professor)
-                        else:
-                            logger.warning(f"Professor {faculty_name} not found in database for course {course_code}")
 
                 except Exception as e:
                     logger.error(f"Error processing course {row.get('Course code', 'Unknown')}: {e}")
 
             session.commit()
-            logger.info(f"Inserted courses and professor relationships into database")
+            logger.info(f"Inserted courses with sections and professor relationships into database")
 
         except SQLAlchemyError as e:
             session.rollback()
             logger.error(f"Error inserting courses: {e}")
             raise
+
+
+def _create_course_sections(session, course_id, num_sections, faculty_names, prof_dict, course_code):
+    """
+    Creates course sections and assigns professors to them.
+    
+    :param session: Database session
+    :param course_id: Course ID
+    :param num_sections: Number of sections to create
+    :param faculty_names: List of faculty names
+    :param prof_dict: Dictionary mapping faculty names to IDs
+    :param course_code: Course code for logging
+    """
+    # Clear existing sections for this course
+    session.query(CourseSection).filter_by(CourseID=course_id).delete()
+    
+    # Create sections
+    for section_num in range(1, num_sections + 1):
+        # Assign professor using round-robin distribution
+        faculty_index = (section_num - 1) % len(faculty_names)
+        faculty_name = faculty_names[faculty_index]
+        professor_id = prof_dict.get(faculty_name)
+        
+        if professor_id:
+            course_section = CourseSection(
+                CourseID=course_id,
+                SectionNumber=section_num,
+                ProfessorID=professor_id
+            )
+            session.add(course_section)
+            logger.info(f"Created section {section_num} for course {course_code} with professor {faculty_name}")
+        else:
+            logger.warning(f"Professor {faculty_name} not found for section {section_num} of course {course_code}")
 
 
 def fetch_course_data(db_path):

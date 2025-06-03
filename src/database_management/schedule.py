@@ -56,23 +56,48 @@ def schedule(schedule_df, db_path):
                 formatted_time = remove_seconds(row['Scheduled Time'])
                 print(f"Row {index}: original='{row['Scheduled Time']}', formatted='{formatted_time}'")
 
-                course_id = course_id_map.get(row['Course ID'])
+                # Parse course identifier to extract base course and section number
+                course_identifier = row['Course ID']
+                section_number = 1  # Default section
+                
+                if '-' in course_identifier and course_identifier.split('-')[-1].isalpha():
+                    # This is a section identifier like "DATA201-A"
+                    parts = course_identifier.split('-')
+                    base_course_name = '-'.join(parts[:-1])
+                    section_letter = parts[-1]
+                    
+                    # Convert section letter to number (A=1, B=2, etc.)
+                    if len(section_letter) == 1 and section_letter.isalpha():
+                        section_number = ord(section_letter.upper()) - ord('A') + 1
+                else:
+                    # This is a base course name without section
+                    base_course_name = course_identifier
+                    section_number = 1
+                
+                course_id = course_id_map.get(base_course_name)
                 slot_id = slot_id_map.get(formatted_time)
                 
                 if course_id and slot_id:
                     # Check if schedule entry already exists
                     existing_schedule = session.query(Schedule).filter_by(
                         CourseID=course_id, 
-                        SlotID=slot_id
+                        SlotID=slot_id,
+                        SectionNumber=section_number
                     ).first()
                     
                     if not existing_schedule:
                         new_schedule = Schedule(
                             CourseID=course_id,
-                            SlotID=slot_id
+                            SlotID=slot_id,
+                            SectionNumber=section_number
                         )
                         session.add(new_schedule)
+                        print(f"Inserted schedule: {base_course_name} section {section_number} at {formatted_time}")
                 else:
+                    if not course_id:
+                        print(f"Course not found in database: '{course_identifier}' -> '{base_course_name}'")
+                    if not slot_id:
+                        print(f"Slot not found for time: '{formatted_time}'")
                     print(f"Course ID or Slot ID not found for row: {row}")
 
             session.commit()
@@ -109,16 +134,17 @@ def fetch_schedule_data(db_path):
     """
     with get_db_session(db_path) as session:
         try:
-            # Query to get courses for each time slot
+            # Query to get courses for each time slot with section information
             query = session.query(
                 Slot.Day,
                 Slot.StartTime,
                 Slot.EndTime,
-                func.group_concat(Course.CourseName.distinct()).label('Courses')
+                Course.CourseName,
+                Course.NumberOfSections,
+                Schedule.SectionNumber
             ).select_from(Schedule)\
              .join(Course, Schedule.CourseID == Course.CourseID)\
              .join(Slot, Schedule.SlotID == Slot.SlotID)\
-             .group_by(Slot.Day, Slot.StartTime, Slot.EndTime)\
              .order_by(
                 case(
                     (Slot.Day == 'Monday', 1),
@@ -131,11 +157,34 @@ def fetch_schedule_data(db_path):
                     else_=8
                 ),
                 Slot.StartTime,
-                Slot.EndTime
+                Slot.EndTime,
+                Course.CourseName,
+                Schedule.SectionNumber
             )
             
-            result = query.all()
-            return [(row.Day, row.StartTime, row.EndTime, row.Courses) for row in result]
+            # Group courses by time slot and format section identifiers
+            schedule_dict = {}
+            for row in query.all():
+                time_key = (row.Day, row.StartTime, row.EndTime)
+                
+                # Format course identifier based on number of sections
+                if row.NumberOfSections == 1:
+                    course_identifier = row.CourseName
+                else:
+                    section_letter = chr(ord('A') + row.SectionNumber - 1)
+                    course_identifier = f"{row.CourseName}-{section_letter}"
+                
+                if time_key not in schedule_dict:
+                    schedule_dict[time_key] = []
+                schedule_dict[time_key].append(course_identifier)
+            
+            # Convert to the expected format
+            result = []
+            for (day, start_time, end_time), courses in schedule_dict.items():
+                courses_str = ', '.join(sorted(courses))
+                result.append((day, start_time, end_time, courses_str))
+            
+            return result
             
         except SQLAlchemyError as e:
             logger.error(f"Error fetching schedule data: {e}")
