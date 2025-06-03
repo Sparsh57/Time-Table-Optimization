@@ -1,4 +1,4 @@
-# Timetable Optimization System: Multi-Organization Support
+# Timetable Optimization System
 
 This project provides an automated timetable generation system designed for educational institutions. It uses **Google OR-Tools** for constraint-based optimization, FastAPI for the backend, and SQLite for data management. The system features **Google Authentication**, **multi-organization support**, and **multiple professors per course** functionality to address complex scheduling needs efficiently.
 
