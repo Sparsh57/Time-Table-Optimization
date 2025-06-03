@@ -10,10 +10,8 @@ This project provides an automated timetable generation system designed for educ
 - [Installation](#installation)
 - [Environment Variables](#environment-variables)
 - [Database Schema](#database-schema)
-- [Data Format](#data-format)
 - [Endpoints](#endpoints)
 - [How to Use](#how-to-use)
-- [Contributors](#contributors)
   
 ## Overview
 
