@@ -1,6 +1,6 @@
 from ortools.sat.python import cp_model
 import pandas as pd
-from typing import Dict, List
+from typing import Dict, List, Union
 from collections import defaultdict
 
 
@@ -14,7 +14,7 @@ def get_day_from_time_slot(time_slot: str) -> str:
 
 def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                      student_course_map: Dict[str, List[str]],
-                     course_professor_map: Dict[str, str],
+                     course_professor_map: Dict[str, Union[str, List[str]]],
                      course_credits: Dict[str, int],
                      course_type: Dict[str, str], 
                      non_preferred_slots: List[str]) -> pd.DataFrame:
@@ -88,8 +88,16 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
         # PHASE 2) Professor constraints
         if add_prof_constraints:
             prof_dict = defaultdict(list)
-            for c_id, prof in course_professor_map.items():
-                prof_dict[prof].append(c_id)
+            for c_id, profs in course_professor_map.items():
+                # Handle both single professor (string) and multiple professors (list)
+                if isinstance(profs, str):
+                    profs = [profs]
+                elif profs is None:
+                    profs = []
+                
+                # Add course to each professor's list
+                for prof in profs:
+                    prof_dict[prof].append(c_id)
 
             for prof, c_list in prof_dict.items():
                 # For each time slot, a professor cannot teach more than one course

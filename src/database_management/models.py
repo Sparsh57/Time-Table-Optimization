@@ -26,7 +26,7 @@ class User(Base):
     Role = Column(String, nullable=False)  # Admin, Professor, Student
     
     # Relationships
-    taught_courses = relationship("Course", back_populates="professor")
+    taught_courses = relationship("CourseProfessor", back_populates="professor")
     enrolled_courses = relationship("CourseStud", back_populates="student")
     busy_slots = relationship("ProfessorBusySlot", back_populates="professor")
     
@@ -40,14 +40,24 @@ class Course(Base):
     
     CourseID = Column(Integer, primary_key=True, autoincrement=True)
     CourseName = Column(String, unique=True, nullable=False)
-    ProfessorID = Column(Integer, ForeignKey('Users.UserID'))
     CourseType = Column(String)  # Elective, Required
     Credits = Column(Integer)
     
     # Relationships
-    professor = relationship("User", back_populates="taught_courses")
+    professors = relationship("CourseProfessor", back_populates="course")
     enrolled_students = relationship("CourseStud", back_populates="course")
     schedule_slots = relationship("Schedule", back_populates="course")
+
+
+class CourseProfessor(Base):
+    __tablename__ = 'Course_Professor'
+    
+    CourseID = Column(Integer, ForeignKey('Courses.CourseID'), primary_key=True)
+    ProfessorID = Column(Integer, ForeignKey('Users.UserID'), primary_key=True)
+    
+    # Relationships
+    course = relationship("Course", back_populates="professors")
+    professor = relationship("User", back_populates="taught_courses")
 
 
 class CourseStud(Base):

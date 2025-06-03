@@ -1,5 +1,5 @@
 from .dbconnection import get_db_session
-from .models import Course, Slot, Schedule, User, CourseStud
+from .models import Course, Slot, Schedule, User, CourseStud, CourseProfessor
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func, case
@@ -109,7 +109,7 @@ def fetch_schedule_data(db_path):
     """
     with get_db_session(db_path) as session:
         try:
-            # Query with joins and group by day and time slot
+            # Query to get courses for each time slot
             query = session.query(
                 Slot.Day,
                 Slot.StartTime,

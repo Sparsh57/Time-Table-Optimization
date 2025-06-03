@@ -1,6 +1,6 @@
 from .dbconnection import get_db_session
-from .models import User, Course, CourseStud, ProfessorBusySlot, Schedule
-from sqlalchemy.exc import SQLAlchemyError
+from .models import User, Course, CourseStud, ProfessorBusySlot, Schedule, CourseProfessor
+from sqlalchemy.exc import SQLAlchemyError, OperationalError
 from dotenv import load_dotenv
 import logging
 
@@ -11,6 +11,7 @@ load_dotenv()
 def truncate_detail(db_path):
     """
     Deletes all data from the tables while handling foreign key constraints using SQLAlchemy.
+    Now includes the CourseProfessor table, with graceful handling for existing databases.
     
     :param db_path: Path to the database file.
     """
@@ -20,6 +21,18 @@ def truncate_detail(db_path):
             deleted_schedule = session.query(Schedule).delete()
             deleted_busy_slots = session.query(ProfessorBusySlot).delete()
             deleted_course_stud = session.query(CourseStud).delete()
+            
+            # Try to delete from CourseProfessor table, but handle case where it doesn't exist
+            deleted_course_professor = 0
+            try:
+                deleted_course_professor = session.query(CourseProfessor).delete()
+            except OperationalError as e:
+                if "no such table: Course_Professor" in str(e):
+                    logger.info("Course_Professor table doesn't exist yet - skipping deletion")
+                    deleted_course_professor = 0
+                else:
+                    raise  # Re-raise if it's a different error
+            
             deleted_courses = session.query(Course).delete()
             deleted_users = session.query(User).filter(User.Role != 'Admin').delete()
             
@@ -29,6 +42,7 @@ def truncate_detail(db_path):
                        f"Schedule({deleted_schedule}), "
                        f"BusySlots({deleted_busy_slots}), "
                        f"CourseStud({deleted_course_stud}), "
+                       f"CourseProfessor({deleted_course_professor}), "
                        f"Courses({deleted_courses}), "
                        f"Users({deleted_users})")
             

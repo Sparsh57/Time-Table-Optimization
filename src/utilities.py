@@ -8,10 +8,11 @@ def faculty_busy_slots(df_faculty_pref):
 def create_course_dictionary(student_course_map, course_professor_map, professor_busy_slots, time_slots):
     """
     Generates a dictionary with each course's available time slots.
+    Now supports multiple professors per course.
 
     Args:
         student_course_map (dict): Mapping of student identifiers to lists of courses.
-        course_professor_map (dict): Mapping of courses to their assigned professor.
+        course_professor_map (dict): Mapping of courses to their assigned professors (can be list or single professor).
         professor_busy_slots (dict): Mapping of professor identifiers to a list of busy time slots.
         time_slots (list): List of time slot strings (e.g., "Monday 08:30") to consider.
 
@@ -25,10 +26,22 @@ def create_course_dictionary(student_course_map, course_professor_map, professor
     excluded_slots = {'Wednesday 14:30', 'Tuesday 14:30'}
 
     for course in unique_courses:
-        professor = course_professor_map.get(course, None)
-        busy_slots = professor_busy_slots.get(professor, [])
-        # Filter the provided time_slots list based on professor busy slots and any exclusions.
-        available_slots = [slot for slot in time_slots if slot not in busy_slots and slot not in excluded_slots]
+        professors = course_professor_map.get(course, [])
+        
+        # Handle both single professor (string) and multiple professors (list) for backward compatibility
+        if isinstance(professors, str):
+            professors = [professors]
+        elif professors is None:
+            professors = []
+        
+        # Collect busy slots from ALL professors assigned to this course
+        all_busy_slots = set()
+        for professor in professors:
+            busy_slots = professor_busy_slots.get(professor, [])
+            all_busy_slots.update(busy_slots)
+        
+        # Filter the provided time_slots list based on ALL professors' busy slots and any exclusions.
+        available_slots = [slot for slot in time_slots if slot not in all_busy_slots and slot not in excluded_slots]
         course_availability[course] = {'time_slots': available_slots}
 
     return course_availability

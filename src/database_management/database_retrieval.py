@@ -1,6 +1,6 @@
 import pandas as pd
 from .dbconnection import get_db_session
-from .models import User, Course, CourseStud, Slot, ProfessorBusySlot
+from .models import User, Course, CourseStud, Slot, ProfessorBusySlot, CourseProfessor
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func
 from sqlalchemy.orm import aliased
@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 def registration_data(db_path):
     """
     Fetch registration data (student enrollments) using SQLAlchemy.
+    Now handles multiple professors per course.
     
     :param db_path: Path to the database file
     :return: DataFrame containing registration data
@@ -22,18 +23,21 @@ def registration_data(db_path):
             Professor = aliased(User)
             
             # Query to get student registration data with joins
+            # Use GROUP_CONCAT to combine multiple professors for a course
             query = session.query(
                 Student.Email.label('Roll No.'),
                 Course.CourseName.label('G CODE'),
-                Professor.Email.label('Professor'),
+                func.group_concat(Professor.Email.distinct()).label('Professor'),
                 Course.CourseType.label('Type'),
                 Course.Credits.label('Credit')
             ).select_from(CourseStud)\
              .join(Student, CourseStud.StudentID == Student.UserID)\
              .join(Course, CourseStud.CourseID == Course.CourseID)\
-             .join(Professor, Course.ProfessorID == Professor.UserID)\
+             .join(CourseProfessor, Course.CourseID == CourseProfessor.CourseID)\
+             .join(Professor, CourseProfessor.ProfessorID == Professor.UserID)\
              .filter(Student.Role == 'Student')\
-             .filter(Professor.Role == 'Professor')
+             .filter(Professor.Role == 'Professor')\
+             .group_by(Student.Email, Course.CourseName, Course.CourseType, Course.Credits)
             
             results = []
             for row in query.all():
@@ -136,3 +140,37 @@ def get_all_time_slots(db_path):
         except SQLAlchemyError as e:
             logger.error(f"Error fetching time slots: {e}")
             return []
+
+
+def get_course_professor_mapping(db_path):
+    """
+    Get a mapping of courses to their professors (handles multiple professors per course).
+    
+    :param db_path: Path to the database file
+    :return: Dictionary mapping course names to list of professor emails
+    """
+    with get_db_session(db_path) as session:
+        try:
+            query = session.query(
+                Course.CourseName,
+                User.Email
+            ).select_from(Course)\
+             .join(CourseProfessor, Course.CourseID == CourseProfessor.CourseID)\
+             .join(User, CourseProfessor.ProfessorID == User.UserID)\
+             .filter(User.Role == 'Professor')\
+             .order_by(Course.CourseName, User.Email)
+            
+            course_prof_mapping = {}
+            for row in query.all():
+                course_name = row.CourseName
+                prof_email = row.Email
+                
+                if course_name not in course_prof_mapping:
+                    course_prof_mapping[course_name] = []
+                course_prof_mapping[course_name].append(prof_email)
+            
+            return course_prof_mapping
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error fetching course-professor mapping: {e}")
+            return {}

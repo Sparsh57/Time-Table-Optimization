@@ -1,4 +1,4 @@
-from .data_preprocessing import merge_data, prepare_student_course_map, create_course_professor_map
+from .data_preprocessing import merge_data, prepare_student_course_map, create_course_professor_map_all
 from .utilities import faculty_busy_slots, create_course_dictionary, create_course_credit_map, create_course_elective_map
 from .schedule_model import schedule_courses
 from .database_management.schedule import schedule
@@ -43,7 +43,7 @@ def diagnose_same_day_constraints(courses, course_credits):
 def gen_timetable(db_path):
     df_merged = registration_data(db_path)
     student_course_map = prepare_student_course_map(df_merged)
-    course_professor_map = create_course_professor_map(df_merged)
+    course_professor_map = create_course_professor_map_all(df_merged)
     professor_busy_slots = faculty_pref(db_path)
     course_credit_map = create_course_credit_map(df_merged)
     course_type_map = create_course_elective_map(df_merged)

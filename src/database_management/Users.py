@@ -7,6 +7,21 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def parse_faculty_names(faculty_name_str):
+    """
+    Parse ampersand-separated faculty names and return a list of cleaned names.
+    
+    :param faculty_name_str: String containing one or more faculty names separated by ampersands
+    :return: List of faculty names
+    """
+    if pd.isna(faculty_name_str):
+        return []
+    
+    # Split by ampersand and strip whitespace
+    faculty_names = [name.strip() for name in str(faculty_name_str).split('&')]
+    return [name for name in faculty_names if name]  # Remove empty strings
+
+
 def insert_user_data(list_files, db_path):
     """
     Inserts user data (professors and students) into the database using SQLAlchemy.
@@ -20,23 +35,33 @@ def insert_user_data(list_files, db_path):
     
     course_data, stud_course_data = list_files
 
-    # Process professor data
-    filtered_prof_column = course_data['Faculty Name'].dropna().drop_duplicates()
-    filtered_prof_column = pd.DataFrame(filtered_prof_column, columns=['Faculty Name'])
-    filtered_prof_column["Role"] = "Professor"
-    filtered_prof_column.rename(columns={'Faculty Name': 'Email'}, inplace=True)
+    # Process professor data - parse multiple professors per course
+    all_professors = set()
+    for faculty_name_str in course_data['Faculty Name'].dropna():
+        professors = parse_faculty_names(faculty_name_str)
+        all_professors.update(professors)
+    
+    # Convert to DataFrame
+    prof_data = []
+    for prof_name in all_professors:
+        prof_data.append({
+            'Email': prof_name,  # Using name as email for now
+            'Name': prof_name,
+            'Role': 'Professor'
+        })
+    
+    filtered_prof_column = pd.DataFrame(prof_data)
 
     # Process student data
     filtered_stud_column = stud_course_data['Roll No.'].dropna().drop_duplicates()
     filtered_stud_column = pd.DataFrame(filtered_stud_column, columns=['Roll No.'])
     filtered_stud_column["Role"] = "Student"
     filtered_stud_column.rename(columns={'Roll No.': 'Email'}, inplace=True)
+    # Use email as name for now (can be updated later if actual names are available)
+    filtered_stud_column['Name'] = filtered_stud_column['Email']
 
     # Combine professor and student data
-    final_data = pd.concat([filtered_prof_column, filtered_stud_column])
-    final_data.reset_index(drop=True, inplace=True)
-    # Use email as name for now (can be updated later if actual names are available)
-    final_data['Name'] = final_data['Email']
+    final_data = pd.concat([filtered_prof_column, filtered_stud_column], ignore_index=True)
 
     with get_db_session(db_path) as session:
         try:
