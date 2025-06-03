@@ -1,6 +1,6 @@
-# Timetable Generation System for KREA University: Our Clock
+# Timetable Optimization System: Multi-Organization Support
 
-This project aims to automate the generation of optimized student and professor timetables at KREA University using a combination of dynamic programming techniques and a custom UI. The system utilizes **Google OR-Tools** for constraint-based optimization, FastAPI for the back-end, and MariaDB for data management. Additionally, **Google Authentication** is integrated for secure user login. This solution addresses the complex scheduling needs of students, professors, and administrators by resolving conflicts in course timing and professor availability efficiently.
+This project provides an automated timetable generation system designed for educational institutions. It uses **Google OR-Tools** for constraint-based optimization, FastAPI for the backend, and SQLite for data management. The system features **Google Authentication**, **multi-organization support**, and **multiple professors per course** functionality to address complex scheduling needs efficiently.
 
 ## Table of Contents
 
@@ -10,43 +10,50 @@ This project aims to automate the generation of optimized student and professor 
 - [Installation](#installation)
 - [Environment Variables](#environment-variables)
 - [Database Schema](#database-schema)
+- [Data Format](#data-format)
 - [Endpoints](#endpoints)
 - [How to Use](#how-to-use)
 - [Contributors](#contributors)
   
 ## Overview
 
-At KREA University, timetabling has traditionally been done manually, leading to inefficiencies, especially in resolving course clashes and accommodating the availability of professors. This project automates and optimizes the timetable generation process using a **Constraint Programming** algorithm from **Google OR-Tools**, ensuring an efficient and conflict-free schedule.
+This timetable optimization system automates the complex process of scheduling courses, professors, and students. It supports **multiple organizations**, each with their own isolated database, and handles **multiple professors per course** with proper constraint management.
 
-The project consists of:
-- A **back-end** system that processes input data (courses, professor schedules, student enrollment) and generates timetables.
-- A **front-end** that provides user-friendly interfaces for uploading data, viewing timetables, and downloading the generated schedule.
-- A **Google OAuth** system for secure access.
-
-Find complete diagrams on the docs page at [https://github.com/Sparsh57/Time-Table-Optimization/blob/master/docs/Timetable_Presentation.pdf](https://github.com/Sparsh57/Time-Table-Optimization/blob/master/docs/Timetable_Presentation.pdf)
+The system consists of:
+- A **backend** that processes course data, professor schedules, and student enrollments to generate optimized timetables
+- A **frontend** providing intuitive interfaces for data upload, timetable viewing, and schedule downloads
+- A **multi-organization architecture** supporting separate institutions with domain-based authentication
+- An **advanced constraint programming algorithm** using Google OR-Tools for conflict-free scheduling
 
 ## Features
 
-- **Automatic Timetable Generation**: Generates conflict-free schedules using Google OR-Tools.
-- **Custom UI for Data Entry**: Facilitates the input of data related to courses, faculty preferences, and student choices.
-- **Google OAuth 2.0 Authentication**: Secure login and access control for administrators, professors, and students.
-- **Downloadable Timetables**: Timetables can be downloaded as CSV files for both administrators and individual students.
-- **Scalability**: Supports hundreds of courses, students, and faculty, with real-time timetable generation.
-  
+- **Automatic Timetable Generation**: Generates conflict-free schedules using Google OR-Tools constraint programming
+- **Multiple Professors per Course**: Full support for courses taught by multiple professors with proper constraint handling
+- **Multi-Organization Support**: Separate databases and authentication for different educational institutions
+- **Google OAuth 2.0 Authentication**: Secure, domain-based login and access control
+- **Role-Based Access**: Differentiated access for Admins, Professors, and Students
+- **CSV/Excel Data Import**: Flexible data upload supporting both CSV and Excel formats
+- **Downloadable Timetables**: Export timetables as CSV files for administrators and individual students
+- **Constraint Optimization**: Multi-phase algorithm handling professor conflicts, student conflicts, and time slot capacity
+- **Professor Busy Slot Management**: Web interface for professors to set their availability
+- **Scalable Architecture**: Supports hundreds of courses, students, and faculty members
+- **Database Normalization**: Proper many-to-many relationships for courses and professors
+
 ## Technology Stack
 
-- **Google OR-Tools**: Used for Constraint Programming to optimize timetable generation.
-- **FastAPI**: High-performance, asynchronous framework used for building the back-end.
-- **MariaDB**: Relational database for storing course data, professor schedules, and student information.
-- **Google OAuth 2.0**: Authentication system used for secure user login.
-- **Pandas**: Data manipulation library for handling CSV and Excel files.
+- **Google OR-Tools**: Constraint Programming for optimization
+- **FastAPI**: High-performance, asynchronous web framework
+- **SQLite + SQLAlchemy**: Lightweight, file-based databases with ORM
+- **Google OAuth 2.0**: Domain-based authentication system
+- **Pandas**: Data manipulation for CSV/Excel processing
+- **Jinja2**: Template engine for web interface
 
 ## Installation
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/username/timetable-generation-system.git
-   cd timetable-generation-system
+   git clone https://github.com/Sparsh57/Time-Table-Optimization.git
+   cd Time-Table-Optimization
    ```
 
 2. **Create and activate a virtual environment**:
@@ -55,7 +62,7 @@ Find complete diagrams on the docs page at [https://github.com/Sparsh57/Time-Tab
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-3. **Install the dependencies**:
+3. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
@@ -64,7 +71,7 @@ Find complete diagrams on the docs page at [https://github.com/Sparsh57/Time-Tab
 
 5. **Run the application**:
    ```bash
-   uvicorn app:app --reload
+   python main.py
    ```
 
 The application will be accessible at `http://localhost:4000`.
@@ -87,13 +94,20 @@ ALLOWED_EMAILS=<Comma-separated list of allowed emails for login>
 
 ## Database Schema
 
-The project uses MariaDB for managing course, professor, and student data. Key tables include:
+The system uses SQLite with SQLAlchemy ORM. Each organization gets a separate database file with the following structure:
 
-- **users**: Stores user information (students, professors, admins).
-- **courses**: Stores information about courses offered.
-- **professors**: Stores professor details and their assigned courses.
-- **student_courses**: Records the enrollment of students in courses.
-- **professor_busy_slots**: Stores the availability of professors to prevent clashes.
+### Core Tables
+- **Users**: Stores all users (students, professors, admins) with role-based access
+- **Courses**: Course information including credits and type (Required/Elective)
+- **Course_Professor**: Junction table linking courses to multiple professors
+- **Course_Stud**: Junction table linking students to their enrolled courses
+- **Slots**: Available time slots (day, start time, end time)
+- **Schedule**: Final timetable linking courses to time slots
+- **Professor_BusySlots**: Professor availability constraints
+
+### Meta Database
+- **Organizations**: Tracks all registered organizations with their domains and database paths
+
 
 ## Endpoints
 
@@ -111,19 +125,27 @@ The project uses MariaDB for managing course, professor, and student data. Key t
 - `GET /download-timetable`: Downloads the full timetable as a CSV file.
 - `GET /download-timetable/{roll_number}`: Downloads a student's timetable as a CSV file.
 
-### Other Endpoints
+### Time Slot Management
+- `GET /select_timeslot`: Time slot configuration (Admin only)
+- `POST /insert_timeslots`: Insert time slot data
 
-- `GET /`: Home page.
-- `GET /dashboard`: Admin dashboard for managing timetable data.
-- `GET /get_role_no`: Form for students to enter their roll number.
-  
 ## How to Use
 
-1. **Login**: Users can log in using their Google account via OAuth 2.0.
-2. **Upload Data**: Administrators can upload CSV/Excel files containing course details, professor schedules, and student enrollments.
-3. **Generate Timetable**: Once the data is uploaded, the system will automatically generate an optimized timetable.
-4. **View Timetable**: Administrators can view the generated timetable, while students can view and download their specific timetable by entering their roll number.
-5. **Download**: Administrators and students can download the timetable in CSV format.
+### For Administrators
+
+1. **Organization Setup**:
+   - Register your organization with allowed email domains
+   - First user becomes the admin automatically
+
+2. **Data Upload**:
+   - Upload three CSV/Excel files:
+     - Course data with faculty assignments
+     - Student registration data
+     - Faculty preferences (busy slots)
+
+3. **Timetable Generation**:
+   - System automatically generates optimized timetable
+   - View complete schedule or download as CSV
 
 ## How to Install and Run
 
