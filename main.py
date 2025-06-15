@@ -129,8 +129,10 @@ def require_admin(request: Request):
 
 # -------------------- OAuth / Auth Endpoints --------------------
 @app.get("/auth/google")
-async def login_with_google():
-    redirect_uri = "http://localhost:4000/auth/google/callback"
+async def login_with_google(request: Request):
+    # Use environment variable for base URL or derive from request
+    base_url = os.getenv("BASE_URL", str(request.base_url).rstrip('/'))
+    redirect_uri = f"{base_url}/auth/google/callback"
     return RedirectResponse(
         f"https://accounts.google.com/o/oauth2/v2/auth?client_id={client_id}&response_type=code"
         f"&redirect_uri={redirect_uri}&scope=email profile openid"
@@ -139,7 +141,9 @@ async def login_with_google():
 
 @app.get("/auth/google/callback")
 async def google_callback(request: Request, code: str):
-    redirect_uri = "http://localhost:4000/auth/google/callback"
+    # Use environment variable for base URL or derive from request
+    base_url = os.getenv("BASE_URL", str(request.base_url).rstrip('/'))
+    redirect_uri = f"{base_url}/auth/google/callback"
     token_url = "https://oauth2.googleapis.com/token"
     data = {
         "code": code,
