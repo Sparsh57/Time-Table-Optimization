@@ -76,13 +76,25 @@ def insert_course_students(file, db_path):
                                 df_merged.loc[index, "SectionNumber"] = section_num
                             except ValueError:
                                 df_merged.loc[index, "SectionNumber"] = 1
+                    elif "-" in g_code and g_code.split("-")[-1].isalpha() and len(g_code.split("-")[-1]) == 1:
+                        # Handle dash-separated format like "DATA201-A", "DATA201-B"
+                        parts = g_code.split("-")
+                        course = "-".join(parts[:-1])  # Everything except the last part
+                        section_letter = parts[-1].upper()
+                        
+                        # Convert section letter to number (A=1, B=2, etc.)
+                        try:
+                            section_num = ord(section_letter) - ord('A') + 1
+                            df_merged.loc[index, "SectionNumber"] = section_num
+                        except ValueError:
+                            df_merged.loc[index, "SectionNumber"] = 1
                     else:
                         # No section info in G CODE, use course as-is
                         course = g_code.strip()
 
                     # Debugging output
                     if course != g_code:
-                        print(f"Original G CODE: {g_code}, Processed Course: {course}")
+                        print(f"Original G CODE: {g_code}, Processed Course: {course}, Section: {df_merged.loc[index, 'SectionNumber']}")
 
                     # Map the cleaned course to CourseID
                     df_merged.loc[index, "CourseID"] = int(course_dict[course])

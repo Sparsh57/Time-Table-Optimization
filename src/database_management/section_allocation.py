@@ -77,13 +77,28 @@ def create_student_course_matrix(db_path):
                 logger.warning("No student enrollment data found")
                 return pd.DataFrame()
             
-            # Create pivot table
+            # Extract base course names from section identifiers if they exist in G_CODE
+            def extract_base_course(course_identifier):
+                """Extract base course name from section identifier like DATA201-A -> DATA201"""
+                if '-' in course_identifier and course_identifier.split('-')[-1].isalpha():
+                    parts = course_identifier.split('-')
+                    if len(parts[-1]) == 1:  # Single letter section identifier
+                        return '-'.join(parts[:-1])
+                return course_identifier
+            
+            df['BaseCourse'] = df['G_CODE'].apply(extract_base_course)
+            
+            # Create pivot table using base course names
             student_course_matrix = df.pivot_table(
                 index="Roll_No", 
-                columns="G_CODE", 
+                columns="BaseCourse", 
                 aggfunc=lambda x: 1, 
                 fill_value=0
             )
+            
+            # Flatten column index if it's a MultiIndex
+            if isinstance(student_course_matrix.columns, pd.MultiIndex):
+                student_course_matrix.columns = student_course_matrix.columns.get_level_values(-1)
             
             return student_course_matrix
             
