@@ -1,6 +1,7 @@
-from .dbconnection import get_db_session
+from .dbconnection import get_db_session, create_tables
 from .models import User, Course, CourseStud, ProfessorBusySlot, Schedule, CourseProfessor
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
+from sqlalchemy import text
 from dotenv import load_dotenv
 import logging
 
@@ -15,6 +16,17 @@ def truncate_detail(db_path):
     
     :param db_path: Path to the database file.
     """
+    # First, ensure tables exist
+    try:
+        with get_db_session(db_path) as session:
+            # Check if tables exist by querying them
+            session.execute(text("SELECT 1 FROM Users LIMIT 1"))
+    except Exception:
+        # If tables don't exist, create all tables
+        logger.info("Tables not found, creating tables...")
+        create_tables(db_path)
+        logger.info("Tables created successfully")
+
     with get_db_session(db_path) as session:
         try:
             # Delete in proper order to handle foreign key constraints

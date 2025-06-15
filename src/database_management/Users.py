@@ -1,7 +1,8 @@
 import pandas as pd
-from .dbconnection import get_db_session
+from .dbconnection import get_db_session, create_tables
 from .models import User
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import text
 import logging
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,17 @@ def insert_user_data(list_files, db_path):
 
     # Combine professor and student data
     final_data = pd.concat([filtered_prof_column, filtered_stud_column], ignore_index=True)
+
+    # First, ensure tables exist
+    try:
+        with get_db_session(db_path) as session:
+            # Check if Users table exists by querying it
+            session.execute(text("SELECT 1 FROM Users LIMIT 1"))
+    except Exception:
+        # If table doesn't exist, create all tables
+        logger.info("Users table not found, creating tables...")
+        create_tables(db_path)
+        logger.info("Tables created successfully")
 
     with get_db_session(db_path) as session:
         try:

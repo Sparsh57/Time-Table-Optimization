@@ -1,6 +1,7 @@
-from .dbconnection import get_db_session
+from .dbconnection import get_db_session, create_tables
 from .models import Slot
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import text
 import pandas as pd
 from dotenv import load_dotenv
 import os
@@ -30,6 +31,18 @@ def insert_time_slots(input_data, db_path):
     print("Time slots to insert:")
     print(df)
 
+    # First, ensure tables exist
+    try:
+        with get_db_session(db_path) as session:
+            # Check if Slots table exists by querying it
+            session.execute(text("SELECT 1 FROM Slots LIMIT 1"))
+    except Exception:
+        # If table doesn't exist, create all tables
+        logger.info("Slots table not found, creating tables...")
+        create_tables(db_path)
+        logger.info("Tables created successfully")
+
+    # Now proceed with the actual time slot insertion
     with get_db_session(db_path) as session:
         try:
             # Delete existing time slots in the database

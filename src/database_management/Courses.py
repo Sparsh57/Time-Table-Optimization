@@ -1,7 +1,8 @@
-from .dbconnection import get_db_session
+from .dbconnection import get_db_session, create_tables
 from .models import User, Course, CourseProfessor
 from .migration import migrate_database_for_sections, check_migration_needed
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import text
 import pandas as pd
 import numpy as np
 import logging
@@ -53,6 +54,17 @@ def insert_courses_professors(file, db_path):
         print("Database migration needed for sections support...")
         migrate_database_for_sections(db_path)
         print("Database migration completed.")
+
+    # First, ensure tables exist
+    try:
+        with get_db_session(db_path) as session:
+            # Check if Courses table exists by querying it
+            session.execute(text("SELECT 1 FROM Courses LIMIT 1"))
+    except Exception:
+        # If table doesn't exist, create all tables
+        logger.info("Courses table not found, creating tables...")
+        create_tables(db_path)
+        logger.info("Tables created successfully")
 
     with get_db_session(db_path) as session:
         try:

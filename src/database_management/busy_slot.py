@@ -1,6 +1,7 @@
-from .dbconnection import get_db_session
+from .dbconnection import get_db_session, create_tables
 from .models import User, Slot, ProfessorBusySlot
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import text
 import numpy as np
 import logging
 
@@ -16,6 +17,17 @@ def insert_professor_busy_slots(file, db_path):
     """
     df_courses = file
     logger.info(f"Starting busy slot insertion for database: {db_path}")
+
+    # First, ensure tables exist
+    try:
+        with get_db_session(db_path) as session:
+            # Check if Professor_BusySlots table exists by querying it
+            session.execute(text("SELECT 1 FROM Professor_BusySlots LIMIT 1"))
+    except Exception:
+        # If table doesn't exist, create all tables
+        logger.info("Professor_BusySlots table not found, creating tables...")
+        create_tables(db_path)
+        logger.info("Tables created successfully")
 
     with get_db_session(db_path) as session:
         try:
@@ -65,6 +77,17 @@ def empty_professor_busy_slots(db_path):
     
     :param db_path: Path to the database file.
     """
+    # First, ensure tables exist
+    try:
+        with get_db_session(db_path) as session:
+            # Check if Professor_BusySlots table exists by querying it
+            session.execute(text("SELECT 1 FROM Professor_BusySlots LIMIT 1"))
+    except Exception:
+        # If table doesn't exist, create all tables
+        logger.info("Professor_BusySlots table not found, creating tables...")
+        create_tables(db_path)
+        logger.info("Tables created successfully")
+
     with get_db_session(db_path) as session:
         try:
             deleted_count = session.query(ProfessorBusySlot).delete()
@@ -84,6 +107,17 @@ def fetch_professor_busy_slots(db_path):
     :param db_path: Path to the database file.
     :return: List of tuples (ProfessorID, SlotID).
     """
+    # First, ensure tables exist
+    try:
+        with get_db_session(db_path) as session:
+            # Check if Professor_BusySlots table exists by querying it
+            session.execute(text("SELECT 1 FROM Professor_BusySlots LIMIT 1"))
+    except Exception:
+        # If table doesn't exist, create all tables
+        logger.info("Professor_BusySlots table not found, creating tables...")
+        create_tables(db_path)
+        logger.info("Tables created successfully")
+
     with get_db_session(db_path) as session:
         try:
             busy_slots = session.query(ProfessorBusySlot).all()
@@ -103,6 +137,17 @@ def insert_professor_busy_slots_from_ui(slots, professor_id, db_path):
     :param professor_id: Professor's UserID.
     :param db_path: Path to the database file.
     """
+    # First, ensure tables exist
+    try:
+        with get_db_session(db_path) as session:
+            # Check if Professor_BusySlots table exists by querying it
+            session.execute(text("SELECT 1 FROM Professor_BusySlots LIMIT 1"))
+    except Exception:
+        # If table doesn't exist, create all tables
+        logger.info("Professor_BusySlots table not found, creating tables...")
+        create_tables(db_path)
+        logger.info("Tables created successfully")
+
     with get_db_session(db_path) as session:
         try:
             for slot_id in slots:

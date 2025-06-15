@@ -3,6 +3,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from contextlib import contextmanager
 from .models import Base, MetaBase, Organization
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +15,15 @@ def create_database_engine(db_path: str):
     :param db_path: Path to the SQLite database file
     :return: SQLAlchemy engine
     """
-    engine = create_engine(f'sqlite:///{db_path}', echo=False)
+    # Add connection parameters to handle SQLite locking and ensure proper behavior
+    engine = create_engine(
+        f'sqlite:///{db_path}', 
+        echo=False,
+        connect_args={
+            'check_same_thread': False,
+            'timeout': 30  # Add timeout for database locks
+        }
+    )
     return engine
 
 
@@ -25,8 +34,24 @@ def create_tables(db_path: str):
     :param db_path: Path to the SQLite database file
     """
     engine = create_database_engine(db_path)
-    Base.metadata.create_all(engine)
-    logger.info(f"Created tables for database: {db_path}")
+    
+    # Retry mechanism for table creation to handle potential locking issues
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            Base.metadata.create_all(engine)
+            logger.info(f"Created tables for database: {db_path}")
+            break
+        except Exception as e:
+            if attempt < max_retries - 1:
+                logger.warning(f"Table creation attempt {attempt + 1} failed, retrying: {e}")
+                time.sleep(1)  # Wait before retry
+            else:
+                logger.error(f"Failed to create tables after {max_retries} attempts: {e}")
+                raise
+    
+    # Always dispose of the engine
+    engine.dispose()
 
 
 def create_meta_tables(meta_db_path: str = "organizations_meta.db"):
@@ -36,8 +61,11 @@ def create_meta_tables(meta_db_path: str = "organizations_meta.db"):
     :param meta_db_path: Path to the meta-database file
     """
     engine = create_database_engine(meta_db_path)
-    MetaBase.metadata.create_all(engine)
-    logger.info(f"Created meta-database tables: {meta_db_path}")
+    try:
+        MetaBase.metadata.create_all(engine)
+        logger.info(f"Created meta-database tables: {meta_db_path}")
+    finally:
+        engine.dispose()
 
 
 @contextmanager
@@ -61,6 +89,7 @@ def get_db_session(db_path: str) -> Session:
         raise
     finally:
         session.close()
+        engine.dispose()
 
 
 @contextmanager

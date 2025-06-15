@@ -81,15 +81,38 @@ def get_or_create_org_database(org_name, org_domains):
 def init_org_database(db_path):
     """
     Initialize organization database using SQLAlchemy models.
+    Ensures proper table creation and metadata synchronization.
     
     :param db_path: Path to the organization's database file
     """
     try:
         # Create all tables using SQLAlchemy
         create_tables(db_path)
+        
+        # Verify tables were created successfully
+        with get_db_session(db_path) as session:
+            from sqlalchemy import text
+            
+            # Check if all expected tables exist
+            result = session.execute(text("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"))
+            tables = [row[0] for row in result.fetchall()]
+            
+            expected_tables = ['Users', 'Courses', 'Course_Professor', 'Course_Stud', 
+                             'Slots', 'Professor_BusySlots', 'Schedule']
+            
+            missing_tables = [table for table in expected_tables if table not in tables]
+            if missing_tables:
+                print(f"Warning: Missing tables: {missing_tables}")
+                # Try to create tables again
+                create_tables(db_path)
+                print("Attempted to recreate missing tables")
+            else:
+                print(f"All expected tables created successfully: {tables}")
+        
         print(f"Initialized organization database at: {db_path}")
     except Exception as e:
         print(f"Error initializing database {db_path}: {e}")
+        raise
 
 
 # Function to validate if an email belongs to an organization using SQLAlchemy

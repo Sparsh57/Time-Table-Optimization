@@ -1,8 +1,8 @@
-from .dbconnection import get_db_session
+from .dbconnection import get_db_session, create_tables
 from .models import Course, Slot, Schedule, User, CourseStud, CourseProfessor
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload
-from sqlalchemy import func, case
+from sqlalchemy import func, case, text
 import pandas as pd
 import datetime
 import logging
@@ -35,6 +35,17 @@ def schedule(schedule_df, db_path):
     """
     print("Inserting schedule data:")
     print(schedule_df)
+    
+    # First, ensure tables exist
+    try:
+        with get_db_session(db_path) as session:
+            # Check if Schedule table exists by querying it
+            session.execute(text("SELECT 1 FROM Schedule LIMIT 1"))
+    except Exception:
+        # If table doesn't exist, create all tables
+        logger.info("Schedule table not found, creating tables...")
+        create_tables(db_path)
+        logger.info("Tables created successfully")
     
     with get_db_session(db_path) as session:
         try:
@@ -116,6 +127,18 @@ def timetable_made(db_path):
     :param db_path: Path to the database file
     :return: Boolean indicating if timetable exists
     """
+    # First, ensure tables exist
+    try:
+        with get_db_session(db_path) as session:
+            # Check if Schedule table exists by querying it
+            session.execute(text("SELECT 1 FROM Schedule LIMIT 1"))
+    except Exception:
+        # If table doesn't exist, create all tables
+        logger.info("Schedule table not found, creating tables...")
+        create_tables(db_path)
+        logger.info("Tables created successfully")
+        return False  # No timetable exists yet
+    
     with get_db_session(db_path) as session:
         try:
             count = session.query(Schedule).count()
