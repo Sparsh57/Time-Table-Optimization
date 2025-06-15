@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from .dbconnection import get_db_session
-from .models import User, Course, CourseStud, CourseSection
+from .models import User, Course, CourseStud
 from sqlalchemy.exc import SQLAlchemyError
 import logging
 

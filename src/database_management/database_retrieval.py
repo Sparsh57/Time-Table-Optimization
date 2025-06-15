@@ -1,6 +1,6 @@
 import pandas as pd
 from .dbconnection import get_db_session
-from .models import User, Course, CourseStud, Slot, ProfessorBusySlot, CourseProfessor, CourseSection
+from .models import User, Course, CourseStud, Slot, ProfessorBusySlot, CourseProfessor
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func
 from sqlalchemy.orm import aliased
@@ -115,7 +115,7 @@ def registration_data_with_sections(db_path):
 
 def get_professor_for_section(session, course_name, section_number):
     """
-    Get the professor assigned to a specific section of a course.
+    Get the professor assigned to a specific section of a course using round-robin logic.
     
     :param session: Database session
     :param course_name: Name of the course
@@ -123,14 +123,22 @@ def get_professor_for_section(session, course_name, section_number):
     :return: Professor email or None
     """
     try:
+        # Get all professors for this course from CourseProfessor table
         query = session.query(User.Email)\
-                      .join(CourseSection, User.UserID == CourseSection.ProfessorID)\
-                      .join(Course, CourseSection.CourseID == Course.CourseID)\
+                      .join(CourseProfessor, User.UserID == CourseProfessor.ProfessorID)\
+                      .join(Course, CourseProfessor.CourseID == Course.CourseID)\
                       .filter(Course.CourseName == course_name)\
-                      .filter(CourseSection.SectionNumber == section_number)
+                      .filter(User.Role == 'Professor')\
+                      .order_by(User.Email)  # Ensure consistent ordering
         
-        result = query.first()
-        return result.Email if result else None
+        professors = [prof.Email for prof in query.all()]
+        
+        if not professors:
+            return None
+        
+        # Use round-robin assignment: section 1 -> prof 0, section 2 -> prof 1, etc.
+        prof_index = (section_number - 1) % len(professors)
+        return professors[prof_index]
         
     except Exception as e:
         logger.error(f"Error getting professor for section {section_number} of {course_name}: {e}")
@@ -257,41 +265,57 @@ def get_course_professor_mapping(db_path):
 
 def get_course_section_professor_mapping(db_path):
     """
-    Get a mapping of course sections to their professors.
+    Get a mapping of course sections to their professors using round-robin logic.
     
     :param db_path: Path to the database file
     :return: Dictionary mapping course identifiers to professor emails
     """
     with get_db_session(db_path) as session:
         try:
+            # Get all courses with their professors
             query = session.query(
                 Course.CourseName,
                 Course.NumberOfSections,
-                CourseSection.SectionNumber,
                 User.Email
-            ).select_from(CourseSection)\
-             .join(Course, CourseSection.CourseID == Course.CourseID)\
-             .join(User, CourseSection.ProfessorID == User.UserID)\
+            ).select_from(Course)\
+             .join(CourseProfessor, Course.CourseID == CourseProfessor.CourseID)\
+             .join(User, CourseProfessor.ProfessorID == User.UserID)\
              .filter(User.Role == 'Professor')\
-             .order_by(Course.CourseName, CourseSection.SectionNumber)
+             .order_by(Course.CourseName, User.Email)
             
-            section_prof_mapping = {}
+            # Group professors by course
+            course_professors = {}
             for row in query.all():
                 course_name = row.CourseName
-                section_num = row.SectionNumber
-                num_sections = row.NumberOfSections
                 prof_email = row.Email
+                num_sections = row.NumberOfSections
                 
-                # Create course identifier based on number of sections
-                if num_sections == 1:
-                    # Single section: just use course name
-                    course_identifier = course_name
-                else:
-                    # Multiple sections: use course-A, course-B format
-                    section_letter = chr(ord('A') + section_num - 1)  # Convert 1->A, 2->B, etc.
-                    course_identifier = f"{course_name}-{section_letter}"
+                if course_name not in course_professors:
+                    course_professors[course_name] = {
+                        'professors': [],
+                        'num_sections': num_sections
+                    }
+                course_professors[course_name]['professors'].append(prof_email)
+            
+            # Create section-professor mapping using round-robin
+            section_prof_mapping = {}
+            for course_name, course_info in course_professors.items():
+                professors = course_info['professors']
+                num_sections = course_info['num_sections']
                 
-                section_prof_mapping[course_identifier] = prof_email
+                for section_num in range(1, num_sections + 1):
+                    # Use round-robin assignment
+                    prof_index = (section_num - 1) % len(professors)
+                    prof_email = professors[prof_index]
+                    
+                    # Create course identifier based on number of sections
+                    if num_sections == 1:
+                        course_identifier = course_name
+                    else:
+                        section_letter = chr(ord('A') + section_num - 1)
+                        course_identifier = f"{course_name}-{section_letter}"
+                    
+                    section_prof_mapping[course_identifier] = prof_email
             
             return section_prof_mapping
             

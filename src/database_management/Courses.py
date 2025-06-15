@@ -1,5 +1,5 @@
 from .dbconnection import get_db_session
-from .models import User, Course, CourseProfessor, CourseSection
+from .models import User, Course, CourseProfessor
 from .migration import migrate_database_for_sections, check_migration_needed
 from sqlalchemy.exc import SQLAlchemyError
 import pandas as pd
@@ -99,10 +99,7 @@ def insert_courses_professors(file, db_path):
                         if existing_course.NumberOfSections != num_sections:
                             existing_course.NumberOfSections = num_sections
 
-                    # Create sections and assign professors
-                    _create_course_sections(session, course_id, num_sections, faculty_names, prof_dict, course_code)
-
-                    # Maintain backward compatibility: also add to CourseProfessor table
+                    # Add professors to CourseProfessor table (round-robin assignment handled at query time)
                     for faculty_name in faculty_names:
                         professor_id = prof_dict.get(faculty_name)
                         if professor_id:
@@ -118,6 +115,9 @@ def insert_courses_professors(file, db_path):
                                     ProfessorID=professor_id
                                 )
                                 session.add(course_professor)
+                                logger.info(f"Added professor {faculty_name} to course {course_code}")
+                        else:
+                            logger.warning(f"Professor {faculty_name} not found for course {course_code}")
 
                 except Exception as e:
                     logger.error(f"Error processing course {row.get('Course code', 'Unknown')}: {e}")
@@ -129,39 +129,6 @@ def insert_courses_professors(file, db_path):
             session.rollback()
             logger.error(f"Error inserting courses: {e}")
             raise
-
-
-def _create_course_sections(session, course_id, num_sections, faculty_names, prof_dict, course_code):
-    """
-    Creates course sections and assigns professors to them.
-    
-    :param session: Database session
-    :param course_id: Course ID
-    :param num_sections: Number of sections to create
-    :param faculty_names: List of faculty names
-    :param prof_dict: Dictionary mapping faculty names to IDs
-    :param course_code: Course code for logging
-    """
-    # Clear existing sections for this course
-    session.query(CourseSection).filter_by(CourseID=course_id).delete()
-    
-    # Create sections
-    for section_num in range(1, num_sections + 1):
-        # Assign professor using round-robin distribution
-        faculty_index = (section_num - 1) % len(faculty_names)
-        faculty_name = faculty_names[faculty_index]
-        professor_id = prof_dict.get(faculty_name)
-        
-        if professor_id:
-            course_section = CourseSection(
-                CourseID=course_id,
-                SectionNumber=section_num,
-                ProfessorID=professor_id
-            )
-            session.add(course_section)
-            logger.info(f"Created section {section_num} for course {course_code} with professor {faculty_name}")
-        else:
-            logger.warning(f"Professor {faculty_name} not found for section {section_num} of course {course_code}")
 
 
 def fetch_course_data(db_path):
