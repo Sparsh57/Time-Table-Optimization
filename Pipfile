@@ -4,7 +4,7 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [requires]
-python_version = "3.13"
+python_version = "3.11"
 
 [packages]
 absl-py = "==2.1.0"
