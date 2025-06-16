@@ -6,6 +6,7 @@ from .dbconnection import get_db_session
 from .models import User, Course, CourseStud
 from sqlalchemy.exc import SQLAlchemyError
 import logging
+from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
 
@@ -255,11 +256,187 @@ def update_student_sections_in_db(section_assignments, db_path):
             raise
 
 
-def run_section_allocation(db_path):
+def print_section_assignments(section_assignments, title="Section Assignments"):
+    """
+    Print section assignments in a formatted table.
+    
+    :param section_assignments: List of section assignment dictionaries
+    :param title: Title for the output
+    """
+    if not section_assignments:
+        print("No section assignments to display.")
+        return
+    
+    print(f"\n{'='*60}")
+    print(f"{title:^60}")
+    print(f"{'='*60}")
+    
+    # Group assignments by course
+    course_assignments = {}
+    for assignment in section_assignments:
+        course_name = assignment["Course"]
+        if course_name not in course_assignments:
+            course_assignments[course_name] = {}
+        
+        section_num = assignment["Assigned_Section"]
+        if section_num not in course_assignments[course_name]:
+            course_assignments[course_name][section_num] = []
+        
+        course_assignments[course_name][section_num].append(assignment["Roll_No"])
+    
+    # Print assignments for each course
+    for course_name in sorted(course_assignments.keys()):
+        print(f"\n📚 Course: {course_name}")
+        print("-" * 50)
+        
+        sections = course_assignments[course_name]
+        for section_num in sorted(sections.keys()):
+            students = sorted(sections[section_num])
+            print(f"  Section {section_num} ({len(students)} students):")
+            
+            # Print students in columns for better readability
+            students_per_row = 3
+            for i in range(0, len(students), students_per_row):
+                student_group = students[i:i + students_per_row]
+                formatted_students = [f"    • {student:<20}" for student in student_group]
+                print("".join(formatted_students))
+        
+        # Print section summary
+        total_students = sum(len(students) for students in sections.values())
+        print(f"  📊 Total students in {course_name}: {total_students}")
+    
+    print(f"\n{'='*60}")
+    total_assignments = len(section_assignments)
+    total_courses = len(course_assignments)
+    print(f"📈 Summary: {total_assignments} students assigned across {total_courses} courses")
+    print(f"{'='*60}")
+
+
+def print_detailed_section_mapping(db_path):
+    """
+    Print detailed section mapping from the database including cluster information.
+    
+    :param db_path: Path to the database
+    """
+    with get_db_session(db_path) as session:
+        try:
+            # Get detailed student section information
+            query = session.query(
+                User.Email.label('Roll_No'),
+                User.Name.label('Student_Name'),
+                Course.CourseName.label('Course'),
+                Course.NumberOfSections,
+                CourseStud.SectionNumber
+            ).select_from(CourseStud)\
+             .join(User, CourseStud.StudentID == User.UserID)\
+             .join(Course, CourseStud.CourseID == Course.CourseID)\
+             .filter(User.Role == 'Student')\
+             .filter(Course.NumberOfSections > 1)\
+             .order_by(Course.CourseName, CourseStud.SectionNumber, User.Email)
+            
+            df = pd.DataFrame(query.all())
+            
+            if df.empty:
+                print("\n🔍 No multi-section courses found in the database.")
+                return
+            
+            print(f"\n{'='*80}")
+            print(f"{'DETAILED STUDENT-SECTION MAPPING':^80}")
+            print(f"{'='*80}")
+            
+            # Group by course
+            for course_name in df['Course'].unique():
+                course_data = df[df['Course'] == course_name]
+                num_sections = course_data['NumberOfSections'].iloc[0]
+                
+                print(f"\n📚 Course: {course_name} ({num_sections} sections)")
+                print("-" * 70)
+                
+                # Group by section
+                for section_num in sorted(course_data['SectionNumber'].unique()):
+                    section_students = course_data[course_data['SectionNumber'] == section_num]
+                    print(f"\n  🏫 Section {section_num} ({len(section_students)} students):")
+                    
+                    # Print students with names if available
+                    for _, student in section_students.iterrows():
+                        student_name = student['Student_Name'] if student['Student_Name'] != student['Roll_No'] else "N/A"
+                        print(f"    • {student['Roll_No']:<25} ({student_name})")
+                
+                # Print course statistics
+                print(f"\n  📊 Course Statistics:")
+                section_counts = course_data.groupby('SectionNumber').size()
+                for section_num, count in section_counts.items():
+                    print(f"    - Section {section_num}: {count} students")
+                
+                avg_section_size = len(course_data) / num_sections
+                print(f"    - Average section size: {avg_section_size:.1f} students")
+            
+            print(f"\n{'='*80}")
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error printing detailed section mapping: {e}")
+
+
+def export_section_mapping_to_csv(db_path, filename=None):
+    """
+    Export student section mapping to a CSV file.
+    
+    :param db_path: Path to the database
+    :param filename: Output filename (auto-generated if None)
+    :return: Filename of the exported CSV
+    """
+    if filename is None:
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"student_section_mapping_{timestamp}.csv"
+    
+    with get_db_session(db_path) as session:
+        try:
+            query = session.query(
+                User.Email.label('Roll_No'),
+                User.Name.label('Student_Name'),
+                Course.CourseName.label('Course'),
+                Course.NumberOfSections,
+                CourseStud.SectionNumber
+            ).select_from(CourseStud)\
+             .join(User, CourseStud.StudentID == User.UserID)\
+             .join(Course, CourseStud.CourseID == Course.CourseID)\
+             .filter(User.Role == 'Student')\
+             .order_by(Course.CourseName, CourseStud.SectionNumber, User.Email)
+            
+            df = pd.DataFrame(query.all())
+            
+            if not df.empty:
+                # Add a formatted course-section identifier
+                df['Course_Section'] = df.apply(
+                    lambda row: f"{row['Course']}-{chr(ord('A') + row['SectionNumber'] - 1)}" 
+                    if row['NumberOfSections'] > 1 else row['Course'], 
+                    axis=1
+                )
+                
+                # Reorder columns for better CSV output
+                df = df[['Roll_No', 'Student_Name', 'Course', 'SectionNumber', 'Course_Section', 'NumberOfSections']]
+                
+                df.to_csv(filename, index=False)
+                print(f"✅ Student section mapping exported to: {filename}")
+                print(f"📊 Total records exported: {len(df)}")
+                return filename
+            else:
+                print("❌ No student enrollment data found to export.")
+                return None
+                
+        except SQLAlchemyError as e:
+            logger.error(f"Error exporting section mapping: {e}")
+            return None
+
+
+def run_section_allocation(db_path, print_mapping=True, export_csv=False):
     """
     Main function to run the complete section allocation process.
     
     :param db_path: Path to the database
+    :param print_mapping: Whether to print the section mapping after allocation
+    :param export_csv: Whether to export the section mapping to CSV
     :return: List of section assignments
     """
     try:
@@ -270,11 +447,126 @@ def run_section_allocation(db_path):
             # Update database with assignments
             update_student_sections_in_db(section_assignments, db_path)
             logger.info("Section allocation completed successfully")
+            
+            # Print section assignments if requested
+            if print_mapping:
+                print_section_assignments(section_assignments, "🎯 Section Allocation Results")
+                print_detailed_section_mapping(db_path)
+            
+            # Export to CSV if requested
+            if export_csv:
+                export_section_mapping_to_csv(db_path)
+                
         else:
             logger.info("No section assignments needed")
+            if print_mapping:
+                print("\n🔍 No multi-section courses found - no section allocation needed.")
         
         return section_assignments
         
     except Exception as e:
         logger.error(f"Error in section allocation process: {e}")
-        raise 
+        raise
+
+
+def get_section_allocation_summary(db_path):
+    """
+    Get a summary of section allocation statistics.
+    
+    :param db_path: Path to the database
+    :return: Dictionary with allocation summary
+    """
+    with get_db_session(db_path) as session:
+        try:
+            # Get multi-section courses and their enrollments
+            query = session.query(
+                Course.CourseName,
+                Course.NumberOfSections,
+                CourseStud.SectionNumber,
+                func.count(CourseStud.StudentID).label('StudentCount')
+            ).select_from(Course)\
+             .join(CourseStud, Course.CourseID == CourseStud.CourseID)\
+             .filter(Course.NumberOfSections > 1)\
+             .group_by(Course.CourseName, Course.NumberOfSections, CourseStud.SectionNumber)\
+             .order_by(Course.CourseName, CourseStud.SectionNumber)
+            
+            results = query.all()
+            
+            summary = {
+                'total_multi_section_courses': 0,
+                'total_sections': 0,
+                'total_students_in_sections': 0,
+                'courses': {},
+                'section_size_stats': {
+                    'min': float('inf'),
+                    'max': 0,
+                    'avg': 0
+                }
+            }
+            
+            section_sizes = []
+            
+            for row in results:
+                course_name = row.CourseName
+                if course_name not in summary['courses']:
+                    summary['courses'][course_name] = {
+                        'num_sections': row.NumberOfSections,
+                        'sections': {}
+                    }
+                    summary['total_multi_section_courses'] += 1
+                
+                summary['courses'][course_name]['sections'][row.SectionNumber] = row.StudentCount
+                summary['total_sections'] += 1
+                summary['total_students_in_sections'] += row.StudentCount
+                section_sizes.append(row.StudentCount)
+            
+            if section_sizes:
+                summary['section_size_stats']['min'] = min(section_sizes)
+                summary['section_size_stats']['max'] = max(section_sizes)
+                summary['section_size_stats']['avg'] = sum(section_sizes) / len(section_sizes)
+            else:
+                summary['section_size_stats'] = {'min': 0, 'max': 0, 'avg': 0}
+            
+            return summary
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error getting section allocation summary: {e}")
+            return {}
+
+
+def print_section_allocation_summary(db_path):
+    """
+    Print a formatted summary of section allocation.
+    
+    :param db_path: Path to the database
+    """
+    summary = get_section_allocation_summary(db_path)
+    
+    if not summary or not summary['courses']:
+        print("\n🔍 No multi-section courses found in the database.")
+        return
+    
+    print(f"\n{'='*70}")
+    print(f"{'📊 SECTION ALLOCATION SUMMARY':^70}")
+    print(f"{'='*70}")
+    
+    print(f"📚 Multi-section courses: {summary['total_multi_section_courses']}")
+    print(f"🏫 Total sections: {summary['total_sections']}")
+    print(f"👥 Total students in sections: {summary['total_students_in_sections']}")
+    
+    stats = summary['section_size_stats']
+    print(f"📈 Section size - Min: {stats['min']}, Max: {stats['max']}, Avg: {stats['avg']:.1f}")
+    
+    print(f"\n{'Course Details':^70}")
+    print("-" * 70)
+    
+    for course_name, course_data in summary['courses'].items():
+        print(f"\n📚 {course_name} ({course_data['num_sections']} sections):")
+        for section_num, student_count in course_data['sections'].items():
+            print(f"  Section {section_num}: {student_count} students")
+        
+        total_students = sum(course_data['sections'].values())
+        avg_size = total_students / course_data['num_sections']
+        print(f"  📊 Total: {total_students} students (avg: {avg_size:.1f} per section)")
+    
+    print(f"\n{'='*70}") 

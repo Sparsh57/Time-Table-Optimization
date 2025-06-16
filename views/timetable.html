@@ -75,6 +75,66 @@
         .spacer {
             height: 50px; /* Adjust the height as needed */
         }
+        .section-mapping {
+            margin-top: 40px;
+        }
+        .section-card {
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .section-header {
+            background-color: #3949ab;
+            color: white;
+            padding: 15px;
+            border-radius: 8px 8px 0 0;
+            font-weight: bold;
+        }
+        .section-content {
+            padding: 20px;
+            background-color: white;
+            border-radius: 0 0 8px 8px;
+        }
+        .section-item {
+            background-color: #f5f5f5;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #3949ab;
+        }
+        .student-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .student-item {
+            background-color: #e8eaf6;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .stats-summary {
+            background: linear-gradient(135deg, #3949ab, #5c6bc0);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .stats-item {
+            display: inline-block;
+            margin: 0 20px;
+            text-align: center;
+        }
+        .stats-number {
+            font-size: 2rem;
+            font-weight: bold;
+            display: block;
+        }
+        .stats-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
     </style>
 </head>
 <body>
@@ -96,14 +156,17 @@
             <h4 class="header">Weekly Timetable</h4>
             <div class="row">
                 <button id="download-csv" class="btn waves-effect waves-light tooltipped" data-position="left" name="Download as CSV">
-                    Download CSV
+                    Download Timetable CSV
                     <i class="material-icons right">downloading</i>
+                </button>
+                <button id="download-section-mapping" class="btn waves-effect waves-light tooltipped" data-position="left" name="Download Section Mapping">
+                    Download Section Mapping
+                    <i class="material-icons right">group</i>
                 </button>
                 <button id="get-data" class="btn waves-effect waves-light tooltipped" data-position="left" name="Generate new table">
                     Generate New Schedule
                     <i class="material-icons right">post_add</i>
                 </button>
-                
                 <button id="send-schedule" class="btn waves-effect waves-light tooltipped" data-position="left" name="Get a single schedule">
                     Get a single schedule
                     <i class="material-icons right">post_add</i>
@@ -142,6 +205,71 @@
             {% else %}
             <div class="card-panel red lighten-4">No timetable data available.</div>
             {% endif %}
+
+            <!-- Section Mapping Display -->
+            {% if section_mapping_data %}
+            <div class="section-mapping">
+                <h4 class="header">Student-Section Allocation</h4>
+                
+                <!-- Statistics Summary -->
+                {% if section_summary and section_summary.courses %}
+                <div class="stats-summary">
+                    <div class="stats-item">
+                        <span class="stats-number">{{ section_summary.total_multi_section_courses }}</span>
+                        <span class="stats-label">Multi-Section Courses</span>
+                    </div>
+                    <div class="stats-item">
+                        <span class="stats-number">{{ section_summary.total_sections }}</span>
+                        <span class="stats-label">Total Sections</span>
+                    </div>
+                    <div class="stats-item">
+                        <span class="stats-number">{{ section_summary.total_students_in_sections }}</span>
+                        <span class="stats-label">Students Allocated</span>
+                    </div>
+                    <div class="stats-item">
+                        <span class="stats-number">{{ "%.1f"|format(section_summary.section_size_stats.avg) }}</span>
+                        <span class="stats-label">Avg Section Size</span>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Course Section Details -->
+                {% for course, sections in section_mapping_data.items() %}
+                <div class="section-card">
+                    <div class="section-header">
+                        <i class="material-icons left">school</i>
+                        {{ course }} ({{ sections|length }} sections)
+                    </div>
+                    <div class="section-content">
+                        {% for section_num, section_data in sections.items() %}
+                        <div class="section-item">
+                            <h6><i class="material-icons tiny">class</i> Section {{ section_num }} ({{ section_data.count }} students)</h6>
+                            <div class="student-list">
+                                {% for student in section_data.students %}
+                                <div class="student-item">
+                                    <i class="material-icons tiny">person</i>
+                                    <strong>{{ student.roll_no }}</strong>
+                                    {% if student.name != 'N/A' %}
+                                        <br><small>{{ student.name }}</small>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="section-mapping">
+                <h4 class="header">Student-Section Allocation</h4>
+                <div class="card-panel blue lighten-4">
+                    <i class="material-icons left">info</i>
+                    No multi-section courses found. All courses have single sections.
+                </div>
+            </div>
+            {% endif %}
         </div>
         <div class="row"></div>
         <div class="row"></div>
@@ -169,6 +297,9 @@
     <script>
         document.getElementById('download-csv').onclick = function() {
             window.location.href = '/download-timetable';
+        };
+        document.getElementById('download-section-mapping').onclick = function() {
+            window.location.href = '/download-section-mapping';
         };
         document.getElementById('get-data').onclick = function() {
             window.location.href = '/get_admin_data';

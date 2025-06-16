@@ -31,6 +31,14 @@ from src.database_management.schedule import (
     get_student_schedule,
     generate_csv_for_student,
 )
+from src.database_management.course_stud import (
+    get_section_mapping_dataframe,
+    print_section_summary
+)
+from src.database_management.section_allocation import (
+    get_section_allocation_summary,
+    export_section_mapping_to_csv
+)
 from src.database_management.Slot_info import insert_time_slots
 from src.database_management.truncate_db import truncate_detail
 from src.main_algorithm import gen_timetable_auto
@@ -465,12 +473,40 @@ async def show_timetable(request: Request):
     # Admin path
     if timetable_made(db_path):
         schedule_data = fetch_schedule_data(db_path)
+        
+        # Get section mapping data
+        section_mapping_df = get_section_mapping_dataframe(db_path)
+        section_summary = get_section_allocation_summary(db_path)
+        
+        # Process section mapping for template
+        section_mapping_data = {}
+        if not section_mapping_df.empty:
+            # Group by course and section
+            for course in section_mapping_df['Course'].unique():
+                course_data = section_mapping_df[section_mapping_df['Course'] == course]
+                if course_data['NumberOfSections'].iloc[0] > 1:  # Only multi-section courses
+                    section_mapping_data[course] = {}
+                    for section_num in sorted(course_data['SectionNumber'].unique()):
+                        section_students = course_data[course_data['SectionNumber'] == section_num]
+                        students_list = []
+                        for _, student in section_students.iterrows():
+                            students_list.append({
+                                'roll_no': student['Roll_No'],
+                                'name': student['Student_Name'] if student['Student_Name'] != student['Roll_No'] else 'N/A'
+                            })
+                        section_mapping_data[course][section_num] = {
+                            'students': students_list,
+                            'count': len(students_list)
+                        }
+        
         return templates.TemplateResponse(
             "timetable.html",
             {
                 "request": request,
                 "user": user_info,
-                "schedule_data": schedule_data
+                "schedule_data": schedule_data,
+                "section_mapping_data": section_mapping_data,
+                "section_summary": section_summary
             }
         )
     else:
@@ -495,6 +531,27 @@ async def download_schedule_csv(request: Request):
         return FileResponse(file_path, media_type="application/octet-stream", filename="Timetable.csv")
     except HTTPException as http_exc:
         return JSONResponse(status_code=http_exc.status_code, content={"detail": http_exc.detail})
+
+
+@app.get("/download-section-mapping")
+async def download_section_mapping_csv(request: Request):
+    """
+    Provides a CSV download of the student-section mapping. Admin-only.
+    """
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Access forbidden: Admins only.")
+
+    db_path = request.session.get("db_path")
+    if not db_path:
+        raise HTTPException(status_code=422, detail="Database path not provided in session.")
+    try:
+        file_path = export_section_mapping_to_csv(db_path)
+        if file_path:
+            return FileResponse(file_path, media_type="application/octet-stream", filename="Section_Mapping.csv")
+        else:
+            return JSONResponse(status_code=404, content={"detail": "No section mapping data found"})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
 
 
 @app.get("/download-timetable/{roll_number}")

@@ -1,6 +1,6 @@
 from .dbconnection import get_db_session, create_tables
 from .models import User, Course, CourseStud
-from .section_allocation import run_section_allocation
+from .section_allocation import run_section_allocation, print_detailed_section_mapping, export_section_mapping_to_csv, print_section_allocation_summary
 from .migration import migrate_database_for_sections, check_migration_needed
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text
@@ -148,7 +148,7 @@ def insert_course_students(file, db_path):
     # After inserting enrollments, run section allocation for multi-section courses
     try:
         print("Running section allocation for multi-section courses...")
-        section_assignments = run_section_allocation(db_path)
+        section_assignments = run_section_allocation(db_path, print_mapping=True, export_csv=False)
         if section_assignments:
             print(f"Successfully allocated {len(section_assignments)} students to sections")
         else:
@@ -185,4 +185,109 @@ def get_student_section_info(db_path):
             
         except SQLAlchemyError as e:
             logger.error(f"Error fetching student section info: {e}")
+            return pd.DataFrame()
+
+
+def print_student_section_mapping(db_path):
+    """
+    Print student section mapping for all courses.
+    Wrapper function to call the detailed section mapping printer.
+    
+    :param db_path: Path to the database
+    """
+    print_detailed_section_mapping(db_path)
+
+
+def export_student_section_mapping(db_path, filename=None):
+    """
+    Export student section mapping to CSV.
+    Wrapper function to export section mapping.
+    
+    :param db_path: Path to the database
+    :param filename: Output filename (auto-generated if None)
+    :return: Filename of the exported CSV
+    """
+    return export_section_mapping_to_csv(db_path, filename)
+
+
+def print_section_summary(db_path):
+    """
+    Print a summary of section allocation.
+    Wrapper function to call the section allocation summary printer.
+    
+    :param db_path: Path to the database
+    """
+    print_section_allocation_summary(db_path)
+
+
+def run_section_allocation_with_options(db_path, print_mapping=True, export_csv=False, print_summary=True):
+    """
+    Run section allocation with various output options.
+    
+    :param db_path: Path to the database
+    :param print_mapping: Whether to print detailed section mapping
+    :param export_csv: Whether to export section mapping to CSV
+    :param print_summary: Whether to print allocation summary
+    :return: List of section assignments
+    """
+    try:
+        print("🚀 Starting section allocation with enhanced options...")
+        
+        # Run section allocation
+        section_assignments = run_section_allocation(db_path, print_mapping=print_mapping, export_csv=export_csv)
+        
+        # Print summary if requested
+        if print_summary and section_assignments:
+            print_section_allocation_summary(db_path)
+        
+        return section_assignments
+        
+    except Exception as e:
+        logger.error(f"Error in section allocation with options: {e}")
+        raise
+
+
+def get_section_mapping_dataframe(db_path):
+    """
+    Get student section mapping as a pandas DataFrame.
+    Enhanced version of get_student_section_info with more details.
+    
+    :param db_path: Path to the database
+    :return: DataFrame with comprehensive student section information
+    """
+    with get_db_session(db_path) as session:
+        try:
+            query = session.query(
+                User.Email.label('Roll_No'),
+                User.Name.label('Student_Name'),
+                Course.CourseName.label('Course'),
+                Course.NumberOfSections,
+                CourseStud.SectionNumber,
+                Course.CourseType.label('Course_Type'),
+                Course.Credits
+            ).select_from(CourseStud)\
+             .join(User, CourseStud.StudentID == User.UserID)\
+             .join(Course, CourseStud.CourseID == Course.CourseID)\
+             .filter(User.Role == 'Student')\
+             .order_by(Course.CourseName, CourseStud.SectionNumber, User.Email)
+            
+            df = pd.DataFrame(query.all())
+            
+            if not df.empty:
+                # Add formatted course-section identifier
+                df['Course_Section'] = df.apply(
+                    lambda row: f"{row['Course']}-{chr(ord('A') + row['SectionNumber'] - 1)}" 
+                    if row['NumberOfSections'] > 1 else row['Course'], 
+                    axis=1
+                )
+                
+                # Add section type indicator
+                df['Section_Type'] = df['NumberOfSections'].apply(
+                    lambda x: 'Multi-Section' if x > 1 else 'Single-Section'
+                )
+            
+            return df
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error fetching section mapping dataframe: {e}")
             return pd.DataFrame()
