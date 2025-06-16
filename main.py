@@ -37,9 +37,11 @@ from src.main_algorithm import gen_timetable_auto
 from src.database_management.dbconnection import (
     get_organization_by_domain, 
     get_organization_by_name, 
-    get_db_session
+    get_db_session,
+    create_tables
 )
 from src.database_management.models import User
+from sqlalchemy import text
 
 load_dotenv()
 
@@ -91,6 +93,18 @@ def fetch_user_role_from_org_db(email: str, db_path: str) -> str:
     Returns the role or 'Student' if not found.
     """
     try:
+        # First, ensure tables exist
+        try:
+            with get_db_session(db_path) as session:
+                # Check if Users table exists by querying it
+                session.execute(text("SELECT 1 FROM Users LIMIT 1"))
+        except Exception:
+            # If table doesn't exist, create all tables
+            logger.info("Users table not found, creating tables...")
+            create_tables(db_path)
+            logger.info("Tables created successfully")
+        
+        # Now proceed with user lookup
         with get_db_session(db_path) as session:
             user = session.query(User).filter_by(Email=email).first()
             if user:

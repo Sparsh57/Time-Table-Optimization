@@ -13,14 +13,14 @@ logger = logging.getLogger(__name__)
 
 def insert_course_students(file, db_path):
     """
-    Inserts student course enrollments from a CSV file into the database using SQLAlchemy.
-    Now includes section allocation for multi-section courses.
+    Inserts student course enrollments using bulk operations.
+    Includes section allocation for multi-section courses.
 
     :param file: The CSV file containing student registration data.
     :param db_path: Path to the database file.
     """
     df_courses = file
-    print(f"Inserting course students into database: {db_path}")
+    print(f"Bulk inserting course students into database: {db_path}")
 
     # Check if migration is needed and run it
     if check_migration_needed(db_path):
@@ -51,23 +51,24 @@ def insert_course_students(file, db_path):
 
             # Create a new DataFrame with relevant columns (G CODE and Roll No.)
             df_merged = df_courses[['G CODE', 'Roll No.', 'Sections']].copy()
-            df_merged['UserID'] = np.nan
-            df_merged['CourseID'] = np.nan
-            df_merged['SectionNumber'] = 1  # Default section
+            
+            # Prepare data for bulk insert
+            enrollments_to_insert = []
 
-            # Map Roll No. to UserID using the student_dict
-            for roll_no in df_merged["Roll No."]:
-                try:
-                    df_merged.loc[df_merged["Roll No."] == roll_no, "UserID"] = int(student_dict[roll_no])
-                except KeyError:
-                    continue
-
-            # Map G CODE to CourseID using the course_dict
+            # Process enrollments
             for index, row in df_merged.iterrows():
-                g_code = row["G CODE"]
-                section = row["Sections"]
-
                 try:
+                    g_code = row["G CODE"]
+                    roll_no = row["Roll No."]
+                    section = row["Sections"]
+                    
+                    # Get student ID
+                    student_id = student_dict.get(roll_no)
+                    if not student_id:
+                        continue
+
+                    section_number = 1  # Default section
+
                     # Handle section information in G CODE
                     if "(" in g_code and ")" in g_code:
                         # Extract course code and section from format like "COURSE123(Sec1)"
@@ -77,17 +78,15 @@ def insert_course_students(file, db_path):
                         # Extract section number if it's in format "Sec1", "Sec2", etc.
                         if section_info.startswith("Sec"):
                             try:
-                                section_num = int(section_info.replace("Sec", ""))
-                                df_merged.loc[index, "SectionNumber"] = section_num
+                                section_number = int(section_info.replace("Sec", ""))
                             except ValueError:
-                                df_merged.loc[index, "SectionNumber"] = 1
+                                section_number = 1
                         # Handle letter format like "A", "B", "C"
                         elif len(section_info) == 1 and section_info.isalpha():
                             try:
-                                section_num = ord(section_info.upper()) - ord('A') + 1  # Convert A->1, B->2, etc.
-                                df_merged.loc[index, "SectionNumber"] = section_num
+                                section_number = ord(section_info.upper()) - ord('A') + 1  # Convert A->1, B->2, etc.
                             except ValueError:
-                                df_merged.loc[index, "SectionNumber"] = 1
+                                section_number = 1
                     elif "-" in g_code and g_code.split("-")[-1].isalpha() and len(g_code.split("-")[-1]) == 1:
                         # Handle dash-separated format like "DATA201-A", "DATA201-B"
                         parts = g_code.split("-")
@@ -96,68 +95,54 @@ def insert_course_students(file, db_path):
                         
                         # Convert section letter to number (A=1, B=2, etc.)
                         try:
-                            section_num = ord(section_letter) - ord('A') + 1
-                            df_merged.loc[index, "SectionNumber"] = section_num
+                            section_number = ord(section_letter) - ord('A') + 1
                         except ValueError:
-                            df_merged.loc[index, "SectionNumber"] = 1
+                            section_number = 1
                     else:
                         # No section info in G CODE, use course as-is
                         course = g_code.strip()
 
-                    # Debugging output
-                    if course != g_code:
-                        print(f"Original G CODE: {g_code}, Processed Course: {course}, Section: {df_merged.loc[index, 'SectionNumber']}")
+                    # Get course ID
+                    course_id = course_dict.get(course)
+                    if not course_id:
+                        logger.warning(f"Course {course} not found in database")
+                        continue
 
-                    # Map the cleaned course to CourseID
-                    df_merged.loc[index, "CourseID"] = int(course_dict[course])
+                    # Add to bulk insert list
+                    enrollments_to_insert.append({
+                        'StudentID': student_id,
+                        'CourseID': course_id,
+                        'SectionNumber': section_number
+                    })
 
-                except KeyError:
-                    logger.warning(f"Course {course} not found in database")
-                    continue
                 except Exception as e:
-                    logger.error(f"Error processing G CODE {g_code}: {e}")
+                    logger.error(f"Error processing enrollment for G CODE {g_code}: {e}")
                     continue
 
-            # Drop rows where either UserID or CourseID is missing (NaN values)
-            df_merged.dropna(subset=['UserID', 'CourseID'], inplace=True)
-            df_merged = df_merged[['UserID', 'CourseID', 'SectionNumber']]
+            # Get existing enrollments to avoid duplicates
+            existing_enrollments = set()
+            for enrollment in session.query(CourseStud).all():
+                existing_enrollments.add((enrollment.StudentID, enrollment.CourseID))
 
-            # Convert to integers
-            df_merged['UserID'] = df_merged['UserID'].astype(int)
-            df_merged['CourseID'] = df_merged['CourseID'].astype(int)
-            df_merged['SectionNumber'] = df_merged['SectionNumber'].astype(int)
+            # Filter out existing enrollments
+            new_enrollments = [
+                enrollment for enrollment in enrollments_to_insert
+                if (enrollment['StudentID'], enrollment['CourseID']) not in existing_enrollments
+            ]
 
-            # Insert course-student relationships into the database
-            for row in df_merged.itertuples(index=False, name=None):
-                try:
-                    # Check if relationship already exists
-                    existing_enrollment = session.query(CourseStud).filter_by(
-                        StudentID=row[0], 
-                        CourseID=row[1]
-                    ).first()
-                    
-                    if not existing_enrollment:
-                        new_enrollment = CourseStud(
-                            StudentID=row[0],
-                            CourseID=row[1],
-                            SectionNumber=row[2]
-                        )
-                        session.add(new_enrollment)
-                    else:
-                        # Update section number if different
-                        if existing_enrollment.SectionNumber != row[2]:
-                            existing_enrollment.SectionNumber = row[2]
-                            
-                except Exception as e:
-                    logger.error(f"Error inserting enrollment for student {row[0]}, course {row[1]}: {e}")
-
-            session.commit()
-            logger.info(f"Inserted course-student enrollments into database")
-            print("Course-student enrollments inserted successfully.")
+            # Bulk insert new enrollments
+            if new_enrollments:
+                session.bulk_insert_mappings(CourseStud, new_enrollments)
+                session.commit()
+                logger.info(f"Bulk inserted {len(new_enrollments)} course-student enrollments")
+                print(f"Successfully bulk inserted {len(new_enrollments)} course-student enrollments.")
+            else:
+                logger.info("No new course-student enrollments to insert")
+                print("No new course-student enrollments to insert.")
 
         except SQLAlchemyError as e:
             session.rollback()
-            logger.error(f"Error inserting course-student data: {e}")
+            logger.error(f"Error bulk inserting course-student data: {e}")
             raise
 
     # After inserting enrollments, run section allocation for multi-section courses
@@ -171,6 +156,9 @@ def insert_course_students(file, db_path):
     except Exception as e:
         logger.error(f"Error in section allocation: {e}")
         print(f"Warning: Section allocation failed: {e}")
+
+
+
 
 
 def get_student_section_info(db_path):

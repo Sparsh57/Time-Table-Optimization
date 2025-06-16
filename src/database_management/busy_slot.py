@@ -10,13 +10,13 @@ logger = logging.getLogger(__name__)
 
 def insert_professor_busy_slots(file, db_path):
     """
-    Inserts professor busy slots from a CSV file into database using SQLAlchemy.
+    Inserts professor busy slots from a CSV file using bulk operations.
 
     :param file: The CSV file containing faculty preferences.
     :param db_path: Path to the database file.
     """
     df_courses = file
-    logger.info(f"Starting busy slot insertion for database: {db_path}")
+    logger.info(f"Starting bulk busy slot insertion for database: {db_path}")
 
     # First, ensure tables exist
     try:
@@ -39,8 +39,9 @@ def insert_professor_busy_slots(file, db_path):
             prof_dict = {prof.Email: prof.UserID for prof in professors}
             slot_dict = {f"{slot.Day} {slot.StartTime}": slot.SlotID for slot in slots}
 
-            # Process the data
+            # Process the data and prepare for bulk insert
             df_merged = df_courses[['Name', 'Busy Slot']].copy()
+            busy_slots_to_insert = []
             
             for index, row in df_merged.iterrows():
                 try:
@@ -48,26 +49,43 @@ def insert_professor_busy_slots(file, db_path):
                     slot_id = slot_dict.get(row['Busy Slot'])
                     
                     if prof_id and slot_id:
-                        # Check if busy slot already exists
-                        existing = session.query(ProfessorBusySlot).filter_by(
-                            ProfessorID=prof_id, SlotID=slot_id).first()
-                        
-                        if not existing:
-                            new_busy_slot = ProfessorBusySlot(
-                                ProfessorID=prof_id,
-                                SlotID=slot_id
-                            )
-                            session.add(new_busy_slot)
+                        busy_slots_to_insert.append({
+                            'ProfessorID': prof_id,
+                            'SlotID': slot_id
+                        })
+                    else:
+                        if not prof_id:
+                            logger.warning(f"Professor '{row['Name']}' not found in database")
+                        if not slot_id:
+                            logger.warning(f"Slot '{row['Busy Slot']}' not found in database")
                             
                 except Exception as e:
                     logger.error(f"Error processing row {index}: {e}")
 
-            session.commit()
-            logger.info("Professor busy slots inserted successfully")
+            # Get existing busy slots to avoid duplicates
+            existing_busy_slots = set()
+            for busy_slot in session.query(ProfessorBusySlot).all():
+                existing_busy_slots.add((busy_slot.ProfessorID, busy_slot.SlotID))
+
+            # Filter out existing busy slots
+            new_busy_slots = [
+                slot for slot in busy_slots_to_insert
+                if (slot['ProfessorID'], slot['SlotID']) not in existing_busy_slots
+            ]
+
+            # Bulk insert new busy slots
+            if new_busy_slots:
+                session.bulk_insert_mappings(ProfessorBusySlot, new_busy_slots)
+                session.commit()
+                logger.info(f"Bulk inserted {len(new_busy_slots)} professor busy slots")
+                print(f"Successfully bulk inserted {len(new_busy_slots)} professor busy slots.")
+            else:
+                logger.info("No new professor busy slots to insert")
+                print("No new professor busy slots to insert.")
 
         except SQLAlchemyError as e:
             session.rollback()
-            logger.error(f"Error inserting busy slots: {e}")
+            logger.error(f"Error bulk inserting busy slots: {e}")
             raise
 
 
@@ -186,3 +204,6 @@ def fetch_user_id(email, db_path):
         except SQLAlchemyError as e:
             logger.error(f"Error fetching user ID: {e}")
             return None
+
+
+

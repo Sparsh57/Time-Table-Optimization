@@ -10,29 +10,38 @@ logger = logging.getLogger(__name__)
 
 def parse_faculty_names(faculty_name_str):
     """
-    Parse ampersand-separated faculty names and return a list of cleaned names.
+    Parse faculty names separated by commas, ampersands, or both and return a list of cleaned names.
     
-    :param faculty_name_str: String containing one or more faculty names separated by ampersands
+    :param faculty_name_str: String containing one or more faculty names separated by commas, ampersands, or both
     :return: List of faculty names
     """
     if pd.isna(faculty_name_str):
         return []
     
-    # Split by ampersand and strip whitespace
-    faculty_names = [name.strip() for name in str(faculty_name_str).split('&')]
-    return [name for name in faculty_names if name]  # Remove empty strings
+    # Handle both comma and ampersand separators
+    faculty_str = str(faculty_name_str)
+    
+    # First split by commas, then by ampersands
+    names = []
+    for part in faculty_str.split(','):
+        for name in part.split('&'):
+            cleaned_name = name.strip()
+            if cleaned_name:  # Remove empty strings
+                names.append(cleaned_name)
+    
+    return names
 
 
 def insert_user_data(list_files, db_path):
     """
-    Inserts user data (professors and students) into the database using SQLAlchemy.
+    Inserts user data (professors and students) using bulk operations.
 
     :param list_files: A tuple containing two DataFrames:
                        - course_data: DataFrame with faculty information.
                        - stud_course_data: DataFrame with student registration data.
     :param db_path: Path to the database file.
     """
-    print("Inserting user data")
+    print("Bulk inserting user data")
     
     course_data, stud_course_data = list_files
 
@@ -42,59 +51,63 @@ def insert_user_data(list_files, db_path):
         professors = parse_faculty_names(faculty_name_str)
         all_professors.update(professors)
     
-    # Convert to DataFrame
+    # Convert to list of dictionaries for bulk insert
     prof_data = []
     for prof_name in all_professors:
         prof_data.append({
-            'Email': prof_name,  # Using name as email for now
+            'Email': prof_name,
             'Name': prof_name,
             'Role': 'Professor'
         })
-    
-    filtered_prof_column = pd.DataFrame(prof_data)
 
     # Process student data
     filtered_stud_column = stud_course_data['Roll No.'].dropna().drop_duplicates()
-    filtered_stud_column = pd.DataFrame(filtered_stud_column, columns=['Roll No.'])
-    filtered_stud_column["Role"] = "Student"
-    filtered_stud_column.rename(columns={'Roll No.': 'Email'}, inplace=True)
-    # Use email as name for now (can be updated later if actual names are available)
-    filtered_stud_column['Name'] = filtered_stud_column['Email']
+    stud_data = []
+    for student_email in filtered_stud_column:
+        stud_data.append({
+            'Email': student_email,
+            'Name': student_email,  # Using email as name for now
+            'Role': 'Student'
+        })
 
-    # Combine professor and student data
-    final_data = pd.concat([filtered_prof_column, filtered_stud_column], ignore_index=True)
+    # Combine all user data
+    all_users = prof_data + stud_data
+    print(f"Prepared {len(all_users)} users for bulk insertion ({len(prof_data)} professors, {len(stud_data)} students)")
 
     # First, ensure tables exist
     try:
         with get_db_session(db_path) as session:
-            # Check if Users table exists by querying it
             session.execute(text("SELECT 1 FROM Users LIMIT 1"))
     except Exception:
-        # If table doesn't exist, create all tables
         logger.info("Users table not found, creating tables...")
         create_tables(db_path)
         logger.info("Tables created successfully")
 
     with get_db_session(db_path) as session:
         try:
-            for index, row in final_data.iterrows():
-                # Check if user already exists
-                existing_user = session.query(User).filter_by(Email=row['Email']).first()
-                if not existing_user:
-                    new_user = User(
-                        Name=row['Name'],
-                        Email=row['Email'],
-                        Role=row['Role']
-                    )
-                    session.add(new_user)
+            # Get existing users to avoid duplicates
+            existing_emails = {user.Email for user in session.query(User.Email).all()}
             
-            session.commit()
-            logger.info(f"Inserted {len(final_data)} users into database")
+            # Filter out existing users
+            new_users = [user for user in all_users if user['Email'] not in existing_emails]
+            
+            if new_users:
+                # Bulk insert new users
+                session.bulk_insert_mappings(User, new_users)
+                session.commit()
+                logger.info(f"Bulk inserted {len(new_users)} users into database")
+                print(f"Successfully bulk inserted {len(new_users)} users")
+            else:
+                logger.info("No new users to insert")
+                print("No new users to insert")
             
         except SQLAlchemyError as e:
             session.rollback()
-            logger.error(f"Error inserting user data: {e}")
+            logger.error(f"Error bulk inserting user data: {e}")
             raise
+
+
+
 
 
 def fetch_user_data(db_path):

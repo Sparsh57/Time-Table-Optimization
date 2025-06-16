@@ -13,71 +13,56 @@ load_dotenv()
 
 def insert_time_slots(input_data, db_path):
     """
-    Deletes existing time slots and inserts new dynamic time slots into the database using SQLAlchemy.
-
+    Deletes existing time slots and inserts new dynamic time slots using bulk operations.
+    
     :param input_data: A dictionary where keys are week days and values are lists of tuples containing start and end times.
     :param db_path: Path to the database file.
     """
-    print(f"Inserting time slots into database: {db_path}")
+    print(f"Bulk inserting time slots into database: {db_path}")
     
-    # Create the data for the pandas DataFrame
-    data = []
+    # Create the data for bulk insertion
+    slots_to_insert = []
     for day, time_slots in input_data.items():
         for start, end in time_slots:
-            data.append([start, end, day])
+            slots_to_insert.append({
+                'StartTime': start,
+                'EndTime': end,
+                'Day': day
+            })
 
-    # Create the DataFrame without SlotID (auto-increment in the database)
-    df = pd.DataFrame(data, columns=["StartTime", "EndTime", "Day"])
-    print("Time slots to insert:")
-    print(df)
+    print(f"Prepared {len(slots_to_insert)} time slots for bulk insertion")
 
     # First, ensure tables exist
     try:
         with get_db_session(db_path) as session:
-            # Check if Slots table exists by querying it
             session.execute(text("SELECT 1 FROM Slots LIMIT 1"))
     except Exception:
-        # If table doesn't exist, create all tables
         logger.info("Slots table not found, creating tables...")
         create_tables(db_path)
         logger.info("Tables created successfully")
 
-    # Now proceed with the actual time slot insertion
+    # Now proceed with bulk insertion
     with get_db_session(db_path) as session:
         try:
-            # Delete existing time slots in the database
+            # Delete existing time slots
             deleted_count = session.query(Slot).delete()
             logger.info(f"Deleted {deleted_count} existing time slots")
-            print(f"Deleted {deleted_count} existing time slots successfully.")
 
-            # Insert new time slots into the database
-            for index, row in df.iterrows():
-                try:
-                    # Check if slot already exists with same time and day
-                    existing_slot = session.query(Slot).filter_by(
-                        StartTime=row['StartTime'],
-                        EndTime=row['EndTime'],
-                        Day=row['Day']
-                    ).first()
-                    
-                    if not existing_slot:
-                        new_slot = Slot(
-                            StartTime=row['StartTime'],
-                            EndTime=row['EndTime'],
-                            Day=row['Day']
-                        )
-                        session.add(new_slot)
-                except Exception as e:
-                    logger.error(f"Failed to insert row {index}: {e}")
+            # Bulk insert new time slots
+            if slots_to_insert:
+                session.bulk_insert_mappings(Slot, slots_to_insert)
+                logger.info(f"Bulk inserted {len(slots_to_insert)} time slots")
+                print(f"Successfully bulk inserted {len(slots_to_insert)} time slots.")
 
             session.commit()
-            logger.info(f"Inserted {len(df)} time slots into database")
-            print(f"Successfully inserted {len(df)} time slots.")
 
         except SQLAlchemyError as e:
             session.rollback()
-            logger.error(f"Error inserting time slots: {e}")
+            logger.error(f"Error in bulk inserting time slots: {e}")
             raise
+
+
+
 
 
 def fetch_slots(db_path):
