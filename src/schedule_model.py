@@ -163,7 +163,26 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                 for day, var_list in day_map.items():
                     if len(var_list) > 1:
                         model.Add(sum(var_list) <= 1)
-                        
+        
+        # PHASE 6) No classes on consecutive days
+        day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        day_to_index = {day: idx for idx, day in enumerate(day_order)}
+        
+        for c_id, slot_dict in course_time_vars.items():
+            day_vars = defaultdict(list) # empty-list as keys; can use append
+            for s, vars in slot_dict.items(): # Fetches from the slot dictionary of the given course c_id. (s -> slot, vars -> CP-SAT BOOL VAR) 
+                day = get_day_from_time_slot(s)
+                day_vars[day].append(var)
+
+            for i in range(6): 
+                d1, d2 = day_order[i], day_order[i+1] # Fetches consective days 
+                if d1 in day_vars and d2 in day_vars:
+                    d1_var = model.NewBoolVar(f'{c_id}_on_{d1}')
+                    d2_var = model.NewBoolVar(f'{c_id}_on_{d2}')
+                    model.AddMaxEquality(d1_var, day_vars[d1]) # Binds each *_var to the list of time slots on that day.
+                    model.AddMaxEquality(d2_var, day_vars[d2]) # Same here 
+                    model.Add(d1_var + d2_var <= 1) # The constraint itsel - course can be scheduled on d1 or d2, but not both.
+                
         slot_penalty_vars = []
         # We retrieve the course_id and the dictionary 
         # with key as the timeslots and the values as the boolean decision variables 
