@@ -224,33 +224,37 @@ const selectedFiles = {
    * Submits all three files and the column mappings to /send_admin_data.
    */
   async function submitAll() {
-    if (!selectedFiles.courses || !selectedFiles.faculty || !selectedFiles.students) {
-      alert("Please preview all three files before submitting.");
-      return;
-    }
-  
-    let formData = new FormData();
-    formData.append("courses_file", selectedFiles.courses);
-    formData.append("faculty_preferences_file", selectedFiles.faculty);
-    formData.append("student_courses_file", selectedFiles.students);
-  
-    // Send final column mappings as JSON
-    formData.append("column_mappings", JSON.stringify(columnMappings));
-  
-    try {
-      const response = await fetch("/send_admin_data", {
-        method: "POST",
-        body: formData
-      });
-      if (response.redirected) {
-        window.location.href = response.url;
-      } else {
-        const data = await response.json();
-        alert("Final submission response: " + JSON.stringify(data));
-      }
-    } catch (err) {
-      console.error("Submission error:", err);
-      alert("Submission failed. Check console for details.");
-    }
+  if (!selectedFiles.courses || !selectedFiles.faculty || !selectedFiles.students) {
+    alert("Please preview all three files before submitting.");
+    return;
   }
-  
+
+  let formData = new FormData();
+  formData.append("courses_file", selectedFiles.courses);
+  formData.append("faculty_preferences_file", selectedFiles.faculty);
+  formData.append("student_courses_file", selectedFiles.students);
+  formData.append("column_mappings", JSON.stringify(columnMappings));
+
+  // ← NEW: append the five toggles
+  formData.append("toggle_prof",    document.getElementById("toggle_prof").checked);
+  formData.append("toggle_capacity",document.getElementById("toggle_capacity").checked);
+  formData.append("toggle_student", document.getElementById("toggle_student").checked);
+  formData.append("toggle_same_day",document.getElementById("toggle_same_day").checked);
+  formData.append("toggle_consec_days", document.getElementById("toggle_consec_days").checked);
+
+  try {
+    const response = await fetch("/send_admin_data", {
+      method: "POST",
+      body: formData
+    });
+    if (response.redirected) {
+      window.location.href = response.url;
+    } else {
+      const data = await response.json();
+      alert("Final submission response: " + JSON.stringify(data));
+    }
+  } catch (err) {
+    console.error("Submission error:", err);
+    alert("Submission failed. Check console for details.");
+  }
+}
