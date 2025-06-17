@@ -136,3 +136,4 @@ src/Conflicts.csv
 src/Timetable.csv
 data/Student_Course.csv
 src/timetable_optimization-algorithm.ipynb
+organizations_meta.db
