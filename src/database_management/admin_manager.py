@@ -243,4 +243,7 @@ def get_admin_count(db_path):
             return session.query(User).filter_by(Role='Admin').count()
         except SQLAlchemyError as e:
             logger.error(f"Error counting admin users: {e}")
-            return 0  
+            return 0
+
+
+# User repair functions removed - user creation now handled automatically in OAuth callback  

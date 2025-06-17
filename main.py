@@ -117,10 +117,13 @@ def get_db_path_for_org(org_name: str) -> str:
         raise HTTPException(status_code=500, detail=f"Error accessing meta-database: {e}")
 
 
-def fetch_user_role_from_org_db(email: str, db_path: str) -> str:
+def fetch_user_role_from_org_db(email: str, db_path: str, user_name: str = None) -> str:
     """
     Fetch the user's role from the organization's DB by email using SQLAlchemy.
-    Returns the role or 'Student' if not found.
+    If user doesn't exist, creates them as a Student.
+    Returns the role.
+    
+    This function is the key fix for the production issue where users were missing from the database.
     """
     try:
         # First, ensure tables exist
@@ -128,22 +131,44 @@ def fetch_user_role_from_org_db(email: str, db_path: str) -> str:
             with get_db_session(db_path) as session:
                 # Check if Users table exists by querying it
                 session.execute(text("SELECT 1 FROM Users LIMIT 1"))
-        except Exception:
+                logger.info(f"✅ Users table exists at {db_path}")
+        except Exception as e:
             # If table doesn't exist, create all tables
-            logger.info("Users table not found, creating tables...")
+            logger.info(f"🔧 Users table not found at {db_path}, creating tables...")
             create_tables(db_path)
-            logger.info("Tables created successfully")
+            logger.info(f"✅ Tables created successfully at {db_path}")
         
-        # Now proceed with user lookup
+        # Now proceed with user lookup/creation
         with get_db_session(db_path) as session:
             user = session.query(User).filter_by(Email=email).first()
             if user:
+                logger.info(f"✅ Found existing user: {email} with role: {user.Role}")
                 return user.Role
             else:
-                # If user not in table, default them to 'Student'
+                # User doesn't exist, create them as Student
+                logger.info(f"👤 User {email} not found, creating as Student...")
+                
+                # Use provided name or derive from email
+                display_name = user_name or email.split('@')[0]
+                
+                new_user = User(
+                    Name=display_name,
+                    Email=email,
+                    Role='Student',
+                    CreatedByAdminID=None,
+                    IsFounderAdmin=0
+                )
+                session.add(new_user)
+                session.commit()
+                
+                logger.info(f"✅ Successfully created new Student user: {email} (Name: {display_name})")
                 return "Student"
+                
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Error fetching user role: {exc}")
+        logger.error(f"❌ Critical error in fetch_user_role_from_org_db for {email}: {exc}")
+        logger.error(f"   Database path: {db_path}")
+        logger.error(f"   User name: {user_name}")
+        raise HTTPException(status_code=500, detail=f"Error fetching/creating user: {exc}")
 
 
 # -------------------- Role Check Helpers --------------------
@@ -221,8 +246,8 @@ async def google_callback(request: Request, code: str):
         if org:
             logger.info(f"User {user_email} belongs to organization: {org.OrgName}")
             
-            # Fetch user role from the organization's database
-            user_role = fetch_user_role_from_org_db(user_email, org.DatabasePath)
+            # Fetch user role from the organization's database (creating user if needed)
+            user_role = fetch_user_role_from_org_db(user_email, org.DatabasePath, user_name)
             
             # Store complete user info in session
             request.session["user"] = {
@@ -798,6 +823,7 @@ async def submit_slots(request: Request, slots: List[int] = Form(...), status: L
 @app.get("/test")
 async def testing(request: Request):
     return templates.TemplateResponse("test.html", {"request": request})
+
 
 
 # -------------------- Admin Management Routes --------------------

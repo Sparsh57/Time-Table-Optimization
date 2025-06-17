@@ -43,12 +43,20 @@ def diagnose_same_day_constraints(courses, course_credits):
                   f"but only has {day_count} unique day(s): {sorted(slot_days)}")
     print("[DIAGNOSTIC] Done checking same-day constraints.")
 
-def gen_timetable(db_path, max_classes_per_slot=24):
+def gen_timetable(db_path, max_classes_per_slot=24, 
+                   add_prof_constraints=True, add_timeslot_capacity=True, 
+                   add_student_conflicts=True, add_no_same_day=True, 
+                   add_no_consec_days=False):
     """
     Generate timetable using the original algorithm (backward compatibility).
     
     :param db_path: Path to the database file
     :param max_classes_per_slot: Maximum number of classes allowed per time slot
+    :param add_prof_constraints: Whether to add professor conflict constraints
+    :param add_timeslot_capacity: Whether to enforce time slot capacity limits
+    :param add_student_conflicts: Whether to add student conflict constraints
+    :param add_no_same_day: Whether to prevent same course multiple times per day
+    :param add_no_consec_days: Whether to prevent courses on consecutive days
     """
     # Ensure default time slots exist
     ensure_default_time_slots(db_path)
@@ -63,7 +71,9 @@ def gen_timetable(db_path, max_classes_per_slot=24):
     # Preprocess courses and schedule
     courses = create_course_dictionary(student_course_map, course_professor_map, professor_busy_slots, time_slots)
     diagnose_same_day_constraints(courses, course_credit_map)
-    schedule_data = schedule_courses(courses, student_course_map, course_professor_map, course_credit_map, course_type_map, [], max_classes_per_slot)
+    schedule_data = schedule_courses(courses, student_course_map, course_professor_map, course_credit_map, course_type_map, [], 
+                                   add_prof_constraints, add_timeslot_capacity, add_student_conflicts, 
+                                   add_no_same_day, add_no_consec_days, max_classes_per_slot)
 
     print("Schedule Data")
     print(schedule_data)
@@ -76,12 +86,20 @@ def gen_timetable(db_path, max_classes_per_slot=24):
     return schedule_data, check_conflicts(schedule_data, student_course_map)
 
 
-def gen_timetable_with_sections(db_path, max_classes_per_slot=24):
+def gen_timetable_with_sections(db_path, max_classes_per_slot=24,
+                                 add_prof_constraints=True, add_timeslot_capacity=True, 
+                                 add_student_conflicts=True, add_no_same_day=True, 
+                                 add_no_consec_days=False):
     """
     Generate timetable with section support using the new section-aware algorithm.
     
     :param db_path: Path to the database file
     :param max_classes_per_slot: Maximum number of classes allowed per time slot
+    :param add_prof_constraints: Whether to add professor conflict constraints
+    :param add_timeslot_capacity: Whether to enforce time slot capacity limits
+    :param add_student_conflicts: Whether to add student conflict constraints
+    :param add_no_same_day: Whether to prevent same course multiple times per day
+    :param add_no_consec_days: Whether to prevent courses on consecutive days
     """
     print("Generating timetable with section support...")
     
@@ -90,7 +108,9 @@ def gen_timetable_with_sections(db_path, max_classes_per_slot=24):
     
     if df_merged.empty:
         print("No registration data found, falling back to original algorithm")
-        return gen_timetable(db_path, max_classes_per_slot)
+        return gen_timetable(db_path, max_classes_per_slot, add_prof_constraints, 
+                           add_timeslot_capacity, add_student_conflicts, 
+                           add_no_same_day, add_no_consec_days)
     
     print(f"Found {len(df_merged)} student-course-section enrollments")
     
@@ -141,7 +161,9 @@ def gen_timetable_with_sections(db_path, max_classes_per_slot=24):
     diagnose_same_day_constraints(courses, course_credit_map)
     
     # Generate schedule
-    schedule_data = schedule_courses(courses, student_course_map, course_professor_map_all, course_credit_map, course_type_map, [], max_classes_per_slot)
+    schedule_data = schedule_courses(courses, student_course_map, course_professor_map_all, course_credit_map, course_type_map, [], 
+                                   add_prof_constraints, add_timeslot_capacity, add_student_conflicts, 
+                                   add_no_same_day, add_no_consec_days, max_classes_per_slot)
 
     print("Schedule Data (Section-aware)")
     print(schedule_data)
@@ -177,13 +199,21 @@ def has_multi_section_courses(db_path):
         return False
 
 
-def gen_timetable_auto(db_path, max_classes_per_slot=None):
+def gen_timetable_auto(db_path, max_classes_per_slot=None, 
+                       add_prof_constraints=True, add_timeslot_capacity=True, 
+                       add_student_conflicts=True, add_no_same_day=True, 
+                       add_no_consec_days=False):
     """
     Automatically choose between section-aware and original timetable generation
     based on whether multi-section courses exist.
     
     :param db_path: Path to the database
     :param max_classes_per_slot: Maximum number of classes per slot (if None, uses database setting)
+    :param add_prof_constraints: Whether to add professor conflict constraints
+    :param add_timeslot_capacity: Whether to enforce time slot capacity limits
+    :param add_student_conflicts: Whether to add student conflict constraints
+    :param add_no_same_day: Whether to prevent same course multiple times per day
+    :param add_no_consec_days: Whether to prevent courses on consecutive days
     :return: Schedule data and conflicts
     """
     # Initialize default settings if they don't exist
@@ -203,7 +233,11 @@ def gen_timetable_auto(db_path, max_classes_per_slot=None):
     
     if has_multi_section_courses(db_path):
         print("Multi-section courses detected, using section-aware algorithm")
-        return gen_timetable_with_sections(db_path, max_classes_per_slot)
+        return gen_timetable_with_sections(db_path, max_classes_per_slot, 
+                                         add_prof_constraints, add_timeslot_capacity,
+                                         add_student_conflicts, add_no_same_day, add_no_consec_days)
     else:
         print("No multi-section courses detected, using original algorithm")
-        return gen_timetable(db_path, max_classes_per_slot)
+        return gen_timetable(db_path, max_classes_per_slot,
+                           add_prof_constraints, add_timeslot_capacity,
+                           add_student_conflicts, add_no_same_day, add_no_consec_days)
