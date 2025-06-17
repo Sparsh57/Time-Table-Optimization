@@ -372,7 +372,12 @@ async def send_admin_data(
         courses_file: UploadFile = File(...),
         faculty_preferences_file: UploadFile = File(...),
         student_courses_file: UploadFile = File(...),
-        column_mappings: Optional[str] = Form(None)
+        column_mappings: Optional[str] = Form(None), 
+        toggle_prof: bool = Form(True),
+        toggle_capacity: bool = Form(True), 
+        toggle_student: bool = Form(True), 
+        toggle_same_day: bool = Form(True),
+        toggle_consec_days: bool = Form(False),
 ):
     """
     Processes admin data uploads, inserts data, generates the timetable, redirects to the dashboard.
@@ -422,7 +427,13 @@ async def send_admin_data(
             responses[file_key] = str(e)
 
     # -- Generate timetable
-    gen_timetable_auto(db_path)
+    gen_timetable_auto(
+        db_path,
+        add_prof_constraints    = toggle_prof,
+        add_timeslot_capacity   = toggle_capacity,
+        add_student_conflicts   = toggle_student,
+        add_no_same_day         = toggle_same_day,
+        add_no_consec_days      = toggle_consec_days)
 
     return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
 
