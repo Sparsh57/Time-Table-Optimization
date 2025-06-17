@@ -55,7 +55,8 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                     add_prof_constraints=False,
                     add_timeslot_capacity=False,
                     add_student_conflicts=False,
-                    add_no_same_day=False):
+                    add_no_same_day=False, 
+                    add_no_consec_days=True):
         """
         Builds and solves a new model with specified constraints included.
         Returns (status, schedule_df).
@@ -276,3 +277,17 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
     # If we got here, it's feasible through PHASE 5
     print("[DEBUG] Schedule found with all constraints (including no same-day double scheduling).")
     return p5_df
+
+    # PHASE 6: No same course on consecutive days
+    p6_status, p6_df = solve_phase("PHASE 6",
+                                   add_prof_constraints=True,
+                                   add_timeslot_capacity=True,
+                                   add_student_conflicts=True,
+                                   add_no_same_day=True,
+                                   add_no_consec_days=True)
+    if p6_status == cp_model.INFEASIBLE:
+        print("[DEBUG] Infeasible at PHASE 6: No consecutive days constraint.")
+        return pd.DataFrame(columns=["Course ID", "Scheduled Time"])
+
+    print("[DEBUG] Schedule found with all constraints (including no same-day and no consecutive-day scheduling).")
+    return p6_df
