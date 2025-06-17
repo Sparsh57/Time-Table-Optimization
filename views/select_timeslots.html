@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Supercharged Timeslot Picker</title>
+  <title>Timeslot Picker</title>
   <!-- Materialize CSS -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
   <!-- Material Icons -->
@@ -17,12 +17,6 @@
       color: #1a237e;
       margin: 24px 0;
     }
-    #main-row {
-     max-width: 1200px;       /* or whatever maximum width you want */
-     margin: 0 auto;          /* center horizontally */
-     display: flex;           /* make it flex to support centering children */
-     justify-content: center; /* center the two columns (controls + grid) */
-   }
     #controls-col { padding-right: 1px; }
     /* GRID for timeslots */
     #slots-col {
@@ -36,8 +30,7 @@
       /* optional: constrain height and scroll if you still want scrolling */
       max-height: calc(100vh - 200px);
       overflow-y: auto;
-      justify-items: center;   /* center each card inside its grid cell */
-
+      justify-items: center;
     }
 
     /* Timeslot card tweaks */
@@ -59,9 +52,9 @@
         flex-wrap: wrap;          /* wrap on small screens */
         gap: 12px;                /* space between buttons */
         margin: 0 auto 24px;      /* vertical spacing */
-        }
+    }
 
-/* optional: give a bit of bottom‐margin on each button */
+    /* optional: give a bit of bottom‑margin on each button */
     #controls .btn,
     #controls .btn-floating {
         margin-bottom: 1px;
@@ -82,7 +75,7 @@
     {% include 'navigation.html' %}
   </div>
 
-  <h4>Supercharged Timeslot Picker</h4>
+  <h4>Timeslot Picker</h4>
   <div id="controls">
     <button id="add-slot" class="btn blue darken-1"><i class="material-icons left">add</i>Add Slot</button>
     <button id="clear-all" class="btn grey lighten-1"><i class="material-icons left">delete_sweep</i>Clear All</button>
@@ -92,10 +85,9 @@
     <input type="file" id="file-input" accept=".json" style="display:none">
   </div>
 
-    <!-- Timeslots GRID -->
-    <div id="slots-col" class="col s12 m8 l9">
-      <div id="timeslots"></div>
-    </div>
+  <!-- Timeslots GRID -->
+  <div id="slots-col" class="col s12 m8 l9">
+    <div id="timeslots"></div>
   </div>
 
   <!-- Materialize JS + SortableJS -->
@@ -118,147 +110,145 @@
         el.innerHTML = `
           <div class="card">
             <div class="card-content">
-              <span class="card-title grey-text text-darken-2">
-              </span>
               <div class="row" style="margin-bottom:8px;">
                 <div class="input-field col s4">
                   <select class="browser-default day-select">
-                    ${daysOfWeek.map(d=>
-                      `<option value="${d}" ${d===day?'selected':''}>${d}</option>`
-                    ).join('')}
+                    ${daysOfWeek.map(d=>`<option value="${d}" ${d===day?'selected':''}>${d}</option>`).join('')}
                   </select>
                 </div>
                 <div class="input-field col s4">
-                  <input type="time" class="start-time" value="${start}">
-                  <label class="active">Start Time</label>
+                  <input type="time" class="start-time" value="${start}"><label class="active">Start Time</label>
                 </div>
                 <div class="input-field col s4">
-                  <input type="time" class="end-time" value="${end}">
-                  <label class="active">End Time</label>
+                  <input type="time" class="end-time" value="${end}"><label class="active">End Time</label>
                 </div>
               </div>
               <div class="row" style="margin-bottom:0;">
-                <button class="btn red lighten-1 delete-btn">
-                  <i class="material-icons">delete</i>
-                </button>
-                <button class="btn grey lighten-1 duplicate-btn">
-                  <i class="material-icons">content_copy</i>
-                </button>
+                <button class="btn red lighten-1 delete-btn"><i class="material-icons">delete</i></button>
+                <button class="btn grey lighten-1 duplicate-btn"><i class="material-icons">content_copy</i></button>
               </div>
             </div>
           </div>`;
         return el;
       }
 
-      // start with one
-      container.appendChild(makeSlot());
+      // Load existing timeslots
+      fetch('/get_timeslots')
+        .then(r => r.ok ? r.json() : [])
+        .then(dataObj => {
+          container.innerHTML = '';
+          const all = [];
+          Object.entries(dataObj).forEach(([day, slots]) => {
+            slots.forEach(([s,e]) => all.push({day, start: s, end: e}));
+          });
+          if (all.length) {
+            all.forEach(slot => container.appendChild(makeSlot(slot)));
+          } else {
+            container.appendChild(makeSlot());
+          }
+        })
+        .catch(_ => {
+          container.innerHTML = '';
+          container.appendChild(makeSlot());
+        });
 
-      // delegate delete + duplicate
+      // Delete & duplicate
       container.addEventListener('click', e => {
         const slot = e.target.closest('.timeslot');
         if (!slot) return;
         if (e.target.closest('.delete-btn')) slot.remove();
         if (e.target.closest('.duplicate-btn')) {
-          const day   = slot.querySelector('.day-select').value;
+          const day = slot.querySelector('.day-select').value;
           const start = slot.querySelector('.start-time').value;
-          const end   = slot.querySelector('.end-time').value;
-          daysOfWeek.forEach(d=>{
-            if (d!==day) container.appendChild(makeSlot({day:d, start, end}));
+          const end = slot.querySelector('.end-time').value;
+          daysOfWeek.forEach(d => {
+            if (d !== day) container.appendChild(makeSlot({day: d, start, end}));
           });
         }
       });
 
-      // controls
-      document.getElementById('add-slot').onclick   = () => container.appendChild(makeSlot());
-      document.getElementById('clear-all').onclick = () => container.innerHTML = '';
+      // Controls
+      document.getElementById('add-slot').addEventListener('click', () => container.appendChild(makeSlot()));
+      document.getElementById('clear-all').addEventListener('click', () => container.innerHTML = '');
 
-      // export JSON
-      document.getElementById('export-json').onclick = () => {
-        const data = Array.from(container.children).map(slot=>({
-          day:   slot.querySelector('.day-select').value,
+      // Export JSON
+      document.getElementById('export-json').addEventListener('click', () => {
+        const data = Array.from(container.children).map(slot => ({
+          day: slot.querySelector('.day-select').value,
           start: slot.querySelector('.start-time').value,
-          end:   slot.querySelector('.end-time').value
+          end: slot.querySelector('.end-time').value
         }));
-        const blob = new Blob([JSON.stringify(data, null,2)], {type:'application/json'});
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
-        a.href     = url;
-        a.download = 'timeslots.json';
-        a.click();
-        URL.revokeObjectURL(url);
-      };
+        const blob = new Blob([JSON.stringify(data,null,2)], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'timeslots.json'; a.click(); URL.revokeObjectURL(url);
+      });
 
-      // import JSON
+      // Import JSON
       const fileInput = document.getElementById('file-input');
-      document.getElementById('import-json').onclick = () => fileInput.click();
-      fileInput.onchange = () => {
-        const file = fileInput.files[0];
-        if (!file) return;
+      document.getElementById('import-json').addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', () => {
+        const file = fileInput.files[0]; if (!file) return;
         file.text().then(txt => {
           try {
             const arr = JSON.parse(txt);
             container.innerHTML = '';
-            arr.forEach(item=> container.appendChild(makeSlot(item)));
+            arr.forEach(item => container.appendChild(makeSlot(item)));
           } catch {
-            M.toast({html:'Invalid JSON file', classes:'red'});
+            M.toast({html: 'Invalid JSON file', classes: 'red'});
           }
         });
-      };
+      });
 
-      // submit with validation & overlap checks
-      document.getElementById('submit').onclick = () => {
-        const slots = Array.from(container.children).map(slot=>({
+      // Submit slots
+      document.getElementById('submit').addEventListener('click', () => {
+        const slots = Array.from(container.children).map(slot => ({
           slot,
-          day:   slot.querySelector('.day-select').value,
-          start: slot.querySelector('.start-time'),
-          end:   slot.querySelector('.end-time')
+          day: slot.querySelector('.day-select').value,
+          startEl: slot.querySelector('.start-time'),
+          endEl: slot.querySelector('.end-time')
         }));
         let bad = false;
-        slots.forEach(({slot})=> slot.classList.remove('invalid'));
-
-        // time ranges
-        slots.forEach(({slot,start,end})=>{
-          if (!start.value || !end.value || end.value <= start.value) {
-            slot.classList.add('invalid');
+        slots.forEach(o => o.slot.classList.remove('invalid'));
+        // Validate time ranges
+        slots.forEach(({slot, startEl, endEl}) => {
+          if (!startEl.value || !endEl.value || endEl.value <= startEl.value) {
             bad = true;
+            slot.classList.add('invalid');
           }
         });
-        if (bad) return M.toast({html:'Fix invalid time ranges', classes:'red'});
-
-        // overlaps per day
+        if (bad) return M.toast({html: 'Fix invalid time ranges', classes: 'red'});
+        // Check overlaps
         const byDay = {};
-        for (let {slot,day,start,end} of slots) {
-          byDay[day] = byDay[day]||[];
-          byDay[day].push({slot, s:start.value, e:end.value});
-        }
-        for (let d in byDay) {
-          const arr = byDay[d].sort((a,b)=>a.s.localeCompare(b.s));
-          for (let i=1; i<arr.length; i++){
+        slots.forEach(({slot, day, startEl, endEl}) => {
+          byDay[day] = byDay[day] || [];
+          byDay[day].push({slot, s: startEl.value, e: endEl.value});
+        });
+        Object.values(byDay).forEach(arr => {
+          arr.sort((a,b) => a.s.localeCompare(b.s));
+          for (let i = 1; i < arr.length; i++) {
             if (arr[i].s < arr[i-1].e) {
-              arr[i].slot.classList.add('invalid');
-              arr[i-1].slot.classList.add('invalid');
               bad = true;
+              arr[i-1].slot.classList.add('invalid');
+              arr[i].slot.classList.add('invalid');
             }
           }
-        }
-        if (bad) return M.toast({html:'Found overlapping times', classes:'red'});
-
-        // build payload
-        const payload = {};
-        slots.forEach(({day,start,end})=>{
-          payload[day] = payload[day]||[];
-          payload[day].push([start.value, end.value]);
         });
-
+        if (bad) return M.toast({html: 'Found overlapping times', classes: 'red'});
+        // Build payload
+        const payload = {};
+        slots.forEach(({day, startEl, endEl}) => {
+          payload[day] = payload[day] || [];
+          payload[day].push([startEl.value, endEl.value]);
+        });
         fetch('/insert_timeslots', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
           body: JSON.stringify(payload)
         })
-        .then(r=>r.ok?r.json():Promise.reject())
-        .then(_=>{ M.toast({html:'Submitted!', classes:'green'}); window.location='/home'; })
-        .catch(_=>M.toast({html:'Submission failed',classes:'red'}));
-      };
+        .then(r => r.ok ? r.json() : Promise.reject())
+        .then(_ => { M.toast({html: 'Submitted!', classes: 'green'}); window.location = '/home'; })
+        .catch(_ => M.toast({html: 'Submission failed', classes: 'red'}));
+      });
     });
   </script>
 </body>
