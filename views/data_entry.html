@@ -18,6 +18,44 @@
   <main class="container">
     <h4>Upload, Preview & Map Files</h4>
 
+    <!-- Constraint Toggles -->
+    <div class="card-panel">
+      <h5>Scheduling Constraints</h5>
+      <p class="red-text text-darken-1"><em>*Uncheck to disable that constraint</em></p>
+      <div class="row">
+        <div class="col s m4">
+          <label>
+            <input type="checkbox" id="toggle_prof" name="toggle_prof" checked />
+            <span>Professor Conflict</span>
+          </label>
+        </div>
+        <div class="col s6 m4">
+          <label>
+            <input type="checkbox" id="toggle_capacity" name="toggle_capacity" checked />
+            <span>Max Slot Sapacity</span>
+          </label>
+        </div>
+        <div class="col s6 m4">
+          <label>
+            <input type="checkbox" id="toggle_student" name="toggle_student" checked />
+            <span>Student Conflicts</span>
+          </label>
+        </div>
+        <div class="col s6 m4">
+          <label>
+            <input type="checkbox" id="toggle_same_day" name="toggle_same_day" checked />
+            <span>No Same-Day Sessions</span>
+          </label>
+        </div>
+        <div class="col s6 m4">
+          <label>
+            <input type="checkbox" id="toggle_consec_days" name="toggle_consec_days " checked />
+            <span>No Consecutive-Day Sessions</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
     <!-- Courses Section -->
     <div class="card-panel">
       <h5>Courses File</h5>
