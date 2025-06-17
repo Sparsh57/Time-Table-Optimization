@@ -174,16 +174,7 @@
     <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
 </head>
 <body>
-    <nav>
-        <div class="nav-wrapper">
-            <a href="/" class="brand-logo left">Timetable</a>
-            <ul class="right hide-on-med-and-down">
-                <li><a href="/dashboard">Dashboard</a></li>
-                <li><a href="/logout">Logout</a></li>
-                <li><a href="/select_timeslot">Select Timeslots</a></li>
-            </ul>
-        </div>
-    </nav>
+    {% include 'navigation.html' %}
 <h1>Timeslot Picker</h1>
 
 <div id="timeslots"></div>

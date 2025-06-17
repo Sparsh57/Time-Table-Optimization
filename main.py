@@ -49,6 +49,28 @@ from src.database_management.dbconnection import (
     create_tables
 )
 from src.database_management.models import User
+from src.database_management.admin_manager import (
+    add_admin_user,
+    remove_admin_user,
+    get_all_admins,
+    is_user_admin,
+    ensure_first_admin,
+    get_admin_count,
+    can_remove_admin
+)
+from src.database_management.settings_manager import (
+    get_max_classes_per_slot,
+    set_max_classes_per_slot,
+    initialize_default_settings,
+    get_all_settings
+)
+from src.database_management.organization_manager import (
+    validate_organization_creation,
+    get_user_organization,
+    should_redirect_to_registration,
+    create_organization_with_validation,
+    check_domain_availability
+)
 from sqlalchemy import text
 
 load_dotenv()
@@ -187,45 +209,54 @@ async def google_callback(request: Request, code: str):
         user_info = user_info_response.json()
 
     user_email = user_info.get("email")
-    org_found = None
-    db_path = None
+    user_name = user_info.get("name")
 
-    # -- Check if user_email matches any org domains using SQLAlchemy
+    # -- Check if user belongs to an existing organization using new validation
     try:
         # Ensure meta-database is initialized
         init_meta_database()
         
-        # Find organization by email domain using SQLAlchemy
-        org = get_organization_by_domain(user_email)
+        # Find organization by email domain using new organization manager
+        org = get_user_organization(user_email)
         if org:
-            org_found = org.OrgName
-            db_path = org.DatabasePath
+            logger.info(f"User {user_email} belongs to organization: {org.OrgName}")
+            
+            # Fetch user role from the organization's database
+            user_role = fetch_user_role_from_org_db(user_email, org.DatabasePath)
+            
+            # Store complete user info in session
+            request.session["user"] = {
+                "email": user_email,
+                "name": user_name,
+                "picture": user_info.get("picture"),
+                "org": org.OrgName,
+                "role": user_role,
+                "roll_number": user_email  # Use email as roll number
+            }
+            request.session["db_path"] = org.DatabasePath
+            request.session["org_name"] = org.OrgName
+
+            logger.info(f"User {user_email} authenticated with role: {user_role}")
+            return RedirectResponse(url="/dashboard")
+        else:
+            logger.info(f"No organization found for user {user_email}")
+            
+            # Store basic user info for potential registration
+            request.session["user"] = {
+                "email": user_email,
+                "name": user_name,
+                "picture": user_info.get("picture")
+            }
+            
+            # User does not belong to any organization -> redirect to registration
+            return RedirectResponse(url="/register-organization")
             
     except Exception as e:
-        logger.error(f"Error accessing meta-database: {e}")
-        # Return a simple error response instead of using a template
+        logger.error(f"Error in OAuth callback: {e}")
         return JSONResponse(
             status_code=500, 
-            content={"error": f"Database error: {str(e)}"}
+            content={"error": f"Authentication error: {str(e)}"}
         )
-
-    if org_found and db_path:
-        # -- Fetch the user's role from the org DB
-        user_role = fetch_user_role_from_org_db(user_email, db_path)
-
-        # -- Store in session
-        request.session["user"] = {
-            **user_info,
-            "org": org_found,
-            "role": user_role  # e.g., "Admin", "Student", etc.
-        }
-        request.session["db_path"] = db_path
-
-        return RedirectResponse(url="/dashboard")
-    else:
-        # If no matching org found, direct user to register an organization
-        request.session["user"] = user_info
-        return RedirectResponse(url="/register-organization")
 
 
 @app.get("/logout")
@@ -257,42 +288,80 @@ async def register_organization(
         domain: str = Form(...),
         org_name: str = Form(...),
         allowed_domains: str = Form(...),
-        user_name: str = Form(...)
+        user_name: str = Form(...),
+        max_classes_per_slot: int = Form(24)
 ):
     """
-    Processes the organization registration form. Creates the org DB if needed,
-    adds the registering user as Admin, updates session with the new db_path.
+    Processes the organization registration form with comprehensive validation.
+    Prevents duplicate organizations and domain conflicts.
     """
     try:
-        allowed_domains_list = [d.strip() for d in allowed_domains.split(",")]
-        # Compute the organization's database path based on the org_name
+        # Validate organization creation using new validation system
+        is_valid, validation_message = validate_organization_creation(org_name, allowed_domains, email)
+        
+        if not is_valid:
+            # Return to registration form with error
+            user_info = request.session.get("user", {})
+            return templates.TemplateResponse(
+                "register_organization.html", 
+                {
+                    "request": request, 
+                    "user": user_info,
+                    "error": validation_message,
+                    "org_name": org_name,
+                    "allowed_domains": allowed_domains,
+                    "user_name": user_name
+                }
+            )
+
+        # Compute the organization's database path
         db_path = os.path.join(os.getcwd(), "data", f"{org_name.replace(' ', '_')}.db")
 
-        # Create or get the org DB (make sure it has a 'role' column in the Users table)
-        get_or_create_org_database(org_name, allowed_domains_list)
-
-        # Insert this user as an Admin in the org's DB
-        add_admin(
-            user_name=user_name,
-            email=email,
-            role="Admin",
-            db_path=db_path
+        # Create organization with validation
+        success, message, org = create_organization_with_validation(
+            org_name, allowed_domains, email, user_name, db_path, max_classes_per_slot
         )
 
-        # Store in session
+        if not success:
+            user_info = request.session.get("user", {})
+            return templates.TemplateResponse(
+                "register_organization.html", 
+                {
+                    "request": request, 
+                    "user": user_info,
+                    "error": message,
+                    "org_name": org_name,
+                    "allowed_domains": allowed_domains,
+                    "user_name": user_name
+                }
+            )
+
+        # Update session with organization info
         request.session["db_path"] = db_path
+        request.session["org_name"] = org_name
         request.session["user"] = {
             **request.session.get("user", {}),
             "org": org_name,
-            "role": "Admin"
+            "role": "Admin",
+            "roll_number": email
         }
 
+        logger.info(f"Successfully created organization '{org_name}' with admin '{email}'")
         return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+        
     except Exception as e:
-        # Return a simple error response instead of using a template
-        return JSONResponse(
-            status_code=500, 
-            content={"error": f"Registration error: {str(e)}"}
+        logger.error(f"Error in organization registration: {e}")
+        user_info = request.session.get("user", {})
+        return templates.TemplateResponse(
+            "register_organization.html", 
+            {
+                "request": request, 
+                "user": user_info,
+                "error": f"Registration failed: {str(e)}",
+                "org_name": org_name,
+                "allowed_domains": allowed_domains,
+                "user_name": user_name
+            }
         )
 
 
@@ -363,13 +432,15 @@ async def send_admin_data(
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     """ Renders the home page. """
-    return templates.TemplateResponse("home.html", {"request": request})
+    user_info = request.session.get("user")
+    return templates.TemplateResponse("home.html", {"request": request, "user": user_info})
 
 
 @app.get("/home", response_class=HTMLResponse)
 async def home_page(request: Request):
     """ Alternative home page route. """
-    return templates.TemplateResponse("home.html", {"request": request})
+    user_info = request.session.get("user")
+    return templates.TemplateResponse("home.html", {"request": request, "user": user_info})
 
 
 @app.get("/select_timeslot")
@@ -716,6 +787,196 @@ async def submit_slots(request: Request, slots: List[int] = Form(...), status: L
 @app.get("/test")
 async def testing(request: Request):
     return templates.TemplateResponse("test.html", {"request": request})
+
+
+# -------------------- Admin Management Routes --------------------
+@app.get("/admin_management", response_class=HTMLResponse)
+async def admin_management(request: Request):
+    """
+    Admin management page - shows current admins and allows adding/removing admins.
+    Admin-only route.
+    """
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Access forbidden: Admins only.")
+
+    db_path = request.session.get("db_path")
+    if not db_path:
+        raise HTTPException(status_code=422, detail="Database path not provided in session.")
+
+    try:
+        # Get current user email
+        user_info = request.session.get("user")
+        current_user_email = user_info.get("email") if user_info else None
+        
+        # Get all admins with hierarchy information
+        admins_raw = get_all_admins(db_path)
+        admin_count = get_admin_count(db_path)
+        
+        # Enhance admin information with hierarchy and permissions
+        admins = []
+        for admin in admins_raw:
+            # Check if current user can remove this admin
+            can_remove, reason = can_remove_admin(db_path, current_user_email, admin['email'])
+            
+            # Get creator information
+            created_by = None
+            if admin.get('created_by_admin_id'):
+                with get_db_session(db_path) as session:
+                    creator = session.query(User).filter_by(UserID=admin['created_by_admin_id']).first()
+                    if creator:
+                        created_by = creator.Email
+            
+            admin_info = {
+                **admin,
+                'can_be_removed': can_remove,
+                'removal_reason': reason if not can_remove else None,
+                'created_by': created_by,
+                'is_founder': admin.get('is_founder_admin', 0) == 1
+            }
+            admins.append(admin_info)
+        
+        return templates.TemplateResponse(
+            "admin_management.html",
+            {
+                "request": request,
+                "admins": admins,
+                "admin_count": admin_count,
+                "current_user_email": current_user_email,
+                "user": user_info
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error in admin management page: {e}")
+        raise HTTPException(status_code=500, detail=f"Error loading admin management: {str(e)}")
+
+
+@app.post("/add_admin")
+async def add_admin_route(request: Request, admin_name: str = Form(...), admin_email: str = Form(...)):
+    """
+    Add a new admin user. Admin-only route.
+    """
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Access forbidden: Admins only.")
+
+    db_path = request.session.get("db_path")
+    if not db_path:
+        raise HTTPException(status_code=422, detail="Database path not provided in session.")
+
+    try:
+        # Get current user email to track who created this admin
+        user_info = request.session.get("user")
+        current_user_email = user_info.get("email") if user_info else None
+        
+        success, message = add_admin_user(db_path, admin_name, admin_email, current_user_email)
+        
+        if success:
+            # Redirect back to admin management with success message
+            response = RedirectResponse(url="/admin_management", status_code=303)
+            # You might want to add flash messages here
+            return response
+        else:
+            # Redirect back with error message
+            response = RedirectResponse(url="/admin_management", status_code=303)
+            # You might want to add flash messages here
+            return response
+            
+    except Exception as e:
+        logger.error(f"Error adding admin: {e}")
+        raise HTTPException(status_code=500, detail=f"Error adding admin: {str(e)}")
+
+
+@app.post("/remove_admin")
+async def remove_admin_route(request: Request, admin_email: str = Form(...)):
+    """
+    Remove admin privileges from a user. Admin-only route.
+    """
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Access forbidden: Admins only.")
+
+    db_path = request.session.get("db_path")
+    if not db_path:
+        raise HTTPException(status_code=422, detail="Database path not provided in session.")
+
+    try:
+        # Get current user email for hierarchy checks
+        user_info = request.session.get("user")
+        current_user_email = user_info.get("email") if user_info else None
+        
+        success, message = remove_admin_user(db_path, admin_email, current_user_email)
+        
+        # Redirect back to admin management
+        return RedirectResponse(url="/admin_management", status_code=303)
+        
+    except Exception as e:
+        logger.error(f"Error removing admin: {e}")
+        raise HTTPException(status_code=500, detail=f"Error removing admin: {str(e)}")
+
+
+@app.get("/setup_first_admin", response_class=HTMLResponse)
+async def setup_first_admin_page(request: Request):
+    """
+    First-time admin setup page. Only accessible if no admins exist.
+    """
+    db_path = request.session.get("db_path")
+    if not db_path:
+        raise HTTPException(status_code=422, detail="Database path not provided in session.")
+
+    try:
+        admin_count = get_admin_count(db_path)
+        if admin_count > 0:
+            # Admins already exist, redirect to home
+            return RedirectResponse(url="/home", status_code=303)
+        
+        return templates.TemplateResponse("setup_first_admin.html", {"request": request})
+        
+    except Exception as e:
+        logger.error(f"Error in setup first admin page: {e}")
+        raise HTTPException(status_code=500, detail=f"Error loading setup page: {str(e)}")
+
+
+@app.post("/setup_first_admin")
+async def setup_first_admin_submit(request: Request, admin_name: str = Form(...), admin_email: str = Form(...)):
+    """
+    Create the first admin user.
+    """
+    db_path = request.session.get("db_path")
+    if not db_path:
+        raise HTTPException(status_code=422, detail="Database path not provided in session.")
+
+    try:
+        admin_count = get_admin_count(db_path)
+        if admin_count > 0:
+            # Admins already exist, redirect to home
+            return RedirectResponse(url="/home", status_code=303)
+        
+        success, message = ensure_first_admin(db_path, admin_name, admin_email)
+        
+        if success:
+            # Update session to reflect admin status
+            user_info = request.session.get("user", {})
+            if user_info.get("email") == admin_email:
+                user_info["role"] = "Admin"
+                request.session["user"] = user_info
+            
+            return RedirectResponse(url="/home", status_code=303)
+        else:
+            return templates.TemplateResponse(
+                "setup_first_admin.html", 
+                {"request": request, "error": message}
+            )
+            
+    except Exception as e:
+        logger.error(f"Error setting up first admin: {e}")
+        return templates.TemplateResponse(
+            "setup_first_admin.html", 
+            {"request": request, "error": f"Error creating admin: {str(e)}"}
+        )
+
+
+# -------------------- Settings Routes --------------------
+# Settings functionality moved to organization registration
+
+
 # -------------------- Main --------------------
 if __name__ == "__main__":
     # Run with:  uvicorn main:app --reload  (or python main.py)

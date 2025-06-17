@@ -109,6 +109,87 @@ insert_time = {
     ]
 }
 
+
+def fix_corrupted_time_slots(db_path):
+    """
+    Fix corrupted time slots in the database by removing invalid entries
+    and inserting proper educational time slots.
+    
+    :param db_path: Path to the database file
+    """
+    print(f"🔧 Fixing corrupted time slots in database: {db_path}")
+    
+    with get_db_session(db_path) as session:
+        try:
+            # Check for corrupted time slots (StartTime = EndTime or invalid times)
+            corrupted_count = 0
+            slots = session.query(Slot).all()
+            
+            for slot in slots:
+                # Check if StartTime equals EndTime (invalid duration)
+                # Or if times are outside normal educational hours
+                if (slot.StartTime == slot.EndTime or 
+                    slot.StartTime in ['22:01', '23:01', '12:01', '13:01'] or
+                    ':01' in slot.StartTime):  # These specific corrupt patterns
+                    corrupted_count += 1
+                    
+            if corrupted_count > 0:
+                print(f"❌ Found {corrupted_count} corrupted time slots")
+                print("🗑️  Deleting all corrupted time slots...")
+                
+                # Delete all existing slots
+                deleted_count = session.query(Slot).delete()
+                session.commit()
+                
+                print(f"✅ Deleted {deleted_count} corrupted time slots")
+                print("📅 Inserting proper educational time slots...")
+                
+                # Insert proper time slots
+                insert_time_slots(insert_time, db_path)
+                print("✅ Database fixed with proper time slots")
+            else:
+                print("✅ No corrupted time slots found")
+                
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error fixing corrupted time slots: {e}")
+            raise
+
+
+def ensure_default_time_slots(db_path):
+    """
+    Ensure that default time slots exist in the database.
+    If no time slots are found, insert the default ones.
+    If corrupted time slots are found, fix them.
+    
+    :param db_path: Path to the database file
+    """
+    print(f"Checking for time slots in database: {db_path}")
+    
+    slots = fetch_slots(db_path)
+    if len(slots) == 0:
+        print("No time slots found. Inserting default time slots...")
+        insert_time_slots(insert_time, db_path)
+        print("Default time slots inserted successfully.")
+    else:
+        print(f"Found {len(slots)} existing time slots.")
+        
+        # Check if any of them are corrupted
+        corrupted = False
+        for slot_id, day, start_time, end_time in slots:
+            if (start_time == end_time or 
+                start_time in ['22:01', '23:01', '12:01', '13:01'] or
+                ':01' in start_time):
+                corrupted = True
+                break
+                
+        if corrupted:
+            print("⚠️  Detected corrupted time slots in database!")
+            fix_corrupted_time_slots(db_path)
+        else:
+            print("✅ Time slots appear to be valid.")
+
+
 # Uncomment to insert time slots into the database
 # insert_time_slots(insert_time, "path/to/database.db")
 

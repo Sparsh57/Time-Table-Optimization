@@ -38,26 +38,6 @@ def migrate_database_for_sections(db_path):
                 session.commit()
                 logger.info("Successfully added NumberOfSections column to Courses")
             
-            # Create Course_Section table if it doesn't exist
-            try:
-                session.execute(text("SELECT * FROM Course_Section LIMIT 1"))
-                logger.info("Course_Section table already exists")
-            except Exception:
-                logger.info("Creating Course_Section table")
-                session.execute(text("""
-                    CREATE TABLE Course_Section (
-                        CourseSectionID INTEGER PRIMARY KEY AUTOINCREMENT,
-                        CourseID INTEGER NOT NULL,
-                        SectionNumber INTEGER NOT NULL,
-                        ProfessorID INTEGER NOT NULL,
-                        FOREIGN KEY (CourseID) REFERENCES Courses (CourseID),
-                        FOREIGN KEY (ProfessorID) REFERENCES Users (UserID),
-                        UNIQUE(CourseID, SectionNumber)
-                    )
-                """))
-                session.commit()
-                logger.info("Successfully created Course_Section table")
-            
             # Handle Schedule table migration
             try:
                 # Check if the old Schedule table has SectionID (old schema)

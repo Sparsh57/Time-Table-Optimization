@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Management - Timetable Optimization</title>
+    <link rel="stylesheet" href="static/main.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        .admin-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .admin-card {
+            margin-bottom: 20px;
+        }
+        .admin-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .admin-info {
+            flex-grow: 1;
+        }
+        .admin-actions {
+            margin-left: 20px;
+        }
+        .current-admin-count {
+            background-color: #e3f2fd;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    {% include 'navigation.html' %}
+
+    <div class="container admin-container">
+        <div class="row">
+            <div class="col s12">
+                <div class="card">
+                    <div class="card-content">
+                        <span class="card-title">
+                            <i class="material-icons left">admin_panel_settings</i>
+                            Administrator Management
+                        </span>
+                        <p>Manage system administrators who can access all features and modify system settings.</p>
+                        
+                        <div class="current-admin-count">
+                            <strong>Current Administrators:</strong> {{ admin_count }} admin(s) in the system
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add New Admin Section -->
+        <div class="row">
+            <div class="col s12">
+                <div class="card admin-card">
+                    <div class="card-content">
+                        <span class="card-title">
+                            <i class="material-icons left">person_add</i>
+                            Add New Administrator
+                        </span>
+                        
+                        <form method="POST" action="/add_admin">
+                            <div class="row">
+                                <div class="input-field col s12 m6">
+                                    <input type="text" id="admin_name" name="admin_name" required>
+                                    <label for="admin_name">Administrator Name</label>
+                                </div>
+                                <div class="input-field col s12 m6">
+                                    <input type="email" id="admin_email" name="admin_email" required>
+                                    <label for="admin_email">Administrator Email</label>
+                                </div>
+                            </div>
+                            
+                            <div class="card-action">
+                                <button type="submit" class="btn waves-effect waves-light">
+                                    <i class="material-icons left">add</i>
+                                    Add Administrator
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Admins List -->
+        <div class="row">
+            <div class="col s12">
+                <div class="card admin-card">
+                    <div class="card-content">
+                        <span class="card-title">
+                            <i class="material-icons left">people</i>
+                            Current Administrators
+                        </span>
+                        
+                        {% if admins %}
+                        <div class="admin-list">
+                            {% for admin in admins %}
+                            <div class="admin-item">
+                                <div class="admin-info">
+                                    <div class="admin-name">
+                                        <strong>{{ admin.name }}</strong>
+                                        {% if admin.email == current_user_email %}
+                                        <span class="new badge blue" data-badge-caption="You"></span>
+                                        {% endif %}
+                                        {% if admin.is_founder %}
+                                        <span class="new badge gold" data-badge-caption="Founder"></span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="admin-email grey-text">{{ admin.email }}</div>
+                                    {% if admin.created_by %}
+                                    <div class="admin-hierarchy grey-text text-darken-1">
+                                        <small>Added by: {{ admin.created_by }}</small>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="admin-actions">
+                                    {% if admin.can_be_removed %}
+                                    <a href="#confirm-remove-{{ admin.user_id }}" 
+                                       class="btn-small red waves-effect waves-light modal-trigger">
+                                        <i class="material-icons left">remove_circle</i>
+                                        Remove Admin
+                                    </a>
+                                    
+                                    <!-- Confirmation Modal -->
+                                    <div id="confirm-remove-{{ admin.user_id }}" class="modal">
+                                        <div class="modal-content">
+                                            <h4>Confirm Admin Removal</h4>
+                                            <p>Are you sure you want to remove admin privileges from <strong>{{ admin.name }}</strong> ({{ admin.email }})?</p>
+                                            <p class="grey-text">This action will change their role to Student. They will lose access to admin features.</p>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <form method="POST" action="/remove_admin" style="display: inline;">
+                                                <input type="hidden" name="admin_email" value="{{ admin.email }}">
+                                                <button type="submit" class="btn red waves-effect waves-light">
+                                                    Yes, Remove Admin
+                                                </button>
+                                            </form>
+                                            <a href="#!" class="modal-close btn-flat waves-effect waves-teal">Cancel</a>
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                    <span class="grey-text">{{ admin.removal_reason or "Cannot Remove" }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="center-align">
+                            <i class="material-icons large grey-text">person_off</i>
+                            <p class="grey-text">No administrators found in the system.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Guidelines -->
+        <div class="row">
+            <div class="col s12">
+                <div class="card">
+                    <div class="card-content">
+                        <span class="card-title">
+                            <i class="material-icons left">info</i>
+                            Administrator Guidelines
+                        </span>
+                        <div class="row">
+                            <div class="col s12 m6">
+                                <h6>Admin Privileges:</h6>
+                                <ul class="collection">
+                                    <li class="collection-item">Access all system features</li>
+                                    <li class="collection-item">Upload course and student data</li>
+                                    <li class="collection-item">Configure time slots</li>
+                                    <li class="collection-item">Generate timetables</li>
+                                    <li class="collection-item">Manage system settings</li>
+                                    <li class="collection-item">Add/remove other admins</li>
+                                </ul>
+                            </div>
+                            <div class="col s12 m6">
+                                <h6>Security Notes:</h6>
+                                <ul class="collection">
+                                    <li class="collection-item">
+                                        <i class="material-icons left tiny">security</i>
+                                        At least one admin must exist in the system
+                                    </li>
+                                    <li class="collection-item">
+                                        <i class="material-icons left tiny">email</i>
+                                        Admin emails must be unique
+                                    </li>
+                                    <li class="collection-item">
+                                        <i class="material-icons left tiny">block</i>
+                                        You cannot remove your own admin privileges
+                                    </li>
+                                    <li class="collection-item">
+                                        <i class="material-icons left tiny">people</i>
+                                        Users can be promoted to admin if they already exist
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success/Error Messages -->
+    {% if message %}
+    <div id="message-toast" class="hidden">{{ message }}</div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            M.toast({html: document.getElementById('message-toast').textContent, classes: 'green rounded'});
+        });
+    </script>
+    {% endif %}
+
+    {% if error %}
+    <div id="error-toast" class="hidden">{{ error }}</div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            M.toast({html: document.getElementById('error-toast').textContent, classes: 'red rounded'});
+        });
+    </script>
+    {% endif %}
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Materialize components
+            M.AutoInit();
+        });
+    </script>
+</body>
+</html> 

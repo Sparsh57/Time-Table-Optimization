@@ -1,0 +1,102 @@
+<!-- Navigation Bar Template -->
+<nav class="blue darken-2">
+    <div class="nav-wrapper">
+        <a href="/" class="brand-logo left">
+            <i class="material-icons left">schedule</i>
+            Timetable System
+        </a>
+        
+        <!-- Desktop Navigation -->
+        <ul class="right hide-on-med-and-down">
+            <li><a href="/home"><i class="material-icons left">home</i>Home</a></li>
+            
+            {% if user and user.role == 'Admin' %}
+            <!-- Admin-only links -->
+            <li><a href="/get_admin_data"><i class="material-icons left">cloud_upload</i>Data Entry</a></li>
+            <li><a href="/select_timeslot"><i class="material-icons left">access_time</i>Time Slots</a></li>
+            <li><a href="/admin_management"><i class="material-icons left">admin_panel_settings</i>Admin Management</a></li>
+            <li><a href="/timetable"><i class="material-icons left">view_module</i>View Timetable</a></li>
+            {% elif user and user.role == 'Professor' %}
+            <!-- Professor-only links -->
+            <li><a href="/professor_slots"><i class="material-icons left">event_busy</i>Busy Slots</a></li>
+            {% elif user and user.role == 'Student' %}
+            <!-- Student-only links -->
+            <li><a href="/timetable/{{ user.roll_number }}"><i class="material-icons left">view_module</i>My Timetable</a></li>
+            {% endif %}
+            
+            {% if user %}
+            <li><a href="/dashboard"><i class="material-icons left">dashboard</i>Dashboard</a></li>
+            <li><a href="/logout"><i class="material-icons left">exit_to_app</i>Logout</a></li>
+            {% else %}
+            <li><a href="/auth/google"><i class="material-icons left">login</i>Login</a></li>
+            {% endif %}
+        </ul>
+
+        <!-- Mobile Navigation -->
+        <ul id="nav-mobile" class="sidenav">
+            <li><div class="user-view">
+                {% if user %}
+                <div class="background blue darken-2"></div>
+                {% if user.picture %}
+                <a href="#user"><img class="circle" src="{{ user.picture }}"></a>
+                {% endif %}
+                <a href="#name"><span class="white-text name">{{ user.name or user.email }}</span></a>
+                <a href="#email"><span class="white-text email">{{ user.email }}</span></a>
+                {% if user.role %}
+                <a href="#role"><span class="white-text role">{{ user.role }}</span></a>
+                {% endif %}
+                {% endif %}
+            </div></li>
+            
+            <li><a href="/home"><i class="material-icons">home</i>Home</a></li>
+            
+            {% if user and user.role == 'Admin' %}
+            <li><div class="divider"></div></li>
+            <li><a class="subheader">Admin Tools</a></li>
+            <li><a href="/get_admin_data"><i class="material-icons">cloud_upload</i>Data Entry</a></li>
+            <li><a href="/select_timeslot"><i class="material-icons">access_time</i>Time Slots</a></li>
+            <li><a href="/admin_management"><i class="material-icons">admin_panel_settings</i>Admin Management</a></li>
+            <li><a href="/timetable"><i class="material-icons">view_module</i>View Timetable</a></li>
+            {% elif user and user.role == 'Professor' %}
+            <li><div class="divider"></div></li>
+            <li><a class="subheader">Professor Tools</a></li>
+            <li><a href="/professor_slots"><i class="material-icons">event_busy</i>Busy Slots</a></li>
+            {% elif user and user.role == 'Student' %}
+            <li><div class="divider"></div></li>
+            <li><a class="subheader">Student Tools</a></li>
+            <li><a href="/timetable/{{ user.roll_number }}"><i class="material-icons">view_module</i>My Timetable</a></li>
+            {% endif %}
+            
+            {% if user %}
+            <li><div class="divider"></div></li>
+            <li><a href="/dashboard"><i class="material-icons">dashboard</i>Dashboard</a></li>
+            <li><a href="/logout"><i class="material-icons">exit_to_app</i>Logout</a></li>
+            {% else %}
+            <li><a href="/auth/google"><i class="material-icons">login</i>Login</a></li>
+            {% endif %}
+        </ul>
+        
+        <a href="#" data-target="nav-mobile" class="sidenav-trigger">
+            <i class="material-icons">menu</i>
+        </a>
+    </div>
+</nav>
+
+<!-- Organization Info Bar (for admins) -->
+{% if user and user.org %}
+<div class="blue lighten-4 blue-text text-darken-2" style="padding: 5px 20px; font-size: 14px;">
+    <i class="material-icons tiny">business</i>
+    Organization: <strong>{{ user.org }}</strong>
+    {% if user.role %}
+    | Role: <strong>{{ user.role }}</strong>
+    {% endif %}
+</div>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize mobile sidenav
+    var elems = document.querySelectorAll('.sidenav');
+    M.Sidenav.init(elems);
+});
+</script> 

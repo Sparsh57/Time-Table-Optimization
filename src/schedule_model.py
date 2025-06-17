@@ -16,16 +16,17 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                      student_course_map: Dict[str, List[str]],
                      course_professor_map: Dict[str, Union[str, List[str]]],
                      course_credits: Dict[str, int],
-                     course_type: Dict[str, str], 
-                     non_preferred_slots: List[str]) -> pd.DataFrame:
+                     course_type: Dict[str, str],
+                     non_preferred_slots: List[str],
+                     max_classes_per_slot: int = 24) -> pd.DataFrame:
     """
     Debug-friendly scheduling function with incremental constraint phases:
 
       PHASE 1) Each course must appear 'credits' times.
       PHASE 2) Professor cannot teach two courses in the same slot (AddAtMostOne).
-      PHASE 3) Limit each slot to at most 30 classes.
+      PHASE 3) Limit each slot to at most max_classes_per_slot classes.
       PHASE 4) Student conflicts (soft) -> penalize scheduling multiple courses for one student in the same slot.
-               Additionally, a very soft extra penalty is added if a student’s two required courses clash.
+               Additionally, a very soft extra penalty is added if a student's two required courses clash.
       PHASE 5) No same course twice on the same day (hard constraint).
 
     If a phase is infeasible, we print a debug message and return an empty DataFrame.
@@ -37,10 +38,29 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
     # ---------------------------------------------------------
     # Parameters you can tweak
     # ---------------------------------------------------------
-    MAX_CLASSES_PER_SLOT = 24
+    MAX_CLASSES_PER_SLOT = max_classes_per_slot  # Now configurable!
     STUDENT_CONFLICT_WEIGHT = 1000  # penalty weight for each student conflict
-    REQUIRED_CONFLICT_WEIGHT = 10    # very soft penalty for a clash between two Required courses
+    REQUIRED_CONFLICT_WEIGHT = 10  # very soft penalty for a clash between two Required courses
     NON_PREFERRED_SLOTS = 50
+
+    # ---------------------------------------------------------
+    # Early validation: Check if we have any time slots at all
+    # ---------------------------------------------------------
+    all_available_slots = set()
+    for course_id, course_info in courses.items():
+        all_available_slots.update(course_info.get('time_slots', []))
+
+    if len(all_available_slots) == 0:
+        print("[CRITICAL ERROR] No time slots available across all courses!")
+        print("This usually means:")
+        print("1. No time slots were inserted into the database")
+        print("2. All time slots are blocked by professor busy slots")
+        print("3. Time slot data was not loaded properly")
+        print("Please check the time slot configuration and try again.")
+        return pd.DataFrame(columns=["Course ID", "Scheduled Time"])
+
+    print(f"[INFO] Found {len(all_available_slots)} unique time slots available for scheduling")
+
     # ---------------------------------------------------------
     # Quick Pre-Check for "credits > available slots" problems
     # ---------------------------------------------------------

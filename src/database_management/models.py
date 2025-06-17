@@ -24,6 +24,8 @@ class User(Base):
     Email = Column(String, unique=True, nullable=False)
     Name = Column(String, nullable=False)
     Role = Column(String, nullable=False)  # Admin, Professor, Student
+    CreatedByAdminID = Column(Integer, ForeignKey('Users.UserID'), nullable=True)  # Track who created this admin
+    IsFounderAdmin = Column(Integer, default=0)  # 1 if this is the organization founder
     
     # Relationships
     taught_courses = relationship("CourseProfessor", back_populates="professor")
@@ -114,4 +116,17 @@ class Schedule(Base):
     
     # Relationships
     course = relationship("Course", back_populates="schedule_slots")
-    slot = relationship("Slot", back_populates="scheduled_courses") 
+    slot = relationship("Slot", back_populates="scheduled_courses")
+
+
+class Settings(Base):
+    __tablename__ = 'Settings'
+    
+    SettingID = Column(Integer, primary_key=True, autoincrement=True)
+    SettingKey = Column(String, unique=True, nullable=False)
+    SettingValue = Column(String, nullable=False)
+    Description = Column(String)
+    
+    __table_args__ = (
+        UniqueConstraint('SettingKey'),
+    ) 

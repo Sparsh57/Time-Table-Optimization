@@ -6,6 +6,8 @@ from .database_management.Courses import fetch_course_data
 from .conflict_checker import check_conflicts, find_courses_with_multiple_slots_on_same_day
 from .database_management.database_retrieval import registration_data, faculty_pref, get_all_time_slots, registration_data_with_sections, get_course_section_professor_mapping
 from .database_management.migration import migrate_database_for_sections, check_migration_needed
+from .database_management.Slot_info import ensure_default_time_slots
+from .database_management.settings_manager import get_max_classes_per_slot, initialize_default_settings
 import pandas as pd
 import random
 
@@ -41,10 +43,16 @@ def diagnose_same_day_constraints(courses, course_credits):
                   f"but only has {day_count} unique day(s): {sorted(slot_days)}")
     print("[DIAGNOSTIC] Done checking same-day constraints.")
 
-def gen_timetable(db_path):
+def gen_timetable(db_path, max_classes_per_slot=24):
     """
     Generate timetable using the original algorithm (backward compatibility).
+    
+    :param db_path: Path to the database file
+    :param max_classes_per_slot: Maximum number of classes allowed per time slot
     """
+    # Ensure default time slots exist
+    ensure_default_time_slots(db_path)
+    
     df_merged = registration_data(db_path)
     student_course_map = prepare_student_course_map(df_merged)
     course_professor_map = create_course_professor_map_all(df_merged)
@@ -55,7 +63,7 @@ def gen_timetable(db_path):
     # Preprocess courses and schedule
     courses = create_course_dictionary(student_course_map, course_professor_map, professor_busy_slots, time_slots)
     diagnose_same_day_constraints(courses, course_credit_map)
-    schedule_data = schedule_courses(courses, student_course_map, course_professor_map, course_credit_map, course_type_map, [])
+    schedule_data = schedule_courses(courses, student_course_map, course_professor_map, course_credit_map, course_type_map, [], max_classes_per_slot)
 
     print("Schedule Data")
     print(schedule_data)
@@ -68,9 +76,12 @@ def gen_timetable(db_path):
     return schedule_data, check_conflicts(schedule_data, student_course_map)
 
 
-def gen_timetable_with_sections(db_path):
+def gen_timetable_with_sections(db_path, max_classes_per_slot=24):
     """
     Generate timetable with section support using the new section-aware algorithm.
+    
+    :param db_path: Path to the database file
+    :param max_classes_per_slot: Maximum number of classes allowed per time slot
     """
     print("Generating timetable with section support...")
     
@@ -79,7 +90,7 @@ def gen_timetable_with_sections(db_path):
     
     if df_merged.empty:
         print("No registration data found, falling back to original algorithm")
-        return gen_timetable(db_path)
+        return gen_timetable(db_path, max_classes_per_slot)
     
     print(f"Found {len(df_merged)} student-course-section enrollments")
     
@@ -105,7 +116,21 @@ def gen_timetable_with_sections(db_path):
         course_credit_map[course_section_id] = row['Credit']
         course_type_map[course_section_id] = row['Type']
     
+    # Ensure default time slots exist
+    ensure_default_time_slots(db_path)
+    
     time_slots = get_all_time_slots(db_path)
+    
+    # DEBUG: Print time slot information
+    print(f"🕐 DEBUG: Found {len(time_slots)} time slots in database")
+    if len(time_slots) == 0:
+        print("❌ CRITICAL ERROR: No time slots found! Please add time slots via /select_timeslot")
+        print("⚠️  Cannot generate timetable without time slots")
+        return pd.DataFrame(columns=["Course ID", "Scheduled Time"]), pd.DataFrame()
+    else:
+        print(f"✅ Time slots available: {time_slots[:5]}..." if len(time_slots) > 5 else f"✅ Time slots available: {time_slots}")
+    
+    print(f"📊 Max classes per slot configured: {max_classes_per_slot}")
     
     # Preprocess courses and schedule (treating each section as a separate course)
     courses = create_course_dictionary(student_course_map, course_professor_map_all, professor_busy_slots, time_slots)
@@ -116,7 +141,7 @@ def gen_timetable_with_sections(db_path):
     diagnose_same_day_constraints(courses, course_credit_map)
     
     # Generate schedule
-    schedule_data = schedule_courses(courses, student_course_map, course_professor_map_all, course_credit_map, course_type_map, [])
+    schedule_data = schedule_courses(courses, student_course_map, course_professor_map_all, course_credit_map, course_type_map, [], max_classes_per_slot)
 
     print("Schedule Data (Section-aware)")
     print(schedule_data)
@@ -152,14 +177,24 @@ def has_multi_section_courses(db_path):
         return False
 
 
-def gen_timetable_auto(db_path):
+def gen_timetable_auto(db_path, max_classes_per_slot=None):
     """
     Automatically choose between section-aware and original timetable generation
     based on whether multi-section courses exist.
     
     :param db_path: Path to the database
+    :param max_classes_per_slot: Maximum number of classes per slot (if None, uses database setting)
     :return: Schedule data and conflicts
     """
+    # Initialize default settings if they don't exist
+    initialize_default_settings(db_path)
+    
+    # Get max classes per slot from database if not provided
+    if max_classes_per_slot is None:
+        max_classes_per_slot = get_max_classes_per_slot(db_path)
+    
+    print(f"📊 Using max classes per slot: {max_classes_per_slot}")
+    
     # Ensure database is migrated for sections support
     if check_migration_needed(db_path):
         print("Database migration needed for sections support...")
@@ -168,7 +203,7 @@ def gen_timetable_auto(db_path):
     
     if has_multi_section_courses(db_path):
         print("Multi-section courses detected, using section-aware algorithm")
-        return gen_timetable_with_sections(db_path)
+        return gen_timetable_with_sections(db_path, max_classes_per_slot)
     else:
         print("No multi-section courses detected, using original algorithm")
-        return gen_timetable(db_path)
+        return gen_timetable(db_path, max_classes_per_slot)
