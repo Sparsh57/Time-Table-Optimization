@@ -3,12 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <title>Admin Dashboard - Data Entry</title>
-  <!-- Materialize CSS and JS for styling -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+
+  <!-- Google Fonts: Poppins -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <!-- Material Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-  <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <!-- Materialize CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+  <!-- Your custom styles -->
   <link rel="stylesheet" href="/static/main.css">
+
+  <style>
+    /* Enforce Poppins everywhere */
+    body {
+      font-family: 'Poppins', sans-serif !important;
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -16,14 +26,14 @@
   </header>
 
   <main class="container">
-    <h4>Upload, Preview & Map Files</h4>
+    <h4>Upload, Preview &amp; Map Files</h4>
 
     <!-- Constraint Toggles -->
     <div class="card-panel">
       <h5>Scheduling Constraints</h5>
       <p class="red-text text-darken-1"><em>*Uncheck to disable that constraint</em></p>
       <div class="row">
-        <div class="col s m4">
+        <div class="col s6 m4">
           <label>
             <input type="checkbox" id="toggle_prof" name="toggle_prof" checked />
             <span>Professor Conflict</span>
@@ -32,7 +42,7 @@
         <div class="col s6 m4">
           <label>
             <input type="checkbox" id="toggle_capacity" name="toggle_capacity" checked />
-            <span>Max Slot Sapacity</span>
+            <span>Max Slot Capacity</span>
           </label>
         </div>
         <div class="col s6 m4">
@@ -49,7 +59,7 @@
         </div>
         <div class="col s6 m4">
           <label>
-            <input type="checkbox" id="toggle_consec_days" name="toggle_consec_days " checked />
+            <input type="checkbox" id="toggle_consec_days" name="toggle_consec_days" checked />
             <span>No Consecutive-Day Sessions</span>
           </label>
         </div>
@@ -60,7 +70,7 @@
     <div class="card-panel">
       <h5>Courses File</h5>
       <input type="file" id="coursesInput" accept=".csv,.xlsx">
-      <button class="btn blue" onclick="previewFile('courses')">Preview & Map</button>
+      <button class="btn blue" onclick="previewFile('courses')">Preview &amp; Map</button>
       <div id="coursesError" class="red-text"></div>
       <table class="striped">
         <thead><tr id="coursesHeader"></tr></thead>
@@ -73,7 +83,7 @@
     <div class="card-panel">
       <h5>Faculty Preferences File</h5>
       <input type="file" id="facultyInput" accept=".csv,.xlsx">
-      <button class="btn blue" onclick="previewFile('faculty')">Preview & Map</button>
+      <button class="btn blue" onclick="previewFile('faculty')">Preview &amp; Map</button>
       <div id="facultyError" class="red-text"></div>
       <table class="striped">
         <thead><tr id="facultyHeader"></tr></thead>
@@ -86,7 +96,7 @@
     <div class="card-panel">
       <h5>Student Courses File</h5>
       <input type="file" id="studentsInput" accept=".csv,.xlsx">
-      <button class="btn blue" onclick="previewFile('students')">Preview & Map</button>
+      <button class="btn blue" onclick="previewFile('students')">Preview &amp; Map</button>
       <div id="studentsError" class="red-text"></div>
       <table class="striped">
         <thead><tr id="studentsHeader"></tr></thead>
@@ -119,6 +129,7 @@
     </div>
   </footer>
 
+  <!-- Materialize JS -->
   <script src="/static/script.js"></script>
 </body>
 </html>
