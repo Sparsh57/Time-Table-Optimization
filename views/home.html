@@ -1,168 +1,255 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Timetable System</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Timetable System</title>
 
-    <!-- Materialize CSS and Google Icons for the base framework -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <!-- Materialize CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
-    <style>
-        /* General styling */
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: #f5f5f5;
-            margin: 0;
-        }
+  <!-- ScrollReveal for scroll animations -->
+  <script src="https://unpkg.com/scrollreveal"></script>
 
-        /* Header Styling */
-        nav {
-            background-color: #1a237e;
-        }
+  <style>
+    /* =============== GENERAL =============== */
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Poppins', sans-serif;
+      background-color: #f9f9f9;
+      position: relative;
+    }
+    a { transition: 0.3s; }
+    .valign-wrapper { min-height: 75vh; }
 
-        nav a.brand-logo {
-            font-size: 1.5rem;
-            margin-left: 10px;
-        }
+    /* =============== PRELOADER =============== */
+    #preloader {
+      position: fixed; top:0; left:0; right:0; bottom:0;
+      background: #1a237e; z-index: 9999;
+      display:flex; align-items:center; justify-content:center;
+    }
+    #preloader .preloader-wrapper { width: 64px; height: 64px; }
 
-        /* Welcome Section */
-        .welcome-section {
-            text-align: center;
-            margin-top: 50px;
-        }
+    /* =============== NAVBAR =============== */
+    nav { background-color: #1a237e;}
+    nav .brand-logo { font-size: 1.6rem; }
+    nav ul li>a:hover { background: rgba(255,255,255,0.1); }
+    .sidenav li>a { color: #1a237e; }
 
-        .welcome-section h1 {
-            font-size: 2.5rem;
-            color: #1a237e;
-            margin-bottom: 30px;
-        }
+    /* =============== PARALLAX HERO =============== */
+    .parallax-container { height: 500px; }
+    .hero-content {
+      color: #fff;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+    .hero-content h1 { font-size: 3rem; margin-bottom: 1rem; }
+    .hero-content p { font-size: 1.2rem; margin-bottom: 2rem; }
 
-        .login-btn {
-            background-color: #1a237e;
-            color: white;
-            padding: 10px 25px;
-            font-size: 1.2rem;
-            border-radius: 5px;
-            transition: box-shadow 0.3s ease;
-            border: none;
-        }
+    /* =============== FEATURES =============== */
+    .features .card { 
+      border-radius: 8px; 
+      transition: transform 0.3s, box-shadow 0.3s; 
+    }
+    .features .card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 12px 24px rgba(0,0,0,0.2);
+    }
+    .features .card .card-content i {
+      font-size: 3rem;
+      color: #1a237e;
+    }
 
-        .login-btn:hover {
-            box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
-        }
+    /* =============== BACK TO TOP =============== */
+    #back-to-top {
+      position: fixed; bottom: 40px; right: 40px;
+      background-color: #1a237e; color: #fff;
+      border-radius: 50%; padding: 12px;
+      display: none; z-index: 999;
+      cursor: pointer; transition: background 0.3s;
+    }
+    #back-to-top:hover { background-color: #0d1336; }
 
-        /* About Section */
-        .about-section {
-            background-color: #1a237e;
-            color: white;
-            padding: 30px;
-            border-radius: 10px;
-            margin: 50px 0;
-            text-align: center;
-        }
-
-        .about-section h2 {
-            font-size: 1.8rem;
-            margin-bottom: 20px;
-        }
-
-        .about-section p {
-            font-size: 1.1rem;
-            line-height: 1.5;
-            color: #bbdefb;
-        }
-
-        /* Quick Links Section */
-        .quick-links {
-            background-color: #1a237e;
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: left;
-            margin-bottom: 40px;
-        }
-
-        .quick-links h5 {
-            font-size: 1.5rem;
-            color: #bbdefb;
-        }
-
-        .quick-links a {
-            color: #fff;
-            text-decoration: none;
-            display: block;
-            margin-bottom: 10px;
-            transition: color 0.3s ease;
-        }
-
-        .quick-links a:hover {
-            color: #bbdefb;
-        }
-
-        /* Footer Styling */
-        footer {
-            background-color: #1a237e;
-            color: white;
-            padding: 15px;
-            text-align: center;
-            width: 100%;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 600px) {
-            .about-section, .quick-links {
-                text-align: center;
-            }
-        }
-    </style>
+    /* =============== FOOTER =============== */
+    footer.page-footer {
+      background-color: #1a237e; padding-top: 20px;
+    }
+  </style>
 </head>
-
 <body>
-    <!-- Navigation -->
-    {% include 'navigation.html' %}
 
-    <!-- Welcome Section -->
-    <div class="welcome-section">
-    <h1>Welcome to the Timetable System</h1>
-    <form action="/auth/google" method="get">
-        <button type="submit" class="login-btn">Login with Google</button>
-    </form>
+  <!-- PRELOADER -->
+  <div id="preloader">
+    <div class="preloader-wrapper active">
+      <div class="spinner-layer spinner-white-only">
+        <div class="circle-clipper left"><div class="circle"></div></div>
+        <div class="gap-patch"><div class="circle"></div></div>
+        <div class="circle-clipper right"><div class="circle"></div></div>
+      </div>
     </div>
+  </div>
 
-    <!-- About Section -->
+  <!-- NAVIGATION -->
+  {% include 'navigation.html' %}
+
+  <!-- PARALLAX HERO -->
+  <div class="parallax-container valign-wrapper">
+    <div class="container center hero-content" data-sr>
+      <h1>Organize Your Academic Life</h1>
+      <p>Seamless timetable creation, real-time updates, and conflict-free scheduling.</p>
+      <a href="/auth/google" class="btn-large waves-effect waves-light indigo darken-2">
+        <i class="material-icons left">login</i>Login with Google
+      </a>
+    </div>
+    <div class="parallax"><img src="static\images\background.png" alt="Campus"></div>
+  </div>
+
+  <!-- FEATURES -->
+  <section class="section features">
     <div class="container">
-        <div class="about-section">
-            <h2>About the Timetable System</h2>
-            <p>Efficiently manage and view academic schedules with our advanced system. With user-friendly tools and real-time updates, you can organize your academic life effortlessly.</p>
-        </div>
-    </div>
+      <div class="row">
+        <div class="col s12 center"><h4 data-sr>Key Features</h4></div>
 
-    <!-- Quick Links Section -->
+        <div class="col s12 m6 l4" data-sr>
+          <div class="card hoverable">
+            <div class="card-content center">
+              <i class="material-icons">cloud_upload</i>
+              <h5>Easy Data Import</h5>
+              <p>Upload CSV/XLSX files for courses, faculty & students in seconds.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col s12 m6 l4" data-sr delay="100">
+          <div class="card hoverable">
+            <div class="card-content center">
+              <i class="material-icons">access_time</i>
+              <h5>Custom Time Slots</h5>
+              <p>Create, edit, and manage time slots with an intuitive UI.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col s12 m6 l4" data-sr delay="200">
+          <div class="card hoverable">
+            <div class="card-content center">
+              <i class="material-icons">group</i>
+              <h5>Conflict Checking</h5>
+              <p>Automatic detection and resolution of professor & student clashes.</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col s12 m6 l4" data-sr delay="300">
+          <div class="card hoverable">
+            <div class="card-content center">
+              <i class="material-icons">view_module</i>
+              <h5>Interactive Timetable</h5>
+              <p>View, filter, and download schedules for admins, professors, or students.</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col s12 m6 l4" data-sr delay="400">
+          <div class="card hoverable">
+            <div class="card-content center">
+              <i class="material-icons">settings</i>
+              <h5>Full Admin Control</h5>
+              <p>Manage users, roles, settings, and system-wide constraints with ease.</p>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT MODAL TRIGGER -->
+  <div class="fixed-action-btn">
+    <a class="btn-floating btn-large red modal-trigger" href="#contactModal">
+      <i class="large material-icons">email</i>
+    </a>
+  </div>
+
+  <!-- BACK TO TOP -->
+  <div id="back-to-top"><i class="material-icons">arrow_upward</i></div>
+
+  <!-- CONTACT MODAL -->
+  <div id="contactModal" class="modal">
+    <div class="modal-content">
+      <h4>Contact Us</h4>
+      <p>Have questions or feedback? Drop us a line!</p>
+      <div class="input-field">
+        <input id="name" type="text"><label for="name">Your Name</label>
+      </div>
+      <div class="input-field">
+        <input id="email" type="email"><label for="email">Your Email</label>
+      </div>
+      <div class="input-field">
+        <textarea id="message" class="materialize-textarea"></textarea>
+        <label for="message">Message</label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <a href="#!" class="modal-close waves-effect waves-green btn-flat">Cancel</a>
+      <a href="#!" class="waves-effect waves-light btn indigo darken-2">Send</a>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="page-footer">
     <div class="container">
-        <div class="quick-links">
-            <h5>Quick Links</h5>
-            <a href="#!">Help</a>
-            <a href="#!">Contact</a>
-            <a href="#!">Suggestions</a>
+      <div class="row">
+        <div class="col s12 m6">
+          <h5 class="white-text">Timetable System</h5>
+          <p class="grey-text text-lighten-4">Making academic scheduling a breeze.</p>
         </div>
+        <div class="col s12 m6 right-align social-icons">
+        </div>
+      </div>
     </div>
+    <div class="footer-copyright">
+      <div class="container center"> OurClock</div>
+    </div>
+  </footer>
 
-    <!-- Footer -->
-    <footer>
-        © 2024 Timetable System. All rights reserved.
-    </footer>
+  <!-- Materialize & Initialization -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      // Preloader fadeout
+      setTimeout(()=> document.getElementById('preloader').style.opacity = 0, 800);
+      setTimeout(()=> document.getElementById('preloader').style.display = 'none', 1200);
 
-    <!-- Materialize JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+      // Parallax
+      let elemsParallax = document.querySelectorAll('.parallax');
+      M.Parallax.init(elemsParallax);
+
+      // Sidenav
+      let elemsSidenav = document.querySelectorAll('.sidenav');
+      M.Sidenav.init(elemsSidenav);
+
+      // Modal
+      let elemsModal = document.querySelectorAll('.modal');
+      M.Modal.init(elemsModal);
+
+      // ScrollReveal animations
+      ScrollReveal().reveal('[data-sr]', {
+        distance: '50px', duration: 800, easing: 'ease-out', origin: 'bottom', interval: 200
+      });
+
+      // Back to top button
+      const backToTop = document.getElementById('back-to-top');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 300) backToTop.style.display = 'block';
+        else backToTop.style.display = 'none';
+      });
+      backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    });
+  </script>
 </body>
-
 </html>
