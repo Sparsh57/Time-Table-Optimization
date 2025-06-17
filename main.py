@@ -689,6 +689,25 @@ async def download_student_schedule_csv(request: Request, roll_number: str):
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
+@app.get("/get_timeslots")
+async def get_timeslots(request: Request):
+    """Fetch existing time slots for the organization."""
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Access forbidden: Admins only.")
+
+    db_path = request.session.get("db_path")
+    if not db_path:
+        raise HTTPException(status_code=422, detail="Database path not provided in session.")
+
+    try:
+        slots = fetch_slots(db_path)
+        slots_by_day = defaultdict(list)
+        for _, day, start, end in slots:
+            slots_by_day[day].append([start, end])
+        return JSONResponse(status_code=200, content=slots_by_day)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
+
 @app.post("/insert_timeslots")
 async def insert_timeslots(request: Request, timeslot_data: dict):
     """
