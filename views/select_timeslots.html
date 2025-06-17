@@ -1,409 +1,265 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Timeslot Picker</title>
-    <!-- Material Design Lite CSS -->
-    <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css">
-    <!-- Material Icons -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-    <!-- Materialize CSS and Google Icons for the base framework -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <meta charset="UTF-8">
+  <title>Supercharged Timeslot Picker</title>
+  <!-- Materialize CSS -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    body {
+      background: #f5f5f5;
+      font-family: 'Poppins', sans-serif;
+    }
+    h4 {
+      text-align: center;
+      color: #1a237e;
+      margin: 24px 0;
+    }
+    #main-row {
+     max-width: 1200px;       /* or whatever maximum width you want */
+     margin: 0 auto;          /* center horizontally */
+     display: flex;           /* make it flex to support centering children */
+     justify-content: center; /* center the two columns (controls + grid) */
+   }
+    #controls-col { padding-right: 1px; }
+    /* GRID for timeslots */
+    #slots-col {
+      padding-left: 70px;
+      padding-right: 70px;
+    }
+    #timeslots {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      /* optional: constrain height and scroll if you still want scrolling */
+      max-height: calc(100vh - 200px);
+      overflow-y: auto;
+      justify-items: center;   /* center each card inside its grid cell */
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
-            margin: 20px;
-        }
-        h1 {
-            text-align: center;
-        }
-        #timeslots {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        .timeslot {
-            border: 1px solid #E0E0E0;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-            position: relative;
-        }
-        .timeslot .mdl-textfield, .timeslot .mdl-selectfield {
-            margin-right: 20px;
-            width: 150px;
-        }
-        .timeslot-buttons {
-            margin-top: 20px;
-        }
-        #addTimeslotBtn {
-            display: block;
-            margin: 30px auto;
-        }
-        #submitBtn {
-            display: block;
-            margin: 30px auto;
-        }
-        .mdl-textfield__label {
-            top: -14px;
-        }
-        .mdl-textfield__input {
-            padding-left: 0;
-        }
-        .move-buttons {
-            display: flex;
-            flex-direction: column;
-            position: absolute;
-            right: 10px;
-            top: 10px;
-        }
-        .move-buttons button {
-            margin-bottom: 5px;
-            min-width: 0;
-            padding: 5px;
-        }
-                /* General styling */
-                body {
-            font-family: 'Poppins', sans-serif;
-            background-color: #f5f5f5;
-            margin: 0;
+    }
+
+    /* Timeslot card tweaks */
+    .timeslot { margin-bottom: 0; }  /* grid gap handles spacing now */
+    .timeslot .card { overflow: visible; }
+    .timeslot.invalid input { border-color: #e53935 !important; }
+
+    /* Controls panel */
+    #controls .card-panel { padding: 16px; }
+    #controls h6 {
+      margin-bottom: 16px;
+      font-weight: 500;
+      color: #1a237e;
+    }
+    /* Floating add button sizing */
+    #controls {
+        display: flex;
+        justify-content: center;  /* center horizontally */
+        flex-wrap: wrap;          /* wrap on small screens */
+        gap: 12px;                /* space between buttons */
+        margin: 0 auto 24px;      /* vertical spacing */
         }
 
-        /* Header Styling */
-        nav {
-            background-color: #1a237e;
-        }
+/* optional: give a bit of bottom‐margin on each button */
+    #controls .btn,
+    #controls .btn-floating {
+        margin-bottom: 1px;
+    }
 
-        nav a.brand-logo {
-            font-size: 1.5rem;
-            margin-left: 10px;
-        }
-
-        /* Welcome Section */
-        .welcome-section {
-            text-align: center;
-            margin-top: 50px;
-        }
-
-        .welcome-section h1 {
-            font-size: 2.5rem;
-            color: #1a237e;
-            margin-bottom: 30px;
-        }
-
-        .login-btn {
-            background-color: #1a237e;
-            color: white;
-            padding: 10px 25px;
-            font-size: 1.2rem;
-            border-radius: 5px;
-            transition: box-shadow 0.3s ease;
-            border: none;
-        }
-
-        .login-btn:hover {
-            box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        /* About Section */
-        .about-section {
-            background-color: #1a237e;
-            color: white;
-            padding: 30px;
-            border-radius: 10px;
-            margin: 50px 0;
-            text-align: center;
-        }
-
-        .about-section h2 {
-            font-size: 1.8rem;
-            margin-bottom: 20px;
-        }
-
-        .about-section p {
-            font-size: 1.1rem;
-            line-height: 1.5;
-            color: #bbdefb;
-        }
-
-        /* Quick Links Section */
-        .quick-links {
-            background-color: #1a237e;
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: left;
-        }
-
-        .quick-links h5 {
-            font-size: 1.5rem;
-            color: #bbdefb;
-        }
-
-        .quick-links a {
-            color: #fff;
-            text-decoration: none;
-            display: block;
-            margin-bottom: 10px;
-            transition: color 0.3s ease;
-        }
-
-        .quick-links a:hover {
-            color: #bbdefb;
-        }
-
-        /* Footer Styling */
-        footer {
-            background-color: #1a237e;
-            color: white;
-            padding: 15px;
-            text-align: center;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 600px) {
-            .about-section, .quick-links {
-                text-align: center;
-            }
-        }
-    </style>
-    <!-- Material Design Lite JS -->
-    <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+    /* Full-width text buttons */
+    .full-width {
+      width: 100%;
+      margin-bottom: 12px;
+      text-transform: none;
+    }
+  </style>
 </head>
 <body>
+
+  <!-- Navbar -->
+  <div class="navbar-fixed">
     {% include 'navigation.html' %}
-<h1>Timeslot Picker</h1>
+  </div>
 
-<div id="timeslots"></div>
+  <h4>Supercharged Timeslot Picker</h4>
+  <div id="controls">
+    <button id="add-slot" class="btn blue darken-1"><i class="material-icons left">add</i>Add Slot</button>
+    <button id="clear-all" class="btn grey lighten-1"><i class="material-icons left">delete_sweep</i>Clear All</button>
+    <button id="import-json" class="btn green lighten-1"><i class="material-icons left">upload</i>Import JSON</button>
+    <button id="export-json" class="btn blue lighten-1"><i class="material-icons left">download</i>Export JSON</button>
+    <button id="submit" class="btn waves-effect waves-light indigo"><i class="material-icons left">send</i>Submit</button>
+    <input type="file" id="file-input" accept=".json" style="display:none">
+  </div>
 
-<button id="addTimeslotBtn" class="mdl-button mdl-js-button mdl-button--fab mdl-button--colored">
-    <i class="material-icons">add</i>
-</button>
+    <!-- Timeslots GRID -->
+    <div id="slots-col" class="col s12 m8 l9">
+      <div id="timeslots"></div>
+    </div>
+  </div>
 
-<button id="submitBtn" class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored">
-    Submit
-</button>
+  <!-- Materialize JS + SortableJS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      // Initialize tooltips
+      M.Tooltip.init(document.querySelectorAll('.tooltipped'));
 
-<script>
-    const timeslotsContainer = document.getElementById('timeslots');
-    const addTimeslotBtn = document.getElementById('addTimeslotBtn');
-    const submitBtn = document.getElementById('submitBtn');
+      const daysOfWeek = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+      const container  = document.getElementById('timeslots');
 
-    function createTimeslot(day='', startTime='', endTime='') {
-        const timeslotDiv = document.createElement('div');
-        timeslotDiv.className = 'timeslot mdl-shadow--2dp';
+      // Make the grid draggable
+      Sortable.create(container, { handle: '.drag-handle', animation: 150 });
 
-        const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      function makeSlot({day='', start='', end=''}={}) {
+        const el = document.createElement('div');
+        el.className = 'timeslot';
+        el.innerHTML = `
+          <div class="card">
+            <div class="card-content">
+              <span class="card-title grey-text text-darken-2">
+              </span>
+              <div class="row" style="margin-bottom:8px;">
+                <div class="input-field col s4">
+                  <select class="browser-default day-select">
+                    ${daysOfWeek.map(d=>
+                      `<option value="${d}" ${d===day?'selected':''}>${d}</option>`
+                    ).join('')}
+                  </select>
+                </div>
+                <div class="input-field col s4">
+                  <input type="time" class="start-time" value="${start}">
+                  <label class="active">Start Time</label>
+                </div>
+                <div class="input-field col s4">
+                  <input type="time" class="end-time" value="${end}">
+                  <label class="active">End Time</label>
+                </div>
+              </div>
+              <div class="row" style="margin-bottom:0;">
+                <button class="btn red lighten-1 delete-btn">
+                  <i class="material-icons">delete</i>
+                </button>
+                <button class="btn grey lighten-1 duplicate-btn">
+                  <i class="material-icons">content_copy</i>
+                </button>
+              </div>
+            </div>
+          </div>`;
+        return el;
+      }
 
-        // Day of the week selector
-        const daySelect = document.createElement('div');
-        daySelect.className = 'mdl-textfield mdl-js-textfield mdl-textfield--floating-label';
+      // start with one
+      container.appendChild(makeSlot());
 
-        const daySelectInput = document.createElement('select');
-        daySelectInput.className = 'mdl-textfield__input';
-        daySelectInput.id = 'day-select-' + Date.now();
-
-        daysOfWeek.forEach(d => {
-            const option = document.createElement('option');
-            option.value = d;
-            option.text = d;
-            if (d === day) option.selected = true;
-            daySelectInput.appendChild(option);
-        });
-
-        const daySelectLabel = document.createElement('label');
-        daySelectLabel.className = 'mdl-textfield__label';
-        daySelectLabel.htmlFor = daySelectInput.id;
-        daySelectLabel.textContent = 'Day of the Week';
-
-        daySelect.appendChild(daySelectInput);
-        daySelect.appendChild(daySelectLabel);
-
-        // Start time input
-        const startTimeDiv = document.createElement('div');
-        startTimeDiv.className = 'mdl-textfield mdl-js-textfield mdl-textfield--floating-label';
-
-        const startTimeInput = document.createElement('input');
-        startTimeInput.className = 'mdl-textfield__input';
-        startTimeInput.type = 'time';
-        startTimeInput.value = startTime;
-        startTimeInput.id = 'start-time-' + Date.now();
-
-        const startTimeLabel = document.createElement('label');
-        startTimeLabel.className = 'mdl-textfield__label';
-        startTimeLabel.htmlFor = startTimeInput.id;
-        startTimeLabel.textContent = 'Start Time';
-
-        startTimeDiv.appendChild(startTimeInput);
-        startTimeDiv.appendChild(startTimeLabel);
-
-        // End time input
-        const endTimeDiv = document.createElement('div');
-        endTimeDiv.className = 'mdl-textfield mdl-js-textfield mdl-textfield--floating-label';
-
-        const endTimeInput = document.createElement('input');
-        endTimeInput.className = 'mdl-textfield__input';
-        endTimeInput.type = 'time';
-        endTimeInput.value = endTime;
-        endTimeInput.id = 'end-time-' + Date.now();
-
-        const endTimeLabel = document.createElement('label');
-        endTimeLabel.className = 'mdl-textfield__label';
-        endTimeLabel.htmlFor = endTimeInput.id;
-        endTimeLabel.textContent = 'End Time';
-
-        endTimeDiv.appendChild(endTimeInput);
-        endTimeDiv.appendChild(endTimeLabel);
-
-        // Button container
-        const buttonContainer = document.createElement('div');
-        buttonContainer.className = 'timeslot-buttons';
-
-        // Delete button
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent';
-        deleteBtn.textContent = 'Delete';
-        deleteBtn.onclick = function() {
-            timeslotsContainer.removeChild(timeslotDiv);
-            updateMoveButtons();
-        };
-
-        // Duplicate button
-        const duplicateBtn = document.createElement('button');
-        duplicateBtn.className = 'mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect';
-        duplicateBtn.textContent = 'Duplicate for All Days';
-        duplicateBtn.onclick = function() {
-            daysOfWeek.forEach(d => {
-                if (d !== daySelectInput.value) {
-                    const newTimeslot = createTimeslot(d, startTimeInput.value, endTimeInput.value);
-                    timeslotsContainer.appendChild(newTimeslot);
-                    componentHandler.upgradeAllRegistered();
-                }
-            });
-            updateMoveButtons();
-        };
-
-        buttonContainer.appendChild(duplicateBtn);
-        buttonContainer.appendChild(deleteBtn);
-
-        // Move buttons container
-        const moveButtonsContainer = document.createElement('div');
-        moveButtonsContainer.className = 'move-buttons';
-
-        // Move Up button
-        const moveUpBtn = document.createElement('button');
-        moveUpBtn.className = 'mdl-button mdl-js-button mdl-button--icon move-up-btn';
-        moveUpBtn.innerHTML = '<i class="material-icons">arrow_upward</i>';
-        moveUpBtn.onclick = function() {
-            const previousSibling = timeslotDiv.previousElementSibling;
-            if (previousSibling && previousSibling.classList.contains('timeslot')) {
-                timeslotsContainer.insertBefore(timeslotDiv, previousSibling);
-                updateMoveButtons();
-            }
-        };
-
-        // Move Down button
-        const moveDownBtn = document.createElement('button');
-        moveDownBtn.className = 'mdl-button mdl-js-button mdl-button--icon move-down-btn';
-        moveDownBtn.innerHTML = '<i class="material-icons">arrow_downward</i>';
-        moveDownBtn.onclick = function() {
-            const nextSibling = timeslotDiv.nextElementSibling;
-            if (nextSibling && nextSibling.classList.contains('timeslot')) {
-                timeslotsContainer.insertBefore(nextSibling, timeslotDiv);
-                updateMoveButtons();
-            }
-        };
-
-        moveButtonsContainer.appendChild(moveUpBtn);
-        moveButtonsContainer.appendChild(moveDownBtn);
-
-        // Assemble timeslot div
-        timeslotDiv.appendChild(moveButtonsContainer);
-        timeslotDiv.appendChild(daySelect);
-        timeslotDiv.appendChild(startTimeDiv);
-        timeslotDiv.appendChild(endTimeDiv);
-        timeslotDiv.appendChild(buttonContainer);
-
-        // Upgrade newly added elements
-        componentHandler.upgradeAllRegistered();
-
-        return timeslotDiv;
-    }
-
-    // Function to update the disabled state of move buttons
-    function updateMoveButtons() {
-        const timeslotDivs = document.querySelectorAll('.timeslot');
-        timeslotDivs.forEach((div, index) => {
-            const moveUpBtn = div.querySelector('.move-up-btn');
-            const moveDownBtn = div.querySelector('.move-down-btn');
-            moveUpBtn.disabled = index === 0;
-            moveDownBtn.disabled = index === timeslotDivs.length - 1;
-        });
-    }
-
-    // Add timeslot button functionality
-    addTimeslotBtn.onclick = function() {
-        const newTimeslot = createTimeslot();
-        timeslotsContainer.appendChild(newTimeslot);
-        componentHandler.upgradeAllRegistered();
-        updateMoveButtons();
-    };
-
-    // Submit button functionality
-// Submit button functionality
-submitBtn.onclick = function () {
-    const timeslots = [];
-    document.querySelectorAll('.timeslot').forEach(timeslotDiv => {
-        const day = timeslotDiv.querySelector('select').value;
-        const startTime = timeslotDiv.querySelector('input[type="time"]').value;
-        const endTime = timeslotDiv.querySelectorAll('input[type="time"]')[1].value;
-        timeslots.push({ day, startTime, endTime });
-    });
-
-    // Convert timeslots array to the required dictionary format
-    const timeslotsDict = timeslots.reduce((acc, slot) => {
-        if (!acc[slot.day]) {
-            acc[slot.day] = [];
+      // delegate delete + duplicate
+      container.addEventListener('click', e => {
+        const slot = e.target.closest('.timeslot');
+        if (!slot) return;
+        if (e.target.closest('.delete-btn')) slot.remove();
+        if (e.target.closest('.duplicate-btn')) {
+          const day   = slot.querySelector('.day-select').value;
+          const start = slot.querySelector('.start-time').value;
+          const end   = slot.querySelector('.end-time').value;
+          daysOfWeek.forEach(d=>{
+            if (d!==day) container.appendChild(makeSlot({day:d, start, end}));
+          });
         }
-        acc[slot.day].push([slot.startTime, slot.endTime]);
-        return acc;
-    }, {});
+      });
 
-    // Send data to the backend API
-    fetch('/insert_timeslots', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(timeslotsDict),
-    })
-        .then(response => {
-            if (response.ok) {
-                return response.json();
-            } else {
-                throw new Error('Error submitting timeslots.');
-            }
-        })
-        .then(data => {
-            console.log('Success:', data);
-            alert('Timeslots submitted successfully!');
-            // Redirect to the home page or another page after successful submission
-            window.location.href = '/home';
-        })
-        .catch((error) => {
-            console.error('Error:', error);
-            alert('Error submitting timeslots.');
+      // controls
+      document.getElementById('add-slot').onclick   = () => container.appendChild(makeSlot());
+      document.getElementById('clear-all').onclick = () => container.innerHTML = '';
+
+      // export JSON
+      document.getElementById('export-json').onclick = () => {
+        const data = Array.from(container.children).map(slot=>({
+          day:   slot.querySelector('.day-select').value,
+          start: slot.querySelector('.start-time').value,
+          end:   slot.querySelector('.end-time').value
+        }));
+        const blob = new Blob([JSON.stringify(data, null,2)], {type:'application/json'});
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = 'timeslots.json';
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+
+      // import JSON
+      const fileInput = document.getElementById('file-input');
+      document.getElementById('import-json').onclick = () => fileInput.click();
+      fileInput.onchange = () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+        file.text().then(txt => {
+          try {
+            const arr = JSON.parse(txt);
+            container.innerHTML = '';
+            arr.forEach(item=> container.appendChild(makeSlot(item)));
+          } catch {
+            M.toast({html:'Invalid JSON file', classes:'red'});
+          }
         });
-};
+      };
 
+      // submit with validation & overlap checks
+      document.getElementById('submit').onclick = () => {
+        const slots = Array.from(container.children).map(slot=>({
+          slot,
+          day:   slot.querySelector('.day-select').value,
+          start: slot.querySelector('.start-time'),
+          end:   slot.querySelector('.end-time')
+        }));
+        let bad = false;
+        slots.forEach(({slot})=> slot.classList.remove('invalid'));
 
-    // Initialize with one empty timeslot
-    timeslotsContainer.appendChild(createTimeslot());
-    updateMoveButtons();
-</script>
+        // time ranges
+        slots.forEach(({slot,start,end})=>{
+          if (!start.value || !end.value || end.value <= start.value) {
+            slot.classList.add('invalid');
+            bad = true;
+          }
+        });
+        if (bad) return M.toast({html:'Fix invalid time ranges', classes:'red'});
 
+        // overlaps per day
+        const byDay = {};
+        for (let {slot,day,start,end} of slots) {
+          byDay[day] = byDay[day]||[];
+          byDay[day].push({slot, s:start.value, e:end.value});
+        }
+        for (let d in byDay) {
+          const arr = byDay[d].sort((a,b)=>a.s.localeCompare(b.s));
+          for (let i=1; i<arr.length; i++){
+            if (arr[i].s < arr[i-1].e) {
+              arr[i].slot.classList.add('invalid');
+              arr[i-1].slot.classList.add('invalid');
+              bad = true;
+            }
+          }
+        }
+        if (bad) return M.toast({html:'Found overlapping times', classes:'red'});
+
+        // build payload
+        const payload = {};
+        slots.forEach(({day,start,end})=>{
+          payload[day] = payload[day]||[];
+          payload[day].push([start.value, end.value]);
+        });
+
+        fetch('/insert_timeslots', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        })
+        .then(r=>r.ok?r.json():Promise.reject())
+        .then(_=>{ M.toast({html:'Submitted!', classes:'green'}); window.location='/home'; })
+        .catch(_=>M.toast({html:'Submission failed',classes:'red'}));
+      };
+    });
+  </script>
 </body>
 </html>
