@@ -129,7 +129,71 @@
     </div>
   </footer>
 
+  <!-- Enhanced Loading System -->
+  <script src="/static/loading.js"></script>
   <!-- Materialize JS -->
   <script src="/static/script.js"></script>
+  
+  <script>
+  // Enhanced data entry with loading integration
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add loading attributes to the main form
+    const form = document.querySelector('form');
+    if (form) {
+      form.setAttribute('data-long-operation', 'true');
+      form.setAttribute('data-operation-type', 'data-upload');
+    }
+    
+    // Override submitAll function to show enhanced loading with steps
+    window.originalSubmitAll = window.submitAll;
+    window.submitAll = function() {
+      // Show enhanced loading with real-time steps
+      if (window.loadingManager) {
+        window.loadingManager.showTimetableGeneration();
+        
+        // Set up progress tracking steps
+        const steps = [
+          'Uploading course data',
+          'Processing faculty preferences', 
+          'Analyzing student enrollments',
+          'Validating data integrity',
+          'Initializing optimization model',
+          'Phase 1: Basic constraints',
+          'Phase 2: Professor availability',
+          'Phase 3: Capacity constraints',
+          'Phase 4: Student conflicts',
+          'Phase 5: Same-day restrictions',
+          'Phase 6: Consecutive day optimization',
+          'Finalizing schedule',
+          'Saving to database'
+        ];
+        
+        window.loadingManager.setProgressSteps(steps);
+        
+        // Mark first step complete immediately
+        setTimeout(() => {
+          window.loadingManager.markStepComplete('Uploading course data', 8);
+        }, 500);
+        
+        setTimeout(() => {
+          window.loadingManager.markStepComplete('Processing faculty preferences', 15);
+        }, 1500);
+        
+        setTimeout(() => {
+          window.loadingManager.markStepComplete('Analyzing student enrollments', 23);
+        }, 2500);
+        
+        setTimeout(() => {
+          window.loadingManager.markStepComplete('Validating data integrity', 31);
+        }, 3000);
+      }
+      
+      // Call original function
+      if (window.originalSubmitAll) {
+        window.originalSubmitAll();
+      }
+    };
+  });
+  </script>
 </body>
 </html>

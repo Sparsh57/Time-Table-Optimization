@@ -12,6 +12,7 @@ import uvicorn
 import json
 from typing import Optional
 import logging
+import pandas as pd
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 from collections import defaultdict
@@ -39,8 +40,10 @@ from src.database_management.section_allocation import (
     get_section_allocation_summary,
     export_section_mapping_to_csv
 )
+
 from src.database_management.Slot_info import insert_time_slots
 from src.database_management.truncate_db import truncate_detail
+from src.database_management.models import Schedule
 from src.main_algorithm import gen_timetable_auto
 from src.database_management.dbconnection import (
     get_organization_by_domain, 
@@ -504,7 +507,7 @@ async def send_admin_data(
         add_no_same_day         = toggle_same_day,
         add_no_consec_days      = toggle_consec_days)
 
-    return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/timetable", status_code=status.HTTP_303_SEE_OTHER)
 
 
 # -------------------- Page Endpoints --------------------
@@ -554,14 +557,12 @@ async def dashboard(request: Request):
     user_role = user_info.get("role")
 
     if user_role == "Admin":
-        # Admin logic
-        if timetable_made(db_path):
-            return RedirectResponse(url="/timetable")
+        # Admin logic - check time slots first
+        if fetch_slots(db_path) == []:
+            return RedirectResponse(url="/select_timeslot")
         else:
-            if fetch_slots(db_path) == []:
-                return RedirectResponse(url="/select_timeslot")
-            else:
-                return RedirectResponse(url="/get_admin_data")
+            # Always go to timetable page (will show success or infeasibility message)
+            return RedirectResponse(url="/timetable")
     else:
         if user_role == "Professor":
             return RedirectResponse(url="/professor_slots")
@@ -631,16 +632,18 @@ async def show_timetable(request: Request):
         roll_number = user_info.get("roll_number")
         return RedirectResponse(url=f"/timetable/{roll_number}")
 
-    # Admin path
-    if timetable_made(db_path):
-        schedule_data = fetch_schedule_data(db_path)
-        
-        # Get section mapping data
+    # Admin path - Always show timetable page (successful or failed)
+    schedule_data = fetch_schedule_data(db_path) if timetable_made(db_path) else []
+    
+    # Get section mapping data (only if timetable was successful)
+    section_mapping_data = {}
+    section_summary = None
+    
+    if schedule_data:
         section_mapping_df = get_section_mapping_dataframe(db_path)
         section_summary = get_section_allocation_summary(db_path)
         
         # Process section mapping for template
-        section_mapping_data = {}
         if not section_mapping_df.empty:
             # Group by course and section
             for course in section_mapping_df['Course'].unique():
@@ -659,19 +662,17 @@ async def show_timetable(request: Request):
                             'students': students_list,
                             'count': len(students_list)
                         }
-        
-        return templates.TemplateResponse(
-            "timetable.html",
-            {
-                "request": request,
-                "user": user_info,
-                "schedule_data": schedule_data,
-                "section_mapping_data": section_mapping_data,
-                "section_summary": section_summary
-            }
-        )
-    else:
-        return RedirectResponse(url="/get_admin_data")
+    
+    return templates.TemplateResponse(
+        "timetable.html",
+        {
+            "request": request,
+            "user": user_info,
+            "schedule_data": schedule_data,
+            "section_mapping_data": section_mapping_data,
+            "section_summary": section_summary
+        }
+    )
 
 
 # -------------------- Schedule Download / View --------------------
@@ -713,6 +714,86 @@ async def download_section_mapping_csv(request: Request):
             return JSONResponse(status_code=404, content={"detail": "No section mapping data found"})
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
+
+
+@app.get("/download-conflicts")
+async def download_conflicts_csv(request: Request):
+    """
+    Provides a CSV download of detected conflicts using the existing conflict checker. Admin-only.
+    """
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Access forbidden: Admins only.")
+
+    db_path = request.session.get("db_path")
+    org_name = request.session.get("org_name")
+    if not db_path:
+        raise HTTPException(status_code=422, detail="Database path not provided in session.")
+    
+    try:
+        # Check if timetable exists and has data
+        if not timetable_made(db_path):
+            return JSONResponse(status_code=404, content={"detail": "No timetable generated yet. Generate a timetable first to check for conflicts."})
+        
+        # Get schedule data
+        schedule_data = fetch_schedule_data(db_path)
+        
+        # Check if schedule is empty (infeasible case)
+        if not schedule_data or (isinstance(schedule_data, list) and len(schedule_data) == 0):
+            return JSONResponse(status_code=404, content={
+                "detail": "No schedule data available. Please generate a successful timetable first."
+            })
+        
+        # Convert to DataFrame and ensure proper column names
+        if isinstance(schedule_data, list):
+            # Convert list data to DataFrame with proper columns
+            if schedule_data and len(schedule_data[0]) >= 2:
+                # Assuming format: [day, start_time, end_time, course_name, ...]
+                df_data = []
+                for row in schedule_data:
+                    # Create time slot from day and start time
+                    time_slot = f"{row[0]} {row[1]}"  # e.g., "Monday 08:30"
+                    course_id = row[3] if len(row) > 3 else "Unknown"  # Course name
+                    df_data.append({
+                        "Course ID": course_id,
+                        "Scheduled Time": time_slot
+                    })
+                schedule_df = pd.DataFrame(df_data)
+            else:
+                return JSONResponse(status_code=404, content={
+                    "detail": "Invalid schedule data format."
+                })
+        else:
+            schedule_df = schedule_data
+            # Ensure correct column names
+            if 'Course ID' not in schedule_df.columns or 'Scheduled Time' not in schedule_df.columns:
+                return JSONResponse(status_code=500, content={
+                    "detail": "Schedule data missing required columns 'Course ID' or 'Scheduled Time'."
+                })
+        
+        # Get student course mappings
+        from src.database_management.database_retrieval import student_pref
+        student_course_map = student_pref(db_path)
+        
+        # Use existing conflict checker
+        from src.conflict_checker import check_conflicts
+        conflicts_df = check_conflicts(schedule_df, student_course_map)
+        
+        # Generate CSV with actual conflicts
+        timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"conflicts_{timestamp}.csv"
+        filepath = os.path.join("exports", filename)
+        
+        # Ensure exports directory exists
+        os.makedirs("exports", exist_ok=True)
+        
+        # Export conflicts to CSV
+        conflicts_df.to_csv(filepath, index=False)
+        
+        return FileResponse(filepath, media_type="application/octet-stream", filename="Conflicts.csv")
+        
+    except Exception as e:
+        logger.error(f"Error generating conflict export: {e}")
+        return JSONResponse(status_code=500, content={"detail": f"Error checking conflicts: {str(e)}"})
 
 
 @app.get("/download-timetable/{roll_number}")
@@ -761,6 +842,41 @@ async def get_timeslots(request: Request):
         return JSONResponse(status_code=200, content=slots_by_day)
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
+
+@app.post("/clear_schedule")
+async def clear_schedule(request: Request):
+    """
+    Clears the current schedule to allow time slot updates. Admin-only route.
+    """
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Access forbidden: Admins only.")
+
+    db_path = request.session.get("db_path")
+    org_name = request.session.get("org_name")
+    if not db_path:
+        raise HTTPException(status_code=422, detail="Database path not provided in session.")
+
+    try:
+        from src.database_management.dbconnection import is_postgresql, get_organization_database_url
+        
+        # Determine which session to use
+        if is_postgresql() and org_name:
+            session_context = get_db_session(get_organization_database_url(), org_name)
+        else:
+            session_context = get_db_session(db_path)
+        
+        with session_context as session:
+            # Clear all scheduled courses
+            deleted_count = session.query(Schedule).delete()
+            session.commit()
+            
+        logger.info(f"Cleared {deleted_count} scheduled courses")
+        return JSONResponse(status_code=200, content={"message": f"Cleared {deleted_count} scheduled courses. You can now update time slots."})
+        
+    except Exception as e:
+        logger.error(f"Error clearing schedule: {e}")
+        return JSONResponse(status_code=500, content={"detail": str(e)})
+
 
 @app.post("/insert_timeslots")
 async def insert_timeslots(request: Request, timeslot_data: dict):

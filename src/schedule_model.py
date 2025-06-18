@@ -259,6 +259,7 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                                    add_consec=False)
     if p1_status == cp_model.INFEASIBLE:
         print("[DEBUG] Infeasible at PHASE 1: Basic 'credits' constraints.")
+        print("💡 Check if courses have enough available time slots for their credit requirements")
         return pd.DataFrame(columns=["Course ID", "Scheduled Time"])
 
     # PHASE 2
@@ -270,6 +271,7 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                                    add_consec=False)
     if p2_status == cp_model.INFEASIBLE:
         print("[DEBUG] Infeasible at PHASE 2: Professor no-overlap constraints.")
+        print("💡 Check professor assignments and busy slots - some professors may be overloaded")
         return pd.DataFrame(columns=["Course ID", "Scheduled Time"])
 
     # PHASE 3
@@ -281,6 +283,7 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                                    add_consec=False)
     if p3_status == cp_model.INFEASIBLE:
         print(f"[DEBUG] Infeasible at PHASE 3: Time slot capacity <= {MAX_CLASSES_PER_SLOT}.")
+        print(f"💡 Increase max classes per slot from {MAX_CLASSES_PER_SLOT} or add more time slots")
         return pd.DataFrame(columns=["Course ID", "Scheduled Time"])
 
     # PHASE 4

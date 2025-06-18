@@ -66,7 +66,18 @@ def insert_time_slots(input_data, db_path):
     # Now proceed with bulk insertion
     with session_context as session:
         try:
-            # Delete existing time slots
+            # Check if we have any existing schedules that reference slots
+            from .models import Schedule
+            existing_schedules = session.query(Schedule).count()
+            
+            if existing_schedules > 0:
+                logger.warning(f"Found {existing_schedules} existing schedules. Cannot delete slots with active schedules.")
+                print(f"⚠️  Cannot update time slots: {existing_schedules} schedules are using current slots.")
+                print("💡 Please clear the schedule first, then update time slots.")
+                session.rollback()
+                return
+            
+            # Safe to delete existing time slots since no schedules reference them
             deleted_count = session.query(Slot).delete()
             logger.info(f"Deleted {deleted_count} existing time slots")
 

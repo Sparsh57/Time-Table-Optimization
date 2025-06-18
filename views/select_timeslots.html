@@ -81,6 +81,7 @@
     <button id="clear-all" class="btn grey lighten-1"><i class="material-icons left">delete_sweep</i>Clear All</button>
     <button id="import-json" class="btn green lighten-1"><i class="material-icons left">upload</i>Import JSON</button>
     <button id="export-json" class="btn blue lighten-1"><i class="material-icons left">download</i>Export JSON</button>
+    <button id="clear-schedule" class="btn orange darken-2 tooltipped" data-position="top" data-tooltip="Clear current schedule to allow time slot updates"><i class="material-icons left">schedule</i>Clear Schedule</button>
     <button id="submit" class="btn waves-effect waves-light indigo"><i class="material-icons left">send</i>Submit</button>
     <input type="file" id="file-input" accept=".json" style="display:none">
   </div>
@@ -170,6 +171,27 @@
       // Controls
       document.getElementById('add-slot').addEventListener('click', () => container.appendChild(makeSlot()));
       document.getElementById('clear-all').addEventListener('click', () => container.innerHTML = '');
+
+      // Clear schedule functionality
+      document.getElementById('clear-schedule').addEventListener('click', () => {
+        if (confirm('⚠️ This will clear the current timetable schedule. Are you sure?')) {
+          fetch('/clear_schedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.message) {
+              M.toast({html: `✅ ${data.message}`, classes: 'green', displayLength: 4000});
+            } else {
+              M.toast({html: `❌ ${data.detail || 'Failed to clear schedule'}`, classes: 'red'});
+            }
+          })
+          .catch(error => {
+            M.toast({html: `❌ Error: ${error.message}`, classes: 'red'});
+          });
+        }
+      });
 
       // Export JSON
       document.getElementById('export-json').addEventListener('click', () => {

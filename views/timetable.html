@@ -161,6 +161,20 @@
                 </button>
                 <button id="download-section-mapping" class="btn waves-effect waves-light tooltipped" data-position="left" name="Download Section Mapping">
                     Download Section Mapping
+                    <i class="material-icons right">people</i>
+                </button>
+                
+                <!-- Conflicts Download (only show if schedule exists) -->
+                {% if schedule_data %}
+                <button id="download-conflicts" class="btn waves-effect waves-light tooltipped" 
+                        data-position="top" data-tooltip="Download detected conflicts">
+                    Download Conflicts
+                    <i class="material-icons right">warning</i>
+                </button>
+                {% endif %}
+                
+                <button id="download-section-mapping" class="btn waves-effect waves-light tooltipped" data-position="left" name="Download Section Mapping">
+                    Download Section Mapping
                     <i class="material-icons right">group</i>
                 </button>
                 <button id="get-data" class="btn waves-effect waves-light tooltipped" data-position="left" name="Generate new table">
@@ -203,7 +217,47 @@
                 </tbody>
             </table>
             {% else %}
-            <div class="card-panel red lighten-4">No timetable data available.</div>
+            <!-- Infeasibility Message -->
+            <div class="card lighten-1" style="margin-top: 30px; background-color: #3949ab;">
+                <div class="card-content white-text">
+                    <span class="card-title">
+                        <i class="material-icons left">error</i>
+                        Timetable Generation Failed
+                    </span>
+                    <p style="font-size: 1.1rem; margin-bottom: 20px;">
+                        <strong>The timetable could not be generated due to infeasible constraints.</strong>
+                    </p>
+                    
+                    <div class="row">
+                        <div class="col s12 m6">
+                            <h6><i class="material-icons left tiny">info</i>Common Issues:</h6>
+                            <ul style="padding-left: 20px;">
+                                <li><strong>Capacity exceeded:</strong> Too many classes for available time slots</li>
+                                <li><strong>Professor conflicts:</strong> Professors assigned to overlapping time slots</li>
+                                <li><strong>Insufficient time slots:</strong> Not enough slots for course requirements</li>
+                                <li><strong>Day constraints:</strong> Courses need more days than available</li>
+                            </ul>
+                        </div>
+                        <div class="col s12 m6">
+                            <h6><i class="material-icons left tiny">build</i>Solutions:</h6>
+                            <ul style="padding-left: 20px;">
+                                <li>Increase max classes per slot in time slot settings</li>
+                                <li>Add more time slots to the schedule</li>
+                                <li>Review professor busy slot assignments</li>
+                                <li>Reduce course credit requirements if possible</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-action lighten-1", style="background-color: #3949ab;">
+                    <a href="/get_admin_data" class="btn waves-effect waves-light">
+                        <i class="material-icons left">refresh</i>Try Again
+                    </a>
+                    <a href="/select_timeslot" class="btn waves-effect waves-light">
+                        <i class="material-icons left">schedule</i>Adjust Time Slots
+                    </a>
+                </div>
+            </div>
             {% endif %}
 
             <!-- Section Mapping Display -->
@@ -301,6 +355,31 @@
         document.getElementById('download-section-mapping').onclick = function() {
             window.location.href = '/download-section-mapping';
         };
+        
+        // Conflicts download functionality (only if button exists)
+        const conflictsBtn = document.getElementById('download-conflicts');
+        if (conflictsBtn) {
+            conflictsBtn.onclick = function() {
+                // Show loading while checking conflicts
+                if (window.loadingManager) {
+                    window.loadingManager.show({
+                        title: 'Checking for Conflicts',
+                        message: 'Analyzing schedule for student and professor conflicts...',
+                        showProgress: false
+                    });
+                }
+                
+                // Download conflicts
+                window.location.href = '/download-conflicts';
+                
+                // Hide loading after a delay (since download doesn't redirect)
+                setTimeout(() => {
+                    if (window.loadingManager) {
+                        window.loadingManager.hide();
+                    }
+                }, 3000);
+            };
+        }
         document.getElementById('get-data').onclick = function() {
             window.location.href = '/get_admin_data';
         };

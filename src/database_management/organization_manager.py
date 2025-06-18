@@ -289,4 +289,92 @@ def get_organization_by_user_role(user_email, required_role=None):
             
     except Exception as e:
         logger.error(f"Error checking user organization role: {e}")
-        return None, None, False 
+        return None, None, False
+
+
+def delete_organization(org_name, admin_email, confirmation_token=None):
+    """
+    Delete an organization and all its associated data.
+    Requires confirmation from a founder admin.
+    
+    :param org_name: Name of the organization to delete
+    :param admin_email: Email of the admin requesting deletion
+    :param confirmation_token: Security token for confirmation
+    :return: (success, message)
+    """
+    try:
+        # Verify organization exists
+        org = get_organization_by_name(org_name)
+        if not org:
+            return False, f"Organization '{org_name}' not found"
+        
+        # Verify admin has permission to delete (must be founder)
+        from .admin_manager import is_user_admin
+        if not is_user_admin(org.DatabasePath, admin_email, org_name):
+            return False, "Only founder admins can delete organizations"
+        
+        # Check if user is founder admin
+        if is_postgresql() and org.DatabasePath.startswith("schema:"):
+            with get_db_session(get_organization_database_url(), org_name) as session:
+                admin_user = session.query(User).filter_by(Email=admin_email, IsFounderAdmin=1).first()
+        else:
+            with get_db_session(org.DatabasePath) as session:
+                admin_user = session.query(User).filter_by(Email=admin_email, IsFounderAdmin=1).first()
+        
+        if not admin_user:
+            return False, "Only the organization founder can delete the organization"
+        
+        # Delete organization database/schema
+        if is_postgresql() and org.DatabasePath.startswith("schema:"):
+            # For PostgreSQL, drop the schema
+            schema_name = org.DatabasePath.replace("schema:", "")
+            from sqlalchemy import text
+            with get_db_session(get_organization_database_url()) as session:
+                session.execute(text(f'DROP SCHEMA IF EXISTS "{schema_name}" CASCADE'))
+                session.commit()
+        else:
+            # For SQLite, delete the database file
+            if os.path.exists(org.DatabasePath):
+                os.remove(org.DatabasePath)
+        
+        # Remove organization from meta-database
+        with get_meta_db_session() as session:
+            org_to_delete = session.query(Organization).filter_by(OrgName=org_name).first()
+            if org_to_delete:
+                session.delete(org_to_delete)
+                session.commit()
+        
+        logger.info(f"Successfully deleted organization: {org_name}")
+        return True, f"Organization '{org_name}' has been permanently deleted"
+        
+    except Exception as e:
+        logger.error(f"Error deleting organization {org_name}: {e}")
+        return False, f"Failed to delete organization: {str(e)}"
+
+
+def get_organization_deletion_confirmation_data(org_name, admin_email):
+    """
+    Get data needed for organization deletion confirmation.
+    
+    :param org_name: Name of the organization
+    :param admin_email: Email of the admin requesting deletion
+    :return: Dictionary with confirmation data
+    """
+    try:
+        org_summary = get_organization_summary(org_name)
+        if not org_summary:
+            return None
+            
+        return {
+            'org_name': org_name,
+            'total_users': org_summary['total_users'],
+            'admin_count': org_summary['admin_count'],
+            'professor_count': org_summary['professor_count'],
+            'student_count': org_summary['student_count'],
+            'domains': org_summary['org_domains'],
+            'requester_email': admin_email
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting deletion confirmation data: {e}")
+        return None 

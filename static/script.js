@@ -229,6 +229,11 @@ const selectedFiles = {
     return;
   }
 
+  // Show loading screen for timetable generation
+  if (window.loadingManager) {
+    window.loadingManager.showTimetableGeneration();
+  }
+
   let formData = new FormData();
   formData.append("courses_file", selectedFiles.courses);
   formData.append("faculty_preferences_file", selectedFiles.faculty);
