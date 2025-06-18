@@ -467,16 +467,18 @@ async def send_admin_data(
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    """ Renders the home page. """
+    """Renders the home page with user info if logged in."""
     user_info = request.session.get("user")
-    return templates.TemplateResponse("home.html", {"request": request, "user": user_info})
+    context = {"request": request, "user": user_info}
+    return templates.TemplateResponse("home.html", context)
 
 
 @app.get("/home", response_class=HTMLResponse)
 async def home_page(request: Request):
-    """ Alternative home page route. """
+    """Alternative home page route."""
     user_info = request.session.get("user")
-    return templates.TemplateResponse("home.html", {"request": request, "user": user_info})
+    context = {"request": request, "user": user_info}
+    return templates.TemplateResponse("home.html", context)
 
 
 @app.get("/select_timeslot")
@@ -484,10 +486,11 @@ async def select_timeslot(request: Request):
     """
     Renders the page for selecting time slots. Admin-only.
     """
+    user_info = request.session.get("user")
     if not is_admin(request):
         raise HTTPException(status_code=403, detail="Access forbidden: Admins only.")
 
-    return templates.TemplateResponse("select_timeslots.html", {"request": request})
+    return templates.TemplateResponse("select_timeslots.html", {"request": request, "user": user_info})
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
@@ -536,6 +539,13 @@ async def dashboard(request: Request):
             # Show the student's personal schedule
             return RedirectResponse(url=f"/timetable/{roll_number}")
 
+@app.get("/profile", response_class=HTMLResponse)
+async def profile(request: Request):
+    """Display user's account information."""
+    user_info = request.session.get("user")
+    if not user_info:
+        return RedirectResponse(url="/")
+    return templates.TemplateResponse("profile.html", {"request": request, "user": user_info})
 
 @app.get("/get_role_no", response_class=HTMLResponse)
 async def get_role_no(request: Request):
