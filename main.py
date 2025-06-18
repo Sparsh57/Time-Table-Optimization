@@ -23,7 +23,7 @@ from src.database_management.Users import insert_user_data, add_admin, fetch_use
 from src.database_management.Courses import insert_courses_professors
 from src.database_management.busy_slot import insert_professor_busy_slots, insert_professor_busy_slots_from_ui,fetch_user_id
 from src.database_management.course_stud import insert_course_students
-from src.database_management.Slot_info import fetch_slots
+from src.database_management.Slot_info import fetch_slots, ensure_default_time_slots
 from src.database_management.schedule import (
     timetable_made,
     fetch_schedule_data,
@@ -474,6 +474,9 @@ async def send_admin_data(
         except Exception as e:
             responses[file_key] = str(e)
 
+    # -- Ensure time slots exist before generating timetable
+    ensure_default_time_slots(db_path)
+    
     # -- Generate timetable
     gen_timetable_auto(
         db_path,

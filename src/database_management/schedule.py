@@ -31,23 +31,46 @@ def schedule(schedule_df, db_path):
     Insert schedule data into the database using SQLAlchemy.
     
     :param schedule_df: DataFrame containing schedule information
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     """
     print("Inserting schedule data:")
     print(schedule_df)
     
+    from .dbconnection import is_postgresql, get_organization_database_url
+    
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+    
     # First, ensure tables exist
     try:
-        with get_db_session(db_path) as session:
-            # Check if Schedule table exists by querying it
-            session.execute(text("SELECT 1 FROM Schedule LIMIT 1"))
+        if is_postgresql() and org_name:
+            with get_db_session(get_organization_database_url(), org_name) as session:
+                # Check if Schedule table exists by querying it
+                session.execute(text("SELECT 1 FROM \"Schedule\" LIMIT 1"))
+        else:
+            with get_db_session(db_path) as session:
+                # Check if Schedule table exists by querying it
+                session.execute(text("SELECT 1 FROM Schedule LIMIT 1"))
     except Exception:
         # If table doesn't exist, create all tables
         logger.info("Schedule table not found, creating tables...")
-        create_tables(db_path)
+        if is_postgresql() and org_name:
+            create_tables(get_organization_database_url(), org_name)
+        else:
+            create_tables(db_path)
         logger.info("Tables created successfully")
     
-    with get_db_session(db_path) as session:
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+    
+    with session_context as session:
         try:
             # Fetch course IDs
             courses = session.query(Course).all()
@@ -124,22 +147,45 @@ def timetable_made(db_path):
     """
     Check if timetable has been created (i.e., if Schedule table has entries).
     
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     :return: Boolean indicating if timetable exists
     """
+    from .dbconnection import is_postgresql, get_organization_database_url
+    
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+    
     # First, ensure tables exist
     try:
-        with get_db_session(db_path) as session:
-            # Check if Schedule table exists by querying it
-            session.execute(text("SELECT 1 FROM Schedule LIMIT 1"))
+        if is_postgresql() and org_name:
+            with get_db_session(get_organization_database_url(), org_name) as session:
+                # Check if Schedule table exists by querying it
+                session.execute(text("SELECT 1 FROM \"Schedule\" LIMIT 1"))
+        else:
+            with get_db_session(db_path) as session:
+                # Check if Schedule table exists by querying it
+                session.execute(text("SELECT 1 FROM Schedule LIMIT 1"))
     except Exception:
         # If table doesn't exist, create all tables
         logger.info("Schedule table not found, creating tables...")
-        create_tables(db_path)
+        if is_postgresql() and org_name:
+            create_tables(get_organization_database_url(), org_name)
+        else:
+            create_tables(db_path)
         logger.info("Tables created successfully")
         return False  # No timetable exists yet
     
-    with get_db_session(db_path) as session:
+    # Check if there are any schedule entries
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+    
+    with session_context as session:
         try:
             count = session.query(Schedule).count()
             return count > 0
@@ -152,10 +198,25 @@ def fetch_schedule_data(db_path):
     """
     Fetch schedule data with course information using SQLAlchemy.
     
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     :return: List of tuples containing schedule data
     """
-    with get_db_session(db_path) as session:
+    from .dbconnection import is_postgresql, get_organization_database_url
+    
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+    
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+    
+    with session_context as session:
         try:
             # Query to get courses for each time slot with section information
             query = session.query(
@@ -218,7 +279,7 @@ def generate_csv(db_path, filename='schedule.csv'):
     """
     Generate CSV file from schedule data.
     
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     :param filename: Output CSV filename
     :return: Filename of generated CSV
     """
@@ -233,7 +294,7 @@ def generate_csv_for_student(roll_number, db_path):
     Generate CSV file for a specific student's schedule.
     
     :param roll_number: Student's roll number (email)
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     :return: Filename of generated CSV
     """
     filename = f'Student_{roll_number}.csv'
@@ -248,10 +309,25 @@ def get_course_ids_for_student(roll_number, db_path):
     Get course IDs for a specific student using SQLAlchemy.
     
     :param roll_number: Student's roll number (email)
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     :return: List of course IDs
     """
-    with get_db_session(db_path) as session:
+    from .dbconnection import is_postgresql, get_organization_database_url
+    
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+    
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+    
+    with session_context as session:
         try:
             # Query courses enrolled by the student
             query = session.query(CourseStud.CourseID)\
@@ -271,13 +347,28 @@ def get_schedule_for_courses(course_id_list, db_path):
     Get schedule for a list of courses using SQLAlchemy.
     
     :param course_id_list: List of course IDs
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     :return: List of schedule data
     """
     if not course_id_list:
         return []
+    
+    from .dbconnection import is_postgresql, get_organization_database_url
+    
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+    
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
         
-    with get_db_session(db_path) as session:
+    with session_context as session:
         try:
             # Convert course IDs to integers
             course_ids = [int(cid) for cid in course_id_list]

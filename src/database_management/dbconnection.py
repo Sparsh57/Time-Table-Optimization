@@ -90,6 +90,23 @@ def get_schema_for_organization(org_name: str) -> str:
     return f"org_{safe_name}"
 
 
+def extract_org_name_from_db_path(db_path: str) -> str:
+    """
+    Extract organization name from database path.
+    For PostgreSQL schema paths, extract from 'schema:org_name' format.
+    For SQLite, this returns None as org_name isn't needed.
+    
+    :param db_path: Database path or schema identifier
+    :return: Organization name or None
+    """
+    if db_path and db_path.startswith("schema:"):
+        # Extract org name from schema path
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            return schema_name[4:]  # Remove 'org_' prefix
+    return None
+
+
 def create_database_engine(db_path_or_url: str, **kwargs):
     """
     Creates a SQLAlchemy engine for the given database path or URL.

@@ -53,29 +53,52 @@ def insert_courses_professors(file, db_path):
     Handles multiple professors per course and creates sections accordingly.
 
     :param file: The CSV file containing courses and faculty names.
-    :param db_path: Path to the database file.
+    :param db_path: Path to the database file or schema identifier.
     """
     print("BULK INSERTING COURSES")
     df_courses = file
 
-    # Check if migration is needed and run it
-    if check_migration_needed(db_path):
+    from .dbconnection import is_postgresql, get_organization_database_url
+    
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+
+    # Check if migration is needed and run it (only for SQLite)
+    if not is_postgresql() and check_migration_needed(db_path):
         print("Database migration needed for sections support...")
         migrate_database_for_sections(db_path)
         print("Database migration completed.")
 
     # First, ensure tables exist
     try:
-        with get_db_session(db_path) as session:
-            # Check if Courses table exists by querying it
-            session.execute(text("SELECT 1 FROM Courses LIMIT 1"))
+        if is_postgresql() and org_name:
+            with get_db_session(get_organization_database_url(), org_name) as session:
+                # Check if Courses table exists by querying it
+                session.execute(text("SELECT 1 FROM \"Courses\" LIMIT 1"))
+        else:
+            with get_db_session(db_path) as session:
+                # Check if Courses table exists by querying it
+                session.execute(text("SELECT 1 FROM Courses LIMIT 1"))
     except Exception:
         # If table doesn't exist, create all tables
         logger.info("Courses table not found, creating tables...")
-        create_tables(db_path)
+        if is_postgresql() and org_name:
+            create_tables(get_organization_database_url(), org_name)
+        else:
+            create_tables(db_path)
         logger.info("Tables created successfully")
 
-    with get_db_session(db_path) as session:
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             # Fetch user information (UserID and Email) for professors
             professors = session.query(User).filter_by(Role='Professor').all()
@@ -199,10 +222,25 @@ def fetch_course_data(db_path):
     Fetches all course data from the Courses table using SQLAlchemy.
     Now returns courses with their associated professors.
 
-    :param db_path: Path to the database file.
+    :param db_path: Path to the database file or schema identifier.
     :return: List of all course data with professor information.
     """
-    with get_db_session(db_path) as session:
+    from .dbconnection import is_postgresql, get_organization_database_url
+    
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+    
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+    
+    with session_context as session:
         try:
             # Query courses with their professors
             query = session.query(

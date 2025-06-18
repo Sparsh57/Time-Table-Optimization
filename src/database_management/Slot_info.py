@@ -16,9 +16,18 @@ def insert_time_slots(input_data, db_path):
     Deletes existing time slots and inserts new dynamic time slots using bulk operations.
     
     :param input_data: A dictionary where keys are week days and values are lists of tuples containing start and end times.
-    :param db_path: Path to the database file.
+    :param db_path: Path to the database file or schema identifier.
     """
     print(f"Bulk inserting time slots into database: {db_path}")
+    
+    from .dbconnection import is_postgresql, get_organization_database_url
+    
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
     
     # Create the data for bulk insertion
     slots_to_insert = []
@@ -34,15 +43,28 @@ def insert_time_slots(input_data, db_path):
 
     # First, ensure tables exist
     try:
-        with get_db_session(db_path) as session:
-            session.execute(text("SELECT 1 FROM Slots LIMIT 1"))
+        if is_postgresql() and org_name:
+            with get_db_session(get_organization_database_url(), org_name) as session:
+                session.execute(text("SELECT 1 FROM \"Slots\" LIMIT 1"))
+        else:
+            with get_db_session(db_path) as session:
+                session.execute(text("SELECT 1 FROM Slots LIMIT 1"))
     except Exception:
         logger.info("Slots table not found, creating tables...")
-        create_tables(db_path)
+        if is_postgresql() and org_name:
+            create_tables(get_organization_database_url(), org_name)
+        else:
+            create_tables(db_path)
         logger.info("Tables created successfully")
 
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
     # Now proceed with bulk insertion
-    with get_db_session(db_path) as session:
+    with session_context as session:
         try:
             # Delete existing time slots
             deleted_count = session.query(Slot).delete()
@@ -69,10 +91,25 @@ def fetch_slots(db_path):
     """
     Fetches slot data from the database using SQLAlchemy.
 
-    :param db_path: Path to the database file.
+    :param db_path: Path to the database file or schema identifier.
     :return: List of tuples containing slot data.
     """
-    with get_db_session(db_path) as session:
+    from .dbconnection import is_postgresql, get_organization_database_url
+    
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+    
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+    
+    with session_context as session:
         try:
             slots = session.query(Slot).order_by(Slot.Day, Slot.StartTime).all()
             result = [(slot.SlotID, slot.Day, slot.StartTime, slot.EndTime) for slot in slots]
@@ -115,11 +152,26 @@ def fix_corrupted_time_slots(db_path):
     Fix corrupted time slots in the database by removing invalid entries
     and inserting proper educational time slots.
     
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     """
     print(f"🔧 Fixing corrupted time slots in database: {db_path}")
     
-    with get_db_session(db_path) as session:
+    from .dbconnection import is_postgresql, get_organization_database_url
+    
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+    
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+    
+    with session_context as session:
         try:
             # Check for corrupted time slots (StartTime = EndTime or invalid times)
             corrupted_count = 0
@@ -162,7 +214,7 @@ def ensure_default_time_slots(db_path):
     If no time slots are found, insert the default ones.
     If corrupted time slots are found, fix them.
     
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     """
     print(f"Checking for time slots in database: {db_path}")
     

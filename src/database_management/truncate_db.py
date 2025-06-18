@@ -13,15 +13,30 @@ def truncate_detail(db_path):
     """
     Deletes all data from the tables while handling foreign key constraints using SQLAlchemy.
     If the Schedule table doesn't exist, skips truncating it and proceeds with others.
+    
+    :param db_path: Path to the database file or schema identifier.
     """
+    from .dbconnection import is_postgresql, get_organization_database_url
+    
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+    
     truncate_schedule = True
 
     # Step 1: Check if Schedule table exists
     try:
-        with get_db_session(db_path) as session:
-            session.execute(text("SELECT 1 FROM Schedule LIMIT 1"))
+        if is_postgresql() and org_name:
+            with get_db_session(get_organization_database_url(), org_name) as session:
+                session.execute(text("SELECT 1 FROM \"Schedule\" LIMIT 1"))
+        else:
+            with get_db_session(db_path) as session:
+                session.execute(text("SELECT 1 FROM Schedule LIMIT 1"))
     except OperationalError as e:
-        if "no such table: Schedule" in str(e):
+        if "no such table: Schedule" in str(e) or "does not exist" in str(e):
             logger.info("Schedule table doesn't exist - skipping Schedule truncation")
             truncate_schedule = False
         else:
@@ -29,15 +44,28 @@ def truncate_detail(db_path):
 
     # Step 2: Ensure all tables exist
     try:
-        with get_db_session(db_path) as session:
-            session.execute(text("SELECT 1 FROM Users LIMIT 1"))
+        if is_postgresql() and org_name:
+            with get_db_session(get_organization_database_url(), org_name) as session:
+                session.execute(text("SELECT 1 FROM \"Users\" LIMIT 1"))
+        else:
+            with get_db_session(db_path) as session:
+                session.execute(text("SELECT 1 FROM Users LIMIT 1"))
     except Exception:
         logger.info("Tables not found, creating tables...")
-        create_tables(db_path)
+        if is_postgresql() and org_name:
+            create_tables(get_organization_database_url(), org_name)
+        else:
+            create_tables(db_path)
         logger.info("Tables created successfully")
 
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
     # Step 3: Truncate data
-    with get_db_session(db_path) as session:
+    with session_context as session:
         try:
             deleted_schedule = 0
             if truncate_schedule:
