@@ -24,6 +24,9 @@ def get_database_url() -> str:
             database_url = database_url.replace("postgres://", "postgresql+psycopg2://", 1)
         elif database_url.startswith("postgresql://"):
             database_url = database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+        # Normalize MySQL URLs to use the PyMySQL driver
+        elif database_url.startswith("mysql://"):
+            database_url = database_url.replace("mysql://", "mysql+pymysql://", 1)
         return database_url
     else:
         # Default to SQLite meta database
@@ -40,16 +43,18 @@ def get_organization_database_url(org_name: str = None, db_path: str = None) -> 
     :return: Database URL string
     """
     base_database_url = os.getenv("DATABASE_URL")
-    
+
     if base_database_url:
-        # PostgreSQL mode - use schemas
+        # Normalize Postgres URLs
         if base_database_url.startswith("postgres://"):
             base_database_url = base_database_url.replace("postgres://", "postgresql+psycopg2://", 1)
         elif base_database_url.startswith("postgresql://"):
             base_database_url = base_database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
-        
-        # For PostgreSQL, we'll use the same database but different schemas
-        # The schema separation will be handled at the application level
+        # Normalize MySQL URLs
+        elif base_database_url.startswith("mysql://"):
+            base_database_url = base_database_url.replace("mysql://", "mysql+pymysql://", 1)
+
+        # For non-SQLite databases we'll use the same database (schemas only for Postgres)
         return base_database_url
     else:
         # SQLite mode - use separate files
@@ -70,6 +75,12 @@ def is_postgresql() -> bool:
     """
     database_url = os.getenv("DATABASE_URL")
     return database_url and (database_url.startswith("postgres") or "postgresql" in database_url)
+
+
+def is_mysql() -> bool:
+    """Check if we're using a MySQL database."""
+    database_url = os.getenv("DATABASE_URL")
+    return database_url and database_url.startswith("mysql")
 
 
 def get_schema_for_organization(org_name: str) -> str:
@@ -116,7 +127,7 @@ def create_database_engine(db_path_or_url: str, **kwargs):
     :return: SQLAlchemy engine
     """
     # Determine if this is a URL or a file path
-    if db_path_or_url.startswith(('sqlite://', 'postgresql+psycopg2://', 'postgresql://', 'postgres://')):
+    if db_path_or_url.startswith(('sqlite://', 'postgresql+psycopg2://', 'postgresql://', 'postgres://', 'mysql+pymysql://', 'mysql://')):
         database_url = db_path_or_url
     else:
         # Assume it's a SQLite file path
@@ -134,7 +145,7 @@ def create_database_engine(db_path_or_url: str, **kwargs):
             }
         )
     else:
-        # PostgreSQL specific configuration
+        # PostgreSQL or MySQL specific configuration
         engine = create_engine(
             database_url,
             echo=kwargs.get('echo', False),

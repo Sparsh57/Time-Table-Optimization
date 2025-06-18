@@ -131,15 +131,22 @@ def check_migration_needed(db_path):
         with get_db_session(db_path) as session:
             # Check if SectionNumber column exists
             session.execute(text("SELECT SectionNumber FROM Course_Stud LIMIT 1"))
-            
-            # Check if Schedule table has correct schema
-            schedule_columns = session.execute(text("PRAGMA table_info(Schedule)")).fetchall()
-            column_names = [col[1] for col in schedule_columns]
-            
+
+            dialect = session.bind.dialect.name
+            if dialect == "sqlite":
+                schedule_columns = session.execute(text("PRAGMA table_info(Schedule)")).fetchall()
+                column_names = [col[1] for col in schedule_columns]
+            else:
+                res = session.execute(
+                    text("SELECT COLUMN_NAME FROM information_schema.columns WHERE table_name=:table"),
+                    {"table": "Schedule"}
+                )
+                column_names = [row[0] for row in res]
+
             if 'CourseID' not in column_names:
                 logger.info("Migration needed: Schedule table has incorrect schema")
                 return True
-                
+
             return False  # Migration not needed
     except Exception:
-        return True  # Migration needed 
+        return True  # Migration needed

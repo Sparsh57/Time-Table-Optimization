@@ -9,7 +9,7 @@ To run the project on your computer, follow these steps. Please note that the da
 ### Prerequisites
 
 - Python 3.8 or higher
-- MySQL Server (Credentials and access provided separately)
+ - MySQL Server (optional, provide credentials via `DATABASE_URL` if used)
 - Necessary Python libraries which can be installed using `requirements.txt` provided in the repository.
 
 ### Cloning the Repository

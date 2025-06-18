@@ -1,6 +1,6 @@
 # Timetable Optimization System
 
-This project provides an automated timetable generation system designed for educational institutions. It uses **Google OR-Tools** for constraint-based optimization, FastAPI for the backend, and SQLite for data management. The system features **Google Authentication**, **multi-organization support**, and **multiple professors per course** functionality to address complex scheduling needs efficiently.
+This project provides an automated timetable generation system designed for educational institutions. It uses **Google OR-Tools** for constraint-based optimization, FastAPI for the backend, and SQLite for data management by default. The system can also connect to **MySQL** if a `DATABASE_URL` is provided. It features **Google Authentication**, **multi-organization support**, and **multiple professors per course** functionality to address complex scheduling needs efficiently.
 
 ## Table of Contents
 
@@ -41,7 +41,7 @@ The system consists of:
 
 - **Google OR-Tools**: Constraint Programming for optimization
 - **FastAPI**: High-performance, asynchronous web framework
-- **SQLite + SQLAlchemy**: Lightweight, file-based databases with ORM
+- **SQLite/MySQL + SQLAlchemy**: Lightweight databases with ORM (SQLite by default, MySQL via `DATABASE_URL`)
 - **Google OAuth 2.0**: Domain-based authentication system
 - **Pandas**: Data manipulation for CSV/Excel processing
 - **Jinja2**: Template engine for web interface
@@ -92,7 +92,7 @@ ALLOWED_EMAILS=<Comma-separated list of allowed emails for login>
 
 ## Database Schema
 
-The system uses SQLite with SQLAlchemy ORM. Each organization gets a separate database file with the following structure:
+The system uses SQLite with SQLAlchemy ORM by default. When a `DATABASE_URL` is provided it can connect to a MySQL server instead. Each organization gets a separate database (or file) with the following structure:
 
 ### Core Tables
 - **Users**: Stores all users (students, professors, admins) with role-based access
