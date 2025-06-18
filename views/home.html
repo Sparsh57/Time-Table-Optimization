@@ -17,7 +17,6 @@
   <script src="https://unpkg.com/scrollreveal"></script>
 
   <style>
-    /* =============== GENERAL =============== */
     html { scroll-behavior: smooth; }
     body {
       font-family: 'Poppins', sans-serif;
@@ -27,7 +26,6 @@
     a { transition: 0.3s; }
     .valign-wrapper { min-height: 75vh; }
 
-    /* =============== PRELOADER =============== */
     #preloader {
       position: fixed; top:0; left:0; right:0; bottom:0;
       background: #1a237e; z-index: 9999;
@@ -35,13 +33,11 @@
     }
     #preloader .preloader-wrapper { width: 64px; height: 64px; }
 
-    /* =============== NAVBAR =============== */
-    nav { background-color: #1a237e;}
+    nav { background-color: #1a237e; }
     nav .brand-logo { font-size: 1.6rem; }
     nav ul li>a:hover { background: rgba(255,255,255,0.1); }
     .sidenav li>a { color: #1a237e; }
 
-    /* =============== PARALLAX HERO =============== */
     .parallax-container { height: 500px; }
     .hero-content {
       color: #fff;
@@ -50,7 +46,6 @@
     .hero-content h1 { font-size: 3rem; margin-bottom: 1rem; }
     .hero-content p { font-size: 1.2rem; margin-bottom: 2rem; }
 
-    /* =============== FEATURES =============== */
     .features .card { 
       border-radius: 8px; 
       transition: transform 0.3s, box-shadow 0.3s; 
@@ -64,7 +59,6 @@
       color: #1a237e;
     }
 
-    /* =============== BACK TO TOP =============== */
     #back-to-top {
       position: fixed; bottom: 40px; right: 40px;
       background-color: #1a237e; color: #fff;
@@ -74,7 +68,6 @@
     }
     #back-to-top:hover { background-color: #0d1336; }
 
-    /* =============== FOOTER =============== */
     footer.page-footer {
       background-color: #1a237e; padding-top: 20px;
     }
@@ -82,7 +75,6 @@
 </head>
 <body>
 
-  <!-- PRELOADER -->
   <div id="preloader">
     <div class="preloader-wrapper active">
       <div class="spinner-layer spinner-white-only">
@@ -93,22 +85,25 @@
     </div>
   </div>
 
-  <!-- NAVIGATION -->
   {% include 'navigation.html' %}
 
-  <!-- PARALLAX HERO -->
   <div class="parallax-container valign-wrapper">
     <div class="container center hero-content" data-sr>
       <h1>Organize Your Academic Life</h1>
       <p>Seamless timetable creation, real-time updates, and conflict-free scheduling.</p>
+      {% if not user %}
       <a href="/auth/google" class="btn-large waves-effect waves-light indigo darken-2">
         <i class="material-icons left">login</i>Login with Google
       </a>
+      {% else %}
+      <a href="/dashboard" class="btn-large waves-effect waves-light indigo darken-2">
+        <i class="material-icons left">dashboard</i>Dashboard
+      </a>
+      {% endif %}
     </div>
-    <div class="parallax"><img src="static\images\background.png" alt="Campus"></div>
+    <div class="parallax"><img src="static/images/background.png" alt="Campus"></div>
   </div>
 
-  <!-- FEATURES -->
   <section class="section features">
     <div class="container">
       <div class="row">
@@ -143,7 +138,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="col s12 m6 l4" data-sr delay="300">
           <div class="card hoverable">
             <div class="card-content center">
@@ -153,7 +148,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="col s12 m6 l4" data-sr delay="400">
           <div class="card hoverable">
             <div class="card-content center">
@@ -163,22 +158,19 @@
             </div>
           </div>
         </div>
-        
+
       </div>
     </div>
   </section>
 
-  <!-- CONTACT MODAL TRIGGER -->
   <div class="fixed-action-btn">
     <a class="btn-floating btn-large red modal-trigger" href="#contactModal">
       <i class="large material-icons">email</i>
     </a>
   </div>
 
-  <!-- BACK TO TOP -->
   <div id="back-to-top"><i class="material-icons">arrow_upward</i></div>
 
-  <!-- CONTACT MODAL -->
   <div id="contactModal" class="modal">
     <div class="modal-content">
       <h4>Contact Us</h4>
@@ -195,12 +187,11 @@
       </div>
     </div>
     <div class="modal-footer">
-      <a href="#!" class="modal-close waves-effect waves-green btn-flat">Cancel</a>
-      <a href="#!" class="waves-effect waves-light btn indigo darken-2">Send</a>
+      <a href="#" class="modal-close waves-effect waves-green btn-flat">Cancel</a>
+      <a href="#" class="waves-effect waves-light btn indigo darken-2">Send</a>
     </div>
   </div>
 
-  <!-- FOOTER -->
   <footer class="page-footer">
     <div class="container">
       <div class="row">
@@ -217,36 +208,23 @@
     </div>
   </footer>
 
-  <!-- Materialize & Initialization -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function(){
-      // Preloader fadeout
-      setTimeout(()=> document.getElementById('preloader').style.opacity = 0, 800);
-      setTimeout(()=> document.getElementById('preloader').style.display = 'none', 1200);
+      setTimeout(() => document.getElementById('preloader').style.opacity = 0, 800);
+      setTimeout(() => document.getElementById('preloader').style.display = 'none', 1200);
 
-      // Parallax
-      let elemsParallax = document.querySelectorAll('.parallax');
-      M.Parallax.init(elemsParallax);
+      M.Parallax.init(document.querySelectorAll('.parallax'));
+      M.Sidenav.init(document.querySelectorAll('.sidenav'));
+      M.Modal.init(document.querySelectorAll('.modal'));
 
-      // Sidenav
-      let elemsSidenav = document.querySelectorAll('.sidenav');
-      M.Sidenav.init(elemsSidenav);
-
-      // Modal
-      let elemsModal = document.querySelectorAll('.modal');
-      M.Modal.init(elemsModal);
-
-      // ScrollReveal animations
       ScrollReveal().reveal('[data-sr]', {
         distance: '50px', duration: 800, easing: 'ease-out', origin: 'bottom', interval: 200
       });
 
-      // Back to top button
       const backToTop = document.getElementById('back-to-top');
       window.addEventListener('scroll', () => {
-        if (window.scrollY > 300) backToTop.style.display = 'block';
-        else backToTop.style.display = 'none';
+        backToTop.style.display = window.scrollY > 300 ? 'block' : 'none';
       });
       backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     });
