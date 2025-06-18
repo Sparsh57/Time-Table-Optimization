@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f5f5f5;
+        }
+        nav {
+            background-color: #1a237e;
+        }
+        nav a.brand-logo {
+            font-size: 1.5rem;
+            margin-left: 10px;
+        }
+        .profile-container {
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-wrapper">
+            <a href="/" class="brand-logo left">Timetable</a>
+            <ul class="right hide-on-med-and-down">
+                <li><a href="/dashboard">Dashboard</a></li>
+                <li><a href="/profile">Profile</a></li>
+                <li><a href="/logout">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container profile-container">
+        <h4>Your Account</h4>
+        <ul class="collection">
+            <li class="collection-item">Name: {{ user.name }}</li>
+            <li class="collection-item">Email: {{ user.email }}</li>
+            <li class="collection-item">Organization: {{ user.org if user.org else 'N/A' }}</li>
+            <li class="collection-item">Role: {{ user.role if user.role else 'N/A' }}</li>
+        </ul>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+</body>
+</html>
