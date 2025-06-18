@@ -47,10 +47,12 @@ def parse_faculty_names(faculty_name_str):
     return names
 
 
+
 def insert_courses_professors(file, db_path):
     """
     Inserts course information with section support using bulk operations.
     Handles multiple professors per course and creates sections accordingly.
+    Keeps complex course patterns intact (e.g., "HIST330|SOCL330|POLT330").
 
     :param file: The CSV file containing courses and faculty names.
     :param db_path: Path to the database file or schema identifier.
@@ -111,10 +113,10 @@ def insert_courses_professors(file, db_path):
             course_professor_relationships = []
             processed_courses = set()  # Track unique courses
 
-            # Process each course
+            # Process each course pattern - keep complex patterns intact
             for index, row in df_courses.iterrows():
                 try:
-                    course_code = row['Course code']
+                    course_code = row['Course code']  # Keep complex patterns like "HIST330|SOCL330|POLT330"
                     faculty_names_str = row['Faculty Name']
                     course_type = map_course_type(row['Type'])
                     credits = row['Credits']
@@ -132,12 +134,12 @@ def insert_courses_professors(file, db_path):
                         logger.warning(f"No valid faculty names found for course {course_code}")
                         continue
 
-                    print(f"Course {course_code}: Faculty string '{faculty_names_str}' -> Parsed: {faculty_names}")
+                    print(f"Course pattern: {course_code} -> Faculty: {faculty_names} -> Sections: {num_sections}")
 
-                    # Add course to bulk insert list (avoid duplicates)
+                    # Add course pattern to bulk insert list (avoid duplicates)
                     if course_code not in processed_courses:
                         courses_to_insert.append({
-                            'CourseName': course_code,
+                            'CourseName': course_code,  # Keep complex pattern as-is
                             'CourseType': course_type,
                             'Credits': credits,
                             'NumberOfSections': num_sections
@@ -156,7 +158,6 @@ def insert_courses_professors(file, db_path):
                             logger.info(f"Will link professor {faculty_name} to course {course_code}")
                         else:
                             logger.warning(f"Professor '{faculty_name}' not found for course {course_code}")
-                            logger.warning(f"Available professors: {list(prof_dict.keys())}")
 
                 except Exception as e:
                     logger.error(f"Error processing course {row.get('Course code', 'Unknown')}: {e}")
@@ -171,8 +172,10 @@ def insert_courses_professors(file, db_path):
                     session.bulk_insert_mappings(Course, new_courses)
                     session.commit()
                     logger.info(f"Bulk inserted {len(new_courses)} courses")
+                    print(f"Bulk inserted {len(new_courses)} courses (keeping complex patterns intact)")
                 else:
                     logger.info("No new courses to insert")
+                    print("No new courses to insert (all already exist)")
 
             # Now get course IDs for the relationships
             courses = session.query(Course).all()
@@ -190,27 +193,26 @@ def insert_courses_professors(file, db_path):
                         })
 
                 # Check for existing relationships and filter them out
-                existing_relationships = set()
+                existing_relations = set()
                 for rel in session.query(CourseProfessor).all():
-                    existing_relationships.add((rel.CourseID, rel.ProfessorID))
+                    existing_relations.add((rel.CourseID, rel.ProfessorID))
 
                 new_relationships = [
-                    rel for rel in relationships_to_insert 
-                    if (rel['CourseID'], rel['ProfessorID']) not in existing_relationships
+                    rel for rel in relationships_to_insert
+                    if (rel['CourseID'], rel['ProfessorID']) not in existing_relations
                 ]
 
                 if new_relationships:
                     session.bulk_insert_mappings(CourseProfessor, new_relationships)
                     session.commit()
                     logger.info(f"Bulk inserted {len(new_relationships)} course-professor relationships")
+                    print(f"Bulk inserted {len(new_relationships)} course-professor relationships")
                 else:
                     logger.info("No new course-professor relationships to insert")
 
-            logger.info(f"Bulk inserted courses with sections and professor relationships into database")
-
-        except SQLAlchemyError as e:
+        except Exception as e:
             session.rollback()
-            logger.error(f"Error bulk inserting courses: {e}")
+            logger.error(f"Error bulk inserting course data: {e}")
             raise
 
 

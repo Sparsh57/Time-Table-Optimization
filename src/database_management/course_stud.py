@@ -11,46 +11,36 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def parse_course_pattern(course_pattern, course_dict):
+def find_matching_course_pattern(individual_course, course_dict):
     """
-    Parse complex course patterns and return list of (course_name, course_id) tuples.
+    Find which complex course pattern in the database contains the individual course code.
     
-    Handles:
-    - Simple courses: "MATH101" -> [("MATH101", course_id)]
-    - Elective choices: "ECON315|SOCL323|BUSI312" -> [("ECON315", id1)] (first available)
-    - Paired courses: "ECON321&ECON421" -> [("ECON321", id1), ("ECON421", id2)]
+    Examples:
+    - individual_course = "HIST330", course_dict contains "HIST330|SOCL330|POLT330" -> returns "HIST330|SOCL330|POLT330"
+    - individual_course = "COMP310", course_dict contains "COMP310&COMP410" -> returns "COMP310&COMP410"
+    - individual_course = "HIST328", course_dict contains "HIST328|BIOS328|LITT328|ARTS328&HIST428|BIOS428|LITT428|ARTS428" -> returns that pattern
     
-    :param course_pattern: Course pattern string
-    :param course_dict: Dictionary mapping course names to course IDs
-    :return: List of (course_name, course_id) tuples
+    :param individual_course: Single course code from student enrollment (e.g., "HIST330")
+    :param course_dict: Dictionary mapping complex course patterns to course IDs
+    :return: (course_pattern, course_id) tuple if found, None otherwise
     """
-    # Handle elective patterns (|)
-    if '|' in course_pattern:
-        # Split by | and find the first available course
-        options = [opt.strip() for opt in course_pattern.split('|')]
-        for option in options:
-            if option in course_dict:
-                return [(option, course_dict[option])]
-        return []  # No options found in database
+    # First, try exact match (for simple courses)
+    if individual_course in course_dict:
+        return (individual_course, course_dict[individual_course])
     
-    # Handle paired/sequential courses (&)
-    elif '&' in course_pattern:
-        # Split by & and enroll in all available courses
-        courses = [course.strip() for course in course_pattern.split('&')]
-        results = []
-        for course in courses:
-            if course in course_dict:
-                results.append((course, course_dict[course]))
-            else:
-                logger.warning(f"Paired course {course} from pattern {course_pattern} not found")
-        return results
+    # Look for the individual course within complex patterns
+    for course_pattern, course_id in course_dict.items():
+        # Check if the individual course is part of this pattern
+        if '|' in course_pattern or '&' in course_pattern:
+            # Split by both | and & to get all course components
+            # Handle patterns like "A|B|C&D|E|F" by splitting on both separators
+            pattern_parts = course_pattern.replace('&', '|').split('|')
+            pattern_courses = [part.strip() for part in pattern_parts]
+            
+            if individual_course in pattern_courses:
+                return (course_pattern, course_id)
     
-    # Simple single course
-    else:
-        course = course_pattern.strip()
-        if course in course_dict:
-            return [(course, course_dict[course])]
-        return []
+    return None
 
 
 def insert_course_students(file, db_path):
@@ -110,15 +100,23 @@ def insert_course_students(file, db_path):
             students = session.query(User).filter_by(Role='Student').all()
             student_dict = {student.Email: student.UserID for student in students}
 
-            # Fetch available courses (CourseID and CourseName)
+            # Fetch available courses (CourseID and CourseName) - these contain complex patterns
             courses = session.query(Course).all()
             course_dict = {course.CourseName: course.CourseID for course in courses}
+
+            print(f"Found {len(course_dict)} courses in database:")
+            for course_name in list(course_dict.keys())[:10]:  # Show first 10 courses
+                print(f"  - {course_name}")
+            if len(course_dict) > 10:
+                print(f"  ... and {len(course_dict) - 10} more")
 
             # Create a new DataFrame with relevant columns (G CODE and Roll No.)
             df_merged = df_courses[['G CODE', 'Roll No.', 'Sections']].copy()
             
             # Prepare data for bulk insert
             enrollments_to_insert = []
+            courses_not_found = set()
+            successful_enrollments = 0
 
             # Process enrollments
             for index, row in df_merged.iterrows():
@@ -167,24 +165,35 @@ def insert_course_students(file, db_path):
                         # No section info in G CODE, use course as-is
                         course = g_code.strip()
 
-                    # Handle complex course patterns
-                    courses_to_enroll = parse_course_pattern(course, course_dict)
+                    # Find matching complex course pattern in database
+                    course_match = find_matching_course_pattern(course, course_dict)
                     
-                    if not courses_to_enroll:
-                        logger.warning(f"Course {course} not found in database")
+                    if not course_match:
+                        courses_not_found.add(course)
+                        logger.warning(f"Course {course} not found in any database pattern")
                         continue
 
-                    # Add enrollments for all courses in the pattern
-                    for course_name, course_id in courses_to_enroll:
-                        enrollments_to_insert.append({
-                            'StudentID': student_id,
-                            'CourseID': course_id,
-                            'SectionNumber': section_number
-                        })
+                    course_pattern, course_id = course_match
+                    
+                    # Add enrollment for the matched course
+                    enrollments_to_insert.append({
+                        'StudentID': student_id,
+                        'CourseID': course_id,
+                        'SectionNumber': section_number
+                    })
+                    successful_enrollments += 1
 
                 except Exception as e:
                     logger.error(f"Error processing enrollment for G CODE {g_code}: {e}")
                     continue
+
+            # Report on courses not found
+            if courses_not_found:
+                print(f"\n⚠️  {len(courses_not_found)} unique courses were not found in database:")
+                for course in sorted(courses_not_found):
+                    print(f"   - {course}")
+            
+            print(f"\n✅ Successfully processed {successful_enrollments} enrollments")
 
             # Get existing enrollments to avoid duplicates
             existing_enrollments = set()
@@ -207,7 +216,7 @@ def insert_course_students(file, db_path):
                 logger.info("No new course-student enrollments to insert")
                 print("No new course-student enrollments to insert.")
 
-        except SQLAlchemyError as e:
+        except Exception as e:
             session.rollback()
             logger.error(f"Error bulk inserting course-student data: {e}")
             raise

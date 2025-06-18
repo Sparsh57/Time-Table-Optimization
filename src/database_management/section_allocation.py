@@ -2,9 +2,8 @@ import pandas as pd
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
-from .dbconnection import get_db_session
+from .dbconnection import get_db_session, is_postgresql, get_organization_database_url
 from .models import User, Course, CourseStud
-from sqlalchemy.exc import SQLAlchemyError
 import logging
 from sqlalchemy import func
 
@@ -13,43 +12,64 @@ logger = logging.getLogger(__name__)
 
 def get_optimal_k(student_course_matrix, student_matrix, max_k=10):
     """
-    Determine optimal number of clusters using silhouette score.
+    Find the optimal number of clusters using elbow method and silhouette score.
     
-    :param student_course_matrix: DataFrame with students as rows and courses as columns
-    :param student_matrix: Numpy array of the matrix
-    :param max_k: Maximum number of clusters to consider
+    :param student_course_matrix: DataFrame with student-course enrollment data
+    :param student_matrix: Numpy array of the student-course matrix
+    :param max_k: Maximum number of clusters to test
     :return: Optimal number of clusters
     """
-    if len(student_course_matrix) < 2:
-        return 1
+    if len(student_course_matrix) < 4:  # Need at least 4 students for meaningful clustering
+        return min(2, len(student_course_matrix))
     
-    sil_scores = []
-    K_range = range(2, min(max_k, len(student_course_matrix)))
+    max_k = min(max_k, len(student_course_matrix) // 2)  # Ensure reasonable upper bound
     
-    if len(K_range) == 0:
-        return 1
-
-    for k in K_range:
-        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
-        labels = kmeans.fit_predict(student_matrix)
-        sil_scores.append(silhouette_score(student_matrix, labels))
-
-    optimal_k_value = K_range[np.argmax(sil_scores)]
-    return optimal_k_value
+    if max_k < 2:
+        return 2
+    
+    silhouette_scores = []
+    k_range = range(2, max_k + 1)
+    
+    for k in k_range:
+        try:
+            kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+            cluster_labels = kmeans.fit_predict(student_matrix)
+            silhouette_avg = silhouette_score(student_matrix, cluster_labels)
+            silhouette_scores.append(silhouette_avg)
+        except Exception as e:
+            logger.warning(f"Error computing silhouette score for k={k}: {e}")
+            silhouette_scores.append(0)
+    
+    # Find k with highest silhouette score
+    optimal_k = k_range[np.argmax(silhouette_scores)]
+    return optimal_k
 
 
 def get_multi_section_courses(db_path):
     """
     Get courses that have multiple sections.
     
-    :param db_path: Path to the database
+    :param db_path: Path to the database or schema identifier
     :return: Dictionary mapping course names to number of sections
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             courses = session.query(Course).filter(Course.NumberOfSections > 1).all()
             return {course.CourseName: course.NumberOfSections for course in courses}
-        except SQLAlchemyError as e:
+        except Exception as e:
             logger.error(f"Error fetching multi-section courses: {e}")
             return {}
 
@@ -58,10 +78,23 @@ def create_student_course_matrix(db_path):
     """
     Create a student-course matrix for clustering analysis.
     
-    :param db_path: Path to the database
+    :param db_path: Path to the database or schema identifier
     :return: DataFrame with students as rows and courses as columns (pivot table)
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             # Get all student enrollments
             query = session.query(
@@ -103,7 +136,7 @@ def create_student_course_matrix(db_path):
             
             return student_course_matrix
             
-        except SQLAlchemyError as e:
+        except Exception as e:
             logger.error(f"Error creating student-course matrix: {e}")
             return pd.DataFrame()
 
@@ -173,7 +206,7 @@ def allocate_all_sections(db_path):
     """
     Allocate students to sections for all multi-section courses.
     
-    :param db_path: Path to the database
+    :param db_path: Path to the database or schema identifier
     :return: List of all section assignments
     """
     logger.info("Starting section allocation process")
@@ -227,9 +260,22 @@ def update_student_sections_in_db(section_assignments, db_path):
     Update the database with section assignments.
     
     :param section_assignments: List of section assignment dictionaries
-    :param db_path: Path to the database
+    :param db_path: Path to the database or schema identifier
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             for assignment in section_assignments:
                 # Get student and course IDs
@@ -237,20 +283,22 @@ def update_student_sections_in_db(section_assignments, db_path):
                 course = session.query(Course).filter_by(CourseName=assignment["Course"]).first()
                 
                 if student and course:
-                    # Update the CourseStud entry with section number
-                    enrollment = session.query(CourseStud).filter_by(
-                        StudentID=student.UserID,
+                    # Update section assignment in CourseStud table
+                    course_stud = session.query(CourseStud).filter_by(
+                        StudentID=student.UserID, 
                         CourseID=course.CourseID
                     ).first()
                     
-                    if enrollment:
-                        enrollment.SectionNumber = assignment["Assigned_Section"]
-                        logger.debug(f"Assigned student {assignment['Roll_No']} to section {assignment['Assigned_Section']} of {assignment['Course']}")
+                    if course_stud:
+                        course_stud.SectionNumber = assignment["Assigned_Section"]
+                        logger.debug(f"Updated section for {assignment['Roll_No']} in {assignment['Course']}: Section {assignment['Assigned_Section']}")
+                else:
+                    logger.warning(f"Student {assignment['Roll_No']} or course {assignment['Course']} not found")
             
             session.commit()
             logger.info(f"Updated {len(section_assignments)} section assignments in database")
             
-        except SQLAlchemyError as e:
+        except Exception as e:
             session.rollback()
             logger.error(f"Error updating section assignments: {e}")
             raise
@@ -316,9 +364,22 @@ def print_detailed_section_mapping(db_path):
     """
     Print detailed section mapping from the database including cluster information.
     
-    :param db_path: Path to the database
+    :param db_path: Path to the database or schema identifier
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             # Get detailed student section information
             query = session.query(
@@ -373,7 +434,7 @@ def print_detailed_section_mapping(db_path):
             
             print(f"\n{'='*80}")
             
-        except SQLAlchemyError as e:
+        except Exception as e:
             logger.error(f"Error printing detailed section mapping: {e}")
 
 
@@ -381,7 +442,7 @@ def export_section_mapping_to_csv(db_path, filename=None):
     """
     Export student section mapping to a CSV file.
     
-    :param db_path: Path to the database
+    :param db_path: Path to the database or schema identifier
     :param filename: Output filename (auto-generated if None)
     :return: Filename of the exported CSV
     """
@@ -390,7 +451,20 @@ def export_section_mapping_to_csv(db_path, filename=None):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"student_section_mapping_{timestamp}.csv"
     
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             query = session.query(
                 User.Email.label('Roll_No'),
@@ -425,7 +499,7 @@ def export_section_mapping_to_csv(db_path, filename=None):
                 print("❌ No student enrollment data found to export.")
                 return None
                 
-        except SQLAlchemyError as e:
+        except Exception as e:
             logger.error(f"Error exporting section mapping: {e}")
             return None
 
@@ -434,7 +508,7 @@ def run_section_allocation(db_path, print_mapping=True, export_csv=False):
     """
     Main function to run the complete section allocation process.
     
-    :param db_path: Path to the database
+    :param db_path: Path to the database or schema identifier
     :param print_mapping: Whether to print the section mapping after allocation
     :param export_csv: Whether to export the section mapping to CSV
     :return: List of section assignments
@@ -473,10 +547,23 @@ def get_section_allocation_summary(db_path):
     """
     Get a summary of section allocation statistics.
     
-    :param db_path: Path to the database
+    :param db_path: Path to the database or schema identifier
     :return: Dictionary with allocation summary
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             # Get multi-section courses and their enrollments
             query = session.query(
@@ -529,7 +616,7 @@ def get_section_allocation_summary(db_path):
             
             return summary
             
-        except SQLAlchemyError as e:
+        except Exception as e:
             logger.error(f"Error getting section allocation summary: {e}")
             return {}
 
@@ -538,7 +625,7 @@ def print_section_allocation_summary(db_path):
     """
     Print a formatted summary of section allocation.
     
-    :param db_path: Path to the database
+    :param db_path: Path to the database or schema identifier
     """
     summary = get_section_allocation_summary(db_path)
     
