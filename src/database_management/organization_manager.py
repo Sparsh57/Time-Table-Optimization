@@ -101,21 +101,21 @@ def create_organization_with_validation(org_name, org_domains, user_email, user_
     :param user_name: Name of the first admin user
     :param db_path: Path to the organization database (SQLite) or URL (PostgreSQL)
     :param max_classes_per_slot: Maximum classes per time slot setting
-    :return: (success, message, organization)
+    :return: (success, message, organization, database_path)
     """
     # Validate before creating
     is_valid, validation_message = validate_organization_creation(org_name, org_domains, user_email)
     if not is_valid:
-        return False, validation_message, None
+        return False, validation_message, None, None
     
     try:
+        # For PostgreSQL, use schema-based approach; for SQLite, use file paths
+        if is_postgresql():
+            database_path = f"schema:{get_schema_for_organization(org_name)}"
+        else:
+            database_path = db_path
+        
         with get_meta_db_session() as session:
-            # For PostgreSQL, use schema-based approach; for SQLite, use file paths
-            if is_postgresql():
-                database_path = f"schema:{get_schema_for_organization(org_name)}"
-            else:
-                database_path = db_path
-            
             # Create organization record
             new_org = Organization(
                 OrgName=org_name,
@@ -127,31 +127,34 @@ def create_organization_with_validation(org_name, org_domains, user_email, user_
             
             logger.info(f"Created organization: {org_name}")
             
-            # Create organization database and tables
-            if is_postgresql():
-                create_tables(get_organization_database_url(), org_name)
-            else:
-                create_tables(db_path)
+            # Extract database path while organization is still attached to session
+            org_database_path = new_org.DatabasePath
             
-            # Add first admin user to organization database as founder
-            from .admin_manager import ensure_first_admin
-            if is_postgresql():
-                ensure_first_admin(database_path, user_name, user_email, org_name)
-            else:
-                ensure_first_admin(db_path, user_name, user_email)
-            
-            # Set the max classes per slot setting
-            from .settings_manager import set_max_classes_per_slot
-            if is_postgresql():
-                set_max_classes_per_slot(database_path, max_classes_per_slot, org_name)
-            else:
-                set_max_classes_per_slot(db_path, max_classes_per_slot)
-            
-            return True, f"Organization '{org_name}' created successfully", new_org
-            
+        # Create organization database and tables (outside the session context)
+        if is_postgresql():
+            create_tables(get_organization_database_url(), org_name)
+        else:
+            create_tables(db_path)
+        
+        # Add first admin user to organization database as founder
+        from .admin_manager import ensure_first_admin
+        if is_postgresql():
+            ensure_first_admin(database_path, user_name, user_email, org_name)
+        else:
+            ensure_first_admin(db_path, user_name, user_email)
+        
+        # Set the max classes per slot setting
+        from .settings_manager import set_max_classes_per_slot
+        if is_postgresql():
+            set_max_classes_per_slot(database_path, max_classes_per_slot, org_name)
+        else:
+            set_max_classes_per_slot(db_path, max_classes_per_slot)
+        
+        return True, f"Organization '{org_name}' created successfully", new_org, org_database_path
+        
     except Exception as e:
         logger.error(f"Error creating organization: {e}")
-        return False, f"Failed to create organization: {str(e)}", None
+        return False, f"Failed to create organization: {str(e)}", None, None
 
 
 def get_organization_summary(org_name):
@@ -277,13 +280,13 @@ def get_organization_by_user_role(user_email, required_role=None):
             with get_db_session(org.DatabasePath) as session:
                 user = session.query(User).filter_by(Email=user_email).first()
                 user_role = user.Role if user else 'Student'  # Default to Student
-        
-        has_required_role = True
-        if required_role:
-            has_required_role = (user_role == required_role)
-        
-        return org, user_role, has_required_role
-        
+            
+            has_required_role = True
+            if required_role:
+                has_required_role = (user_role == required_role)
+            
+            return org, user_role, has_required_role
+            
     except Exception as e:
         logger.error(f"Error checking user organization role: {e}")
         return None, None, False 

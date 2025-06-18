@@ -1,5 +1,5 @@
 import pandas as pd
-from .dbconnection import get_db_session, create_tables
+from .dbconnection import get_db_session, create_tables, is_postgresql, get_organization_database_url
 from .models import User
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text
@@ -39,9 +39,16 @@ def insert_user_data(list_files, db_path):
     :param list_files: A tuple containing two DataFrames:
                        - course_data: DataFrame with faculty information.
                        - stud_course_data: DataFrame with student registration data.
-    :param db_path: Path to the database file.
+    :param db_path: Path to the database file or schema identifier.
     """
     print("Bulk inserting user data")
+    
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
     
     course_data, stud_course_data = list_files
 
@@ -76,14 +83,27 @@ def insert_user_data(list_files, db_path):
 
     # First, ensure tables exist
     try:
-        with get_db_session(db_path) as session:
-            session.execute(text("SELECT 1 FROM Users LIMIT 1"))
+        if is_postgresql() and org_name:
+            with get_db_session(get_organization_database_url(), org_name) as session:
+                session.execute(text("SELECT 1 FROM \"Users\" LIMIT 1"))
+        else:
+            with get_db_session(db_path) as session:
+                session.execute(text("SELECT 1 FROM Users LIMIT 1"))
     except Exception:
         logger.info("Users table not found, creating tables...")
-        create_tables(db_path)
+        if is_postgresql() and org_name:
+            create_tables(get_organization_database_url(), org_name)
+        else:
+            create_tables(db_path)
         logger.info("Tables created successfully")
 
-    with get_db_session(db_path) as session:
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             # Get existing users to avoid duplicates
             existing_emails = {user.Email for user in session.query(User.Email).all()}
@@ -107,17 +127,27 @@ def insert_user_data(list_files, db_path):
             raise
 
 
-
-
-
 def fetch_user_data(db_path):
     """
     Fetches user data of professors from the database using SQLAlchemy.
 
-    :param db_path: Path to the database file.
+    :param db_path: Path to the database file or schema identifier.
     :return: List of tuples containing user data.
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+    
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+    
+    with session_context as session:
         try:
             professors = session.query(User).filter_by(Role='Professor').all()
             result = [(prof.UserID, prof.Email, prof.Name, prof.Role) for prof in professors]
@@ -131,10 +161,23 @@ def fetch_professor_emails(db_path):
     """
     Fetches email addresses of professors from the database using SQLAlchemy.
 
-    :param db_path: Path to the database file.
+    :param db_path: Path to the database file or schema identifier.
     :return: List of email addresses.
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+    
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+    
+    with session_context as session:
         try:
             professors = session.query(User.Email).filter_by(Role='Professor').all()
             emails = [prof.Email for prof in professors]
@@ -148,10 +191,23 @@ def fetch_admin_emails(db_path):
     """
     Fetches email addresses of admins from the database using SQLAlchemy.
 
-    :param db_path: Path to the database file.
+    :param db_path: Path to the database file or schema identifier.
     :return: List of email addresses.
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+    
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+    
+    with session_context as session:
         try:
             admins = session.query(User.Email).filter_by(Role='Admin').all()
             emails = [admin.Email for admin in admins]
@@ -167,10 +223,23 @@ def add_admin(user_name: str, email: str, db_path: str, role: str):
     
     :param user_name: Name of the user
     :param email: Email of the user
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     :param role: Role of the user (e.g., "Admin")
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+    
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+    
+    with session_context as session:
         try:
             # Check if user already exists
             existing_user = session.query(User).filter_by(Email=email).first()

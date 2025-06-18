@@ -50,6 +50,7 @@ def add_admin_user(db_path, name, email, created_by_admin_email=None, org_name=N
             with get_db_session(get_organization_database_url(), org_name) as session:
                 session.execute(text("SELECT 1 FROM \"Users\" LIMIT 1"))
         else:
+
             with get_db_session(db_path) as session:
                 session.execute(text("SELECT 1 FROM Users LIMIT 1"))
     except Exception:
@@ -57,6 +58,7 @@ def add_admin_user(db_path, name, email, created_by_admin_email=None, org_name=N
         if is_postgresql() and org_name:
             create_tables(get_organization_database_url(), org_name)
         else:
+
             create_tables(db_path)
         logger.info("Tables created successfully")
     

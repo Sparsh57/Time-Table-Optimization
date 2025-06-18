@@ -1,5 +1,5 @@
 import pandas as pd
-from .dbconnection import get_db_session
+from .dbconnection import get_db_session, is_postgresql, get_organization_database_url
 from .models import User, Course, CourseStud, Slot, ProfessorBusySlot, CourseProfessor
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func
@@ -11,12 +11,25 @@ logger = logging.getLogger(__name__)
 def registration_data(db_path):
     """
     Fetch registration data (student enrollments) using SQLAlchemy.
-    Now handles multiple professors per course.
+    Now handles multiple professors per course and PostgreSQL schema paths.
     
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     :return: DataFrame containing registration data
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             # Create aliases for users table to distinguish between students and professors
             Student = aliased(User)
@@ -59,10 +72,23 @@ def registration_data_with_sections(db_path):
     """
     Fetch registration data with section information for section-aware timetable generation.
     
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     :return: DataFrame containing registration data with section information
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             # Query to get student registration data with section information
             query = session.query(
@@ -148,10 +174,23 @@ def faculty_pref(db_path):
     """
     Fetch professor preferences for busy slots using SQLAlchemy.
 
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     :return: DataFrame containing professor names and their busy time slots.
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             # Query to get professor busy slots
             query = session.query(
@@ -182,10 +221,23 @@ def student_pref(db_path):
     Note: This function seems to have an incorrect query in the original.
     Students don't have a CourseID field directly.
 
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     :return: DataFrame containing student names and their busy time slots.
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             # Query to get all students (the original query had an error)
             query = session.query(User.Email.label('Name'))\
@@ -207,22 +259,33 @@ def student_pref(db_path):
 
 def get_all_time_slots(db_path):
     """
-    Retrieves all time slots from the Slots table using SQLAlchemy.
-    
-    :param db_path: Path to the database file
-    :return: List of strings in the format "Day HH:MM".
+    Fetch all time slots from the database using SQLAlchemy.
+
+    :param db_path: Path to the database file or schema identifier
+    :return: List of time slot strings in "Day StartTime" format.
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             # Query to get all time slots
-            query = session.query(
-                Slot.Day,
-                Slot.StartTime
-            ).order_by(Slot.Day, Slot.StartTime)
+            query = session.query(Slot).order_by(Slot.Day, Slot.StartTime)
             
             time_slots = []
-            for row in query.all():
-                time_slots.append(f"{row.Day} {row.StartTime}")
+            for slot in query.all():
+                time_slot_str = f"{slot.Day} {slot.StartTime}"
+                time_slots.append(time_slot_str)
             
             return time_slots
             
@@ -232,62 +295,91 @@ def get_all_time_slots(db_path):
 
 def get_course_professor_mapping(db_path):
     """
-    Get a mapping of courses to their professors (handles multiple professors per course).
-    
-    :param db_path: Path to the database file
-    :return: Dictionary mapping course names to list of professor emails
+    Create a mapping from course to professor using SQLAlchemy.
+
+    :param db_path: Path to the database file or schema identifier
+    :return: Dictionary mapping course codes to professor emails
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
+            # Query to get course-professor mappings
             query = session.query(
                 Course.CourseName,
-                User.Email
+                User.Email.label('ProfessorEmail')
             ).select_from(Course)\
              .join(CourseProfessor, Course.CourseID == CourseProfessor.CourseID)\
              .join(User, CourseProfessor.ProfessorID == User.UserID)\
              .filter(User.Role == 'Professor')\
              .order_by(Course.CourseName, User.Email)
             
-            course_prof_mapping = {}
+            course_prof_map = {}
             for row in query.all():
                 course_name = row.CourseName
-                prof_email = row.Email
+                prof_email = row.ProfessorEmail
                 
-                if course_name not in course_prof_mapping:
-                    course_prof_mapping[course_name] = []
-                course_prof_mapping[course_name].append(prof_email)
+                # For multiple professors, use the first one (backward compatibility)
+                if course_name not in course_prof_map:
+                    course_prof_map[course_name] = prof_email
             
-            return course_prof_mapping
+            return course_prof_map
             
         except SQLAlchemyError as e:
-            logger.error(f"Error fetching course-professor mapping: {e}")
+            logger.error(f"Error creating course-professor mapping: {e}")
             return {}
 
 def get_course_section_professor_mapping(db_path):
     """
-    Get a mapping of course sections to their professors using round-robin logic.
+    Create a mapping from course-section identifier to professor for section-aware scheduling.
     
-    :param db_path: Path to the database file
-    :return: Dictionary mapping course identifiers to professor emails
+    :param db_path: Path to the database file or schema identifier
+    :return: Dictionary mapping course-section identifiers to professor emails
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
-            # Get all courses with their professors
+            # Query to get course information with section details
             query = session.query(
                 Course.CourseName,
                 Course.NumberOfSections,
-                User.Email
+                User.Email.label('ProfessorEmail')
             ).select_from(Course)\
              .join(CourseProfessor, Course.CourseID == CourseProfessor.CourseID)\
              .join(User, CourseProfessor.ProfessorID == User.UserID)\
              .filter(User.Role == 'Professor')\
              .order_by(Course.CourseName, User.Email)
+            
+            course_section_prof_map = {}
             
             # Group professors by course
             course_professors = {}
             for row in query.all():
                 course_name = row.CourseName
-                prof_email = row.Email
+                prof_email = row.ProfessorEmail
                 num_sections = row.NumberOfSections
                 
                 if course_name not in course_professors:
@@ -297,28 +389,61 @@ def get_course_section_professor_mapping(db_path):
                     }
                 course_professors[course_name]['professors'].append(prof_email)
             
-            # Create section-professor mapping using round-robin
-            section_prof_mapping = {}
+            # Create section mappings using round-robin assignment
             for course_name, course_info in course_professors.items():
                 professors = course_info['professors']
                 num_sections = course_info['num_sections']
                 
                 for section_num in range(1, num_sections + 1):
-                    # Use round-robin assignment
+                    # Assign professor using round-robin
                     prof_index = (section_num - 1) % len(professors)
-                    prof_email = professors[prof_index]
+                    assigned_professor = professors[prof_index]
                     
-                    # Create course identifier based on number of sections
+                    # Create course-section identifier
                     if num_sections == 1:
-                        course_identifier = course_name
+                        # Single section: just use course name
+                        course_section_id = course_name
                     else:
-                        section_letter = chr(ord('A') + section_num - 1)
-                        course_identifier = f"{course_name}-{section_letter}"
+                        # Multiple sections: use course-A, course-B format
+                        section_letter = chr(ord('A') + section_num - 1)  # Convert 1->A, 2->B, etc.
+                        course_section_id = f"{course_name}-{section_letter}"
                     
-                    section_prof_mapping[course_identifier] = prof_email
+                    course_section_prof_map[course_section_id] = assigned_professor
             
-            return section_prof_mapping
+            return course_section_prof_map
             
         except SQLAlchemyError as e:
-            logger.error(f"Error fetching course-section-professor mapping: {e}")
+            logger.error(f"Error creating course-section-professor mapping: {e}")
             return {}
+
+def create_course_credit_map(df):
+    """
+    Create a mapping from course to credit hours.
+    
+    :param df: DataFrame with 'G CODE' and 'Credit' columns
+    :return: Dictionary mapping course codes to credit hours
+    """
+    course_credit_map = {}
+    
+    for index, row in df.iterrows():
+        course_code = row['G CODE']
+        credits = row['Credit']
+        course_credit_map[course_code] = credits
+    
+    return course_credit_map
+
+def create_course_elective_map(df):
+    """
+    Create a mapping from course to course type (Elective/Required).
+    
+    :param df: DataFrame with 'G CODE' and 'Type' columns
+    :return: Dictionary mapping course codes to course types
+    """
+    course_type_map = {}
+    
+    for index, row in df.iterrows():
+        course_code = row['G CODE']
+        course_type = row['Type']
+        course_type_map[course_code] = course_type
+    
+    return course_type_map

@@ -1,6 +1,6 @@
 import sqlite3
 import logging
-from .dbconnection import get_db_session
+from .dbconnection import get_db_session, is_postgresql, get_organization_database_url
 from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
@@ -9,9 +9,22 @@ logger = logging.getLogger(__name__)
 def migrate_database_for_sections(db_path):
     """
     Migrate existing database to support sections by adding necessary columns.
+    Only applies to SQLite databases - PostgreSQL schemas are created fresh.
     
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     """
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+    
+    # Skip migration for PostgreSQL - schemas are created fresh with correct structure
+    if is_postgresql():
+        logger.info(f"Skipping migration for PostgreSQL schema: {db_path}")
+        return
+    
     logger.info(f"Starting database migration for sections: {db_path}")
     
     try:
@@ -123,10 +136,15 @@ def migrate_database_for_sections(db_path):
 def check_migration_needed(db_path):
     """
     Check if database migration is needed.
+    Only applies to SQLite databases - PostgreSQL schemas are created fresh.
     
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     :return: True if migration is needed, False otherwise
     """
+    # Skip migration check for PostgreSQL - schemas are created fresh
+    if is_postgresql():
+        return False
+    
     try:
         with get_db_session(db_path) as session:
             # Check if SectionNumber column exists

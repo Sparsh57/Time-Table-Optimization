@@ -84,9 +84,6 @@ def insert_time_slots(input_data, db_path):
             raise
 
 
-
-
-
 def fetch_slots(db_path):
     """
     Fetches slot data from the database using SQLAlchemy.

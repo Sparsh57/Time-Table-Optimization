@@ -17,17 +17,29 @@ load_dotenv()
 # Define the directory where organization databases will be stored
 DATA_DIR = os.path.join(os.getcwd(), "data")
 
-# Ensure the `data/` directory exists
-if not os.path.exists(DATA_DIR):
-    os.makedirs(DATA_DIR)
+# Ensure the `data/` directory exists (only for SQLite mode)
+def ensure_data_directory():
+    """Ensure data directory exists for SQLite mode."""
+    if not is_postgresql() and not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR)
 
 
 # Initialize the meta-database using SQLAlchemy
 def init_meta_database():
     """
     Initialize the meta-database with SQLAlchemy.
+    For PostgreSQL, ensures the meta schema exists first.
     """
     try:
+        # For PostgreSQL, ensure the meta schema exists before creating tables
+        if is_postgresql():
+            from src.database_management.dbconnection import get_database_url, create_database_engine, create_schema_if_not_exists
+            
+            # Create the meta schema if it doesn't exist
+            engine = create_database_engine(get_database_url())
+            create_schema_if_not_exists(engine, "meta")
+            engine.dispose()
+            
         create_meta_tables()
         print("Meta-database initialized successfully")
     except Exception as e:
@@ -52,6 +64,10 @@ def get_or_create_org_database(org_name, org_domains):
     if existing_org:
         db_path = existing_org.DatabasePath
     else:
+        # For SQLite mode, ensure data directory exists
+        if not is_postgresql():
+            ensure_data_directory()
+        
         # Generate a new database file for the organization in the `data/` subdirectory
         db_path = os.path.join(DATA_DIR, f"{org_name.replace(' ', '_')}.db")
         
@@ -120,24 +136,24 @@ def init_org_database(db_path, org_name=None):
             else:
                 # SQLite query
                 result = session.execute(text("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"))
-            
-            tables = [row[0] for row in result.fetchall()]
-            
-            expected_tables = ['Users', 'Courses', 'Course_Professor', 'Course_Stud', 
-                             'Slots', 'Professor_BusySlots', 'Schedule']
-            
-            missing_tables = [table for table in expected_tables if table not in tables]
-            if missing_tables:
-                print(f"Warning: Missing tables: {missing_tables}")
-                # Try to create tables again
-                if is_postgresql() and org_name:
-                    create_tables(get_organization_database_url(), org_name)
+                
+                tables = [row[0] for row in result.fetchall()]
+                
+                expected_tables = ['Users', 'Courses', 'Course_Professor', 'Course_Stud', 
+                                'Slots', 'Professor_BusySlots', 'Schedule']
+                
+                missing_tables = [table for table in expected_tables if table not in tables]
+                if missing_tables:
+                    print(f"Warning: Missing tables: {missing_tables}")
+                    # Try to create tables again
+                    if is_postgresql() and org_name:
+                        create_tables(get_organization_database_url(), org_name)
+                    else:
+                        create_tables(db_path)
+                        print("Attempted to recreate missing tables")
                 else:
-                    create_tables(db_path)
-                print("Attempted to recreate missing tables")
-            else:
-                print(f"All expected tables created successfully: {tables}")
-        
+                    print(f"All expected tables created successfully: {tables}")
+            
         if is_postgresql() and org_name:
             print(f"Initialized organization database with schema: {org_name}")
         else:
@@ -177,6 +193,10 @@ def add_admin(org_name, org_domains, admin_name, admin_email):
     if not any(admin_email.endswith(f"@{domain}") for domain in org_domains):
         print(f"Error: The email {admin_email} is not allowed for {org_name}. Allowed domains: {org_domains}")
         return
+
+    # Ensure data directory exists for SQLite mode
+    if not is_postgresql():
+        ensure_data_directory()
 
     # Get or create the organization's database
     db_path = get_or_create_org_database(org_name, org_domains)

@@ -214,9 +214,6 @@ def insert_courses_professors(file, db_path):
             raise
 
 
-
-
-
 def fetch_course_data(db_path):
     """
     Fetches all course data from the Courses table using SQLAlchemy.

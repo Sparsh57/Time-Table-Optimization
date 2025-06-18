@@ -18,7 +18,7 @@ from collections import defaultdict
 from typing import List
 
 # -------------------- Importing your local modules --------------------
-from create_database_tables import get_or_create_org_database, init_meta_database
+from create_database_tables import init_meta_database
 from src.database_management.Users import insert_user_data, add_admin, fetch_user_data,fetch_professor_emails, fetch_admin_emails
 from src.database_management.Courses import insert_courses_professors
 from src.database_management.busy_slot import insert_professor_busy_slots, insert_professor_busy_slots_from_ui,fetch_user_id
@@ -74,7 +74,7 @@ from src.database_management.organization_manager import (
 from sqlalchemy import text
 
 load_dotenv()
-
+print(os.getenv("DATABASE_URL"))
 client_id = os.getenv("CLIENT_ID")
 client_secret = os.getenv("CLIENT_SECRET")
 
@@ -83,14 +83,22 @@ app = FastAPI()
 # -------------------- Initialize meta-database on startup --------------------
 @app.on_event("startup")
 async def startup_event():
-    """Initialize the meta-database only if it does not already exist."""
+    """Initialize the meta-database on startup."""
     try:
-        meta_db_path = "organizations_meta.db"
-        if not os.path.exists(meta_db_path):
+        from src.database_management.dbconnection import is_postgresql
+        
+        if is_postgresql():
+            # For PostgreSQL, always ensure meta schema and tables exist
             init_meta_database()
-            logger.info("Meta-database initialized successfully")
+            logger.info("PostgreSQL meta-database initialized successfully")
         else:
-            logger.info("Meta-database already exists, skipping initialization")
+            # For SQLite, check if file exists before creating
+            meta_db_path = "organizations_meta.db"
+            if not os.path.exists(meta_db_path):
+                init_meta_database()
+                logger.info("SQLite meta-database initialized successfully")
+            else:
+                logger.info("SQLite meta-database already exists, skipping initialization")
     except Exception as e:
         logger.error(f"Failed to initialize meta-database: {e}")
 
@@ -153,8 +161,8 @@ def fetch_user_role_from_org_db(email: str, db_path: str, user_name: str = None,
                 create_tables(get_organization_database_url(), org_name)
             else:
                 create_tables(db_path)
-            logger.info(f"✅ Tables created successfully")
-        
+                logger.info(f"✅ Tables created successfully")
+            
         # Now proceed with user lookup/creation
         if is_postgresql() and org_name:
             session_context = get_db_session(get_organization_database_url(), org_name)
@@ -366,7 +374,7 @@ async def register_organization(
         db_path = os.path.join(os.getcwd(), "data", f"{org_name.replace(' ', '_')}.db")
 
         # Create organization with validation
-        success, message, org = create_organization_with_validation(
+        success, message, org, org_database_path = create_organization_with_validation(
             org_name, allowed_domains, email, user_name, db_path, max_classes_per_slot
         )
 
@@ -385,7 +393,17 @@ async def register_organization(
             )
 
         # Update session with organization info
-        request.session["db_path"] = db_path
+        # Use the actual database path from the created organization (which handles PostgreSQL vs SQLite correctly)
+        if org_database_path:
+            request.session["db_path"] = org_database_path
+        else:
+            # Fallback to computed path if org object is None
+            from src.database_management.dbconnection import is_postgresql, get_schema_for_organization
+            if is_postgresql():
+                request.session["db_path"] = f"schema:{get_schema_for_organization(org_name)}"
+            else:
+                request.session["db_path"] = db_path
+                
         request.session["org_name"] = org_name
         request.session["user"] = {
             **request.session.get("user", {}),
@@ -476,7 +494,7 @@ async def send_admin_data(
 
     # -- Ensure time slots exist before generating timetable
     ensure_default_time_slots(db_path)
-    
+
     # -- Generate timetable
     gen_timetable_auto(
         db_path,

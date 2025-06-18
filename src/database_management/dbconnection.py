@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, MetaData
 from sqlalchemy.orm import sessionmaker, Session
 from contextlib import contextmanager
 from .models import Base, MetaBase, Organization
@@ -187,11 +187,15 @@ def create_tables(db_path_or_url: str, org_name: str = None):
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                # Create tables with schema
-                for table in Base.metadata.tables.values():
-                    table.schema = schema_name
+                # Create a temporary metadata object with schema-specific tables
+                # This avoids polluting the global metadata
+                schema_metadata = MetaData()
                 
-                Base.metadata.create_all(engine)
+                # Copy tables to schema metadata with the correct schema
+                for table in Base.metadata.tables.values():
+                    table.to_metadata(schema_metadata, schema=schema_name)
+                
+                schema_metadata.create_all(engine)
                 logger.info(f"Created tables for organization: {org_name} in schema: {schema_name}")
                 break
             except Exception as e:
@@ -237,15 +241,24 @@ def create_meta_tables(meta_db_url: str = None):
         # For PostgreSQL, create a dedicated schema for meta tables
         create_schema_if_not_exists(engine, "meta")
         
-        # Set schema for meta tables
+        # Create a temporary metadata object for meta schema
+        meta_schema_metadata = MetaData()
+        
+        # Copy tables to meta schema metadata with the correct schema
         for table in MetaBase.metadata.tables.values():
-            table.schema = "meta"
-    
-    try:
-        MetaBase.metadata.create_all(engine)
-        logger.info(f"Created meta-database tables: {meta_db_url}")
-    finally:
-        engine.dispose()
+            table.to_metadata(meta_schema_metadata, schema="meta")
+        
+        try:
+            meta_schema_metadata.create_all(engine)
+            logger.info(f"Created meta-database tables: {meta_db_url}")
+        finally:
+            engine.dispose()
+    else:
+        try:
+            MetaBase.metadata.create_all(engine)
+            logger.info(f"Created meta-database tables: {meta_db_url}")
+        finally:
+            engine.dispose()
 
 
 @contextmanager
@@ -391,11 +404,17 @@ class DatabaseManager:
             schema_name = get_schema_for_organization(self.org_name)
             create_schema_if_not_exists(self.engine, schema_name)
             
-            # Set schema for tables
+            # Create a temporary metadata object with schema-specific tables
+            schema_metadata = MetaData()
+            
+            # Copy tables to schema metadata with the correct schema
             for table in Base.metadata.tables.values():
-                table.schema = schema_name
+                table.to_metadata(schema_metadata, schema=schema_name)
+            
+            schema_metadata.create_all(self.engine)
+        else:
+            Base.metadata.create_all(self.engine)
         
-        Base.metadata.create_all(self.engine)
         logger.info(f"Created tables for database: {self.db_path_or_url}")
     
     def get_session(self) -> Session:

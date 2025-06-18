@@ -49,6 +49,7 @@ def get_setting(db_path, setting_key, default_value=None, org_name=None):
             with get_db_session(get_organization_database_url(), org_name) as session:
                 session.execute(text("SELECT 1 FROM \"Settings\" LIMIT 1"))
         else:
+
             with get_db_session(db_path) as session:
                 session.execute(text("SELECT 1 FROM Settings LIMIT 1"))
     except Exception:
@@ -56,6 +57,7 @@ def get_setting(db_path, setting_key, default_value=None, org_name=None):
         if is_postgresql() and org_name:
             create_tables(get_organization_database_url(), org_name)
         else:
+
             create_tables(db_path)
         logger.info("Tables created successfully")
     
@@ -113,6 +115,7 @@ def set_setting(db_path, setting_key, setting_value, description=None, org_name=
             with get_db_session(get_organization_database_url(), org_name) as session:
                 session.execute(text("SELECT 1 FROM \"Settings\" LIMIT 1"))
         else:
+
             with get_db_session(db_path) as session:
                 session.execute(text("SELECT 1 FROM Settings LIMIT 1"))
     except Exception:
@@ -120,6 +123,7 @@ def set_setting(db_path, setting_key, setting_value, description=None, org_name=
         if is_postgresql() and org_name:
             create_tables(get_organization_database_url(), org_name)
         else:
+
             create_tables(db_path)
         logger.info("Tables created successfully")
     

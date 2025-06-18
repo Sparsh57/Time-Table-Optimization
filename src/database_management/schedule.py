@@ -352,7 +352,7 @@ def get_schedule_for_courses(course_id_list, db_path):
     """
     if not course_id_list:
         return []
-    
+        
     from .dbconnection import is_postgresql, get_organization_database_url
     
     # Auto-detect org_name from db_path if it's a schema path

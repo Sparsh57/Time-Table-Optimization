@@ -1,10 +1,10 @@
 from .data_preprocessing import merge_data, prepare_student_course_map, create_course_professor_map_all, prepare_student_course_section_map, expand_courses_with_sections
-from .utilities import faculty_busy_slots, create_course_dictionary, create_course_credit_map, create_course_elective_map
+from .utilities import faculty_busy_slots, create_course_dictionary
 from .schedule_model import schedule_courses
 from .database_management.schedule import schedule
 from .database_management.Courses import fetch_course_data
 from .conflict_checker import check_conflicts, find_courses_with_multiple_slots_on_same_day
-from .database_management.database_retrieval import registration_data, faculty_pref, get_all_time_slots, registration_data_with_sections, get_course_section_professor_mapping
+from .database_management.database_retrieval import registration_data, faculty_pref, get_all_time_slots, registration_data_with_sections, get_course_section_professor_mapping, create_course_credit_map, create_course_elective_map
 from .database_management.migration import migrate_database_for_sections, check_migration_needed
 from .database_management.Slot_info import ensure_default_time_slots
 from .database_management.settings_manager import get_max_classes_per_slot, initialize_default_settings
@@ -192,8 +192,27 @@ def has_multi_section_courses(db_path):
         if check_migration_needed(db_path):
             migrate_database_for_sections(db_path)
         
+        # First check if there are any multi-section courses in the Courses table
+        from .database_management.section_allocation import get_multi_section_courses
+        multi_section_courses = get_multi_section_courses(db_path)
+        
+        print(f"🔍 Multi-section courses found in database: {multi_section_courses}")
+        
+        if multi_section_courses:
+            print(f"✅ Found {len(multi_section_courses)} multi-section courses")
+            return True
+        
+        # Fallback to checking registration data
         df_merged = registration_data_with_sections(db_path)
-        return not df_merged.empty and df_merged['NumberOfSections'].max() > 1
+        has_multi_sections = not df_merged.empty and df_merged['NumberOfSections'].max() > 1
+        
+        if has_multi_sections:
+            print(f"✅ Multi-section courses detected in registration data")
+        else:
+            print(f"❌ No multi-section courses detected")
+        
+        return has_multi_sections
+        
     except Exception as e:
         print(f"Error checking for multi-section courses: {e}")
         return False
@@ -216,6 +235,9 @@ def gen_timetable_auto(db_path, max_classes_per_slot=None,
     :param add_no_consec_days: Whether to prevent courses on consecutive days
     :return: Schedule data and conflicts
     """
+    print(f"🚀 Starting auto timetable generation...")
+    print(f"   📁 Database path: {db_path}")
+    
     # Initialize default settings if they don't exist
     initialize_default_settings(db_path)
     
@@ -231,13 +253,14 @@ def gen_timetable_auto(db_path, max_classes_per_slot=None,
         migrate_database_for_sections(db_path)
         print("Database migration completed.")
     
+    print(f"🔍 Checking for multi-section courses...")
     if has_multi_section_courses(db_path):
-        print("Multi-section courses detected, using section-aware algorithm")
+        print("✅ Multi-section courses detected, using section-aware algorithm")
         return gen_timetable_with_sections(db_path, max_classes_per_slot, 
                                          add_prof_constraints, add_timeslot_capacity,
                                          add_student_conflicts, add_no_same_day, add_no_consec_days)
     else:
-        print("No multi-section courses detected, using original algorithm")
+        print("❌ No multi-section courses detected, using original algorithm")
         return gen_timetable(db_path, max_classes_per_slot,
                            add_prof_constraints, add_timeslot_capacity,
                            add_student_conflicts, add_no_same_day, add_no_consec_days)

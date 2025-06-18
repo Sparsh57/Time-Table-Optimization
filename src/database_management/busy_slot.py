@@ -1,8 +1,8 @@
-from .dbconnection import get_db_session, create_tables
+from .dbconnection import get_db_session, create_tables, is_postgresql, get_organization_database_url
 from .models import User, Slot, ProfessorBusySlot
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text
-import numpy as np
+import pandas as pd
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,23 +13,44 @@ def insert_professor_busy_slots(file, db_path):
     Inserts professor busy slots from a CSV file using bulk operations.
 
     :param file: The CSV file containing faculty preferences.
-    :param db_path: Path to the database file.
+    :param db_path: Path to the database file or schema identifier.
     """
     df_courses = file
     logger.info(f"Starting bulk busy slot insertion for database: {db_path}")
+    
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
 
     # First, ensure tables exist
     try:
-        with get_db_session(db_path) as session:
-            # Check if Professor_BusySlots table exists by querying it
-            session.execute(text("SELECT 1 FROM Professor_BusySlots LIMIT 1"))
+        if is_postgresql() and org_name:
+            with get_db_session(get_organization_database_url(), org_name) as session:
+                # Check if Professor_BusySlots table exists by querying it
+                session.execute(text("SELECT 1 FROM \"Professor_BusySlots\" LIMIT 1"))
+        else:
+            with get_db_session(db_path) as session:
+                # Check if Professor_BusySlots table exists by querying it
+                session.execute(text("SELECT 1 FROM Professor_BusySlots LIMIT 1"))
     except Exception:
         # If table doesn't exist, create all tables
         logger.info("Professor_BusySlots table not found, creating tables...")
-        create_tables(db_path)
+        if is_postgresql() and org_name:
+            create_tables(get_organization_database_url(), org_name)
+        else:
+            create_tables(db_path)
         logger.info("Tables created successfully")
 
-    with get_db_session(db_path) as session:
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             # Fetch professors and slots
             professors = session.query(User).filter_by(Role='Professor').all()
@@ -93,20 +114,41 @@ def empty_professor_busy_slots(db_path):
     """
     Empties all records from the Professor_BusySlots table using SQLAlchemy.
     
-    :param db_path: Path to the database file.
+    :param db_path: Path to the database file or schema identifier.
     """
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+    
     # First, ensure tables exist
     try:
-        with get_db_session(db_path) as session:
-            # Check if Professor_BusySlots table exists by querying it
-            session.execute(text("SELECT 1 FROM Professor_BusySlots LIMIT 1"))
+        if is_postgresql() and org_name:
+            with get_db_session(get_organization_database_url(), org_name) as session:
+                # Check if Professor_BusySlots table exists by querying it
+                session.execute(text("SELECT 1 FROM \"Professor_BusySlots\" LIMIT 1"))
+        else:
+            with get_db_session(db_path) as session:
+                # Check if Professor_BusySlots table exists by querying it
+                session.execute(text("SELECT 1 FROM Professor_BusySlots LIMIT 1"))
     except Exception:
         # If table doesn't exist, create all tables
         logger.info("Professor_BusySlots table not found, creating tables...")
-        create_tables(db_path)
+        if is_postgresql() and org_name:
+            create_tables(get_organization_database_url(), org_name)
+        else:
+            create_tables(db_path)
         logger.info("Tables created successfully")
 
-    with get_db_session(db_path) as session:
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             deleted_count = session.query(ProfessorBusySlot).delete()
             session.commit()
@@ -122,21 +164,42 @@ def fetch_professor_busy_slots(db_path):
     """
     Fetches all records from the Professor_BusySlots table using SQLAlchemy.
 
-    :param db_path: Path to the database file.
+    :param db_path: Path to the database file or schema identifier.
     :return: List of tuples (ProfessorID, SlotID).
     """
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+    
     # First, ensure tables exist
     try:
-        with get_db_session(db_path) as session:
-            # Check if Professor_BusySlots table exists by querying it
-            session.execute(text("SELECT 1 FROM Professor_BusySlots LIMIT 1"))
+        if is_postgresql() and org_name:
+            with get_db_session(get_organization_database_url(), org_name) as session:
+                # Check if Professor_BusySlots table exists by querying it
+                session.execute(text("SELECT 1 FROM \"Professor_BusySlots\" LIMIT 1"))
+        else:
+            with get_db_session(db_path) as session:
+                # Check if Professor_BusySlots table exists by querying it
+                session.execute(text("SELECT 1 FROM Professor_BusySlots LIMIT 1"))
     except Exception:
         # If table doesn't exist, create all tables
         logger.info("Professor_BusySlots table not found, creating tables...")
-        create_tables(db_path)
+        if is_postgresql() and org_name:
+            create_tables(get_organization_database_url(), org_name)
+        else:
+            create_tables(db_path)
         logger.info("Tables created successfully")
 
-    with get_db_session(db_path) as session:
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             busy_slots = session.query(ProfessorBusySlot).all()
             result = [(bs.ProfessorID, bs.SlotID) for bs in busy_slots]
@@ -153,20 +216,41 @@ def insert_professor_busy_slots_from_ui(slots, professor_id, db_path):
 
     :param slots: List of SlotIDs.
     :param professor_id: Professor's UserID.
-    :param db_path: Path to the database file.
+    :param db_path: Path to the database file or schema identifier.
     """
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+    
     # First, ensure tables exist
     try:
-        with get_db_session(db_path) as session:
-            # Check if Professor_BusySlots table exists by querying it
-            session.execute(text("SELECT 1 FROM Professor_BusySlots LIMIT 1"))
+        if is_postgresql() and org_name:
+            with get_db_session(get_organization_database_url(), org_name) as session:
+                # Check if Professor_BusySlots table exists by querying it
+                session.execute(text("SELECT 1 FROM \"Professor_BusySlots\" LIMIT 1"))
+        else:
+            with get_db_session(db_path) as session:
+                # Check if Professor_BusySlots table exists by querying it
+                session.execute(text("SELECT 1 FROM Professor_BusySlots LIMIT 1"))
     except Exception:
         # If table doesn't exist, create all tables
         logger.info("Professor_BusySlots table not found, creating tables...")
-        create_tables(db_path)
+        if is_postgresql() and org_name:
+            create_tables(get_organization_database_url(), org_name)
+        else:
+            create_tables(db_path)
         logger.info("Tables created successfully")
 
-    with get_db_session(db_path) as session:
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             for slot_id in slots:
                 # Check if busy slot already exists
@@ -194,10 +278,23 @@ def fetch_user_id(email, db_path):
     Fetches the UserID of a professor based on email using SQLAlchemy.
 
     :param email: Email of the professor.
-    :param db_path: Path to the database file.
+    :param db_path: Path to the database file or schema identifier.
     :return: UserID of the professor or None.
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+    
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             user = session.query(User).filter_by(Email=email).first()
             return user.UserID if user else None

@@ -11,35 +11,100 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def parse_course_pattern(course_pattern, course_dict):
+    """
+    Parse complex course patterns and return list of (course_name, course_id) tuples.
+    
+    Handles:
+    - Simple courses: "MATH101" -> [("MATH101", course_id)]
+    - Elective choices: "ECON315|SOCL323|BUSI312" -> [("ECON315", id1)] (first available)
+    - Paired courses: "ECON321&ECON421" -> [("ECON321", id1), ("ECON421", id2)]
+    
+    :param course_pattern: Course pattern string
+    :param course_dict: Dictionary mapping course names to course IDs
+    :return: List of (course_name, course_id) tuples
+    """
+    # Handle elective patterns (|)
+    if '|' in course_pattern:
+        # Split by | and find the first available course
+        options = [opt.strip() for opt in course_pattern.split('|')]
+        for option in options:
+            if option in course_dict:
+                return [(option, course_dict[option])]
+        return []  # No options found in database
+    
+    # Handle paired/sequential courses (&)
+    elif '&' in course_pattern:
+        # Split by & and enroll in all available courses
+        courses = [course.strip() for course in course_pattern.split('&')]
+        results = []
+        for course in courses:
+            if course in course_dict:
+                results.append((course, course_dict[course]))
+            else:
+                logger.warning(f"Paired course {course} from pattern {course_pattern} not found")
+        return results
+    
+    # Simple single course
+    else:
+        course = course_pattern.strip()
+        if course in course_dict:
+            return [(course, course_dict[course])]
+        return []
+
+
 def insert_course_students(file, db_path):
     """
     Inserts student course enrollments using bulk operations.
     Includes section allocation for multi-section courses.
 
     :param file: The CSV file containing student registration data.
-    :param db_path: Path to the database file.
+    :param db_path: Path to the database file or schema identifier.
     """
     df_courses = file
     print(f"Bulk inserting course students into database: {db_path}")
 
-    # Check if migration is needed and run it
-    if check_migration_needed(db_path):
+    from .dbconnection import is_postgresql, get_organization_database_url
+    
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+
+    # Check if migration is needed and run it (only for SQLite)
+    if not is_postgresql() and check_migration_needed(db_path):
         print("Database migration needed for sections support...")
         migrate_database_for_sections(db_path)
         print("Database migration completed.")
 
     # First, ensure tables exist
     try:
-        with get_db_session(db_path) as session:
-            # Check if Course_Stud table exists by querying it
-            session.execute(text("SELECT 1 FROM Course_Stud LIMIT 1"))
+        if is_postgresql() and org_name:
+            with get_db_session(get_organization_database_url(), org_name) as session:
+                # Check if Course_Stud table exists by querying it
+                session.execute(text("SELECT 1 FROM \"Course_Stud\" LIMIT 1"))
+        else:
+            with get_db_session(db_path) as session:
+                # Check if Course_Stud table exists by querying it
+                session.execute(text("SELECT 1 FROM Course_Stud LIMIT 1"))
     except Exception:
         # If table doesn't exist, create all tables
         logger.info("Course_Stud table not found, creating tables...")
-        create_tables(db_path)
+        if is_postgresql() and org_name:
+            create_tables(get_organization_database_url(), org_name)
+        else:
+            create_tables(db_path)
         logger.info("Tables created successfully")
 
-    with get_db_session(db_path) as session:
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             # Fetch user information (UserID and Email) for students
             students = session.query(User).filter_by(Role='Student').all()
@@ -102,18 +167,20 @@ def insert_course_students(file, db_path):
                         # No section info in G CODE, use course as-is
                         course = g_code.strip()
 
-                    # Get course ID
-                    course_id = course_dict.get(course)
-                    if not course_id:
+                    # Handle complex course patterns
+                    courses_to_enroll = parse_course_pattern(course, course_dict)
+                    
+                    if not courses_to_enroll:
                         logger.warning(f"Course {course} not found in database")
                         continue
 
-                    # Add to bulk insert list
-                    enrollments_to_insert.append({
-                        'StudentID': student_id,
-                        'CourseID': course_id,
-                        'SectionNumber': section_number
-                    })
+                    # Add enrollments for all courses in the pattern
+                    for course_name, course_id in courses_to_enroll:
+                        enrollments_to_insert.append({
+                            'StudentID': student_id,
+                            'CourseID': course_id,
+                            'SectionNumber': section_number
+                        })
 
                 except Exception as e:
                     logger.error(f"Error processing enrollment for G CODE {g_code}: {e}")
@@ -158,17 +225,28 @@ def insert_course_students(file, db_path):
         print(f"Warning: Section allocation failed: {e}")
 
 
-
-
-
 def get_student_section_info(db_path):
     """
     Retrieve student section assignments for all courses.
     
-    :param db_path: Path to the database
+    :param db_path: Path to the database or schema identifier
     :return: DataFrame with student section information
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+
+    # Determine which session to use
+    from .dbconnection import is_postgresql, get_organization_database_url
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             query = session.query(
                 User.Email.label('Roll_No'),
@@ -252,10 +330,24 @@ def get_section_mapping_dataframe(db_path):
     Get student section mapping as a pandas DataFrame.
     Enhanced version of get_student_section_info with more details.
     
-    :param db_path: Path to the database
+    :param db_path: Path to the database or schema identifier
     :return: DataFrame with comprehensive student section information
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+
+    # Determine which session to use
+    from .dbconnection import is_postgresql, get_organization_database_url
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    with session_context as session:
         try:
             query = session.query(
                 User.Email.label('Roll_No'),
