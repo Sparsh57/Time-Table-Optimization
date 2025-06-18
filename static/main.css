@@ -20,7 +20,7 @@ body {
   top: auto !important; }
 
 body {
-  font-family: Lora;
+  font-family: 'Poppins', sans-serif;
   background-color: #E1EBEE; }
 
 :focus {
@@ -33,7 +33,7 @@ body {
   width: 80%; }
 
 nav {
-  background-color: #4B9CD3;
+  background-color: #1a237e;
   height: 80px;
   line-height: 80px; }
   nav .button-collapse i {
@@ -59,3 +59,16 @@ nav {
       nav a.button-collapse i {
         line-height: 80px;
         height: 80px; } }
+
+@media screen and (max-width: 600px) {
+  .container { width: 95%; }
+  nav {
+    height: 60px;
+    line-height: 60px; }
+    nav li a#logo-container.brand-logo {
+      height: 60px;
+      line-height: 60px; }
+    nav .button-collapse i,
+    nav a.button-collapse i {
+      height: 60px;
+      line-height: 60px; } }
