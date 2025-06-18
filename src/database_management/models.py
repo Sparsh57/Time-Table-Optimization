@@ -6,14 +6,14 @@ Base = declarative_base()
 MetaBase = declarative_base()  # Separate base for meta-database
 
 
-# Meta-database model (for organizations_meta.db)
+# Meta-database model (for organizations_meta.db or meta schema in PostgreSQL)
 class Organization(MetaBase):
     __tablename__ = 'Organizations'
     
     OrgID = Column(Integer, primary_key=True, autoincrement=True)
-    OrgName = Column(String, unique=True, nullable=False)
-    OrgDomains = Column(String, nullable=False)
-    DatabasePath = Column(String, nullable=False)
+    OrgName = Column(String(255), unique=True, nullable=False)
+    OrgDomains = Column(Text, nullable=False)  # Use Text for longer domain lists
+    DatabasePath = Column(String(500), nullable=False)  # Can store URLs or paths
 
 
 # Organization database models
@@ -21,9 +21,9 @@ class User(Base):
     __tablename__ = 'Users'
     
     UserID = Column(Integer, primary_key=True, autoincrement=True)
-    Email = Column(String, unique=True, nullable=False)
-    Name = Column(String, nullable=False)
-    Role = Column(String, nullable=False)  # Admin, Professor, Student
+    Email = Column(String(255), unique=True, nullable=False)
+    Name = Column(String(255), nullable=False)
+    Role = Column(String(50), nullable=False)  # Admin, Professor, Student
     CreatedByAdminID = Column(Integer, ForeignKey('Users.UserID'), nullable=True)  # Track who created this admin
     IsFounderAdmin = Column(Integer, default=0)  # 1 if this is the organization founder
     
@@ -41,8 +41,8 @@ class Course(Base):
     __tablename__ = 'Courses'
     
     CourseID = Column(Integer, primary_key=True, autoincrement=True)
-    CourseName = Column(String, unique=True, nullable=False)
-    CourseType = Column(String)  # Elective, Required
+    CourseName = Column(String(255), unique=True, nullable=False)
+    CourseType = Column(String(50))  # Elective, Required
     Credits = Column(Integer)
     NumberOfSections = Column(Integer, default=1)  # New column for section count
     
@@ -83,9 +83,9 @@ class Slot(Base):
     __tablename__ = 'Slots'
     
     SlotID = Column(Integer, primary_key=True, autoincrement=True)
-    StartTime = Column(String, nullable=False)
-    EndTime = Column(String, nullable=False)
-    Day = Column(String, nullable=False)
+    StartTime = Column(String(20), nullable=False)  # e.g., "09:00:00"
+    EndTime = Column(String(20), nullable=False)    # e.g., "10:30:00"
+    Day = Column(String(20), nullable=False)        # e.g., "Monday"
     
     # Relationships
     busy_professors = relationship("ProfessorBusySlot", back_populates="slot")
@@ -123,9 +123,9 @@ class Settings(Base):
     __tablename__ = 'Settings'
     
     SettingID = Column(Integer, primary_key=True, autoincrement=True)
-    SettingKey = Column(String, unique=True, nullable=False)
-    SettingValue = Column(String, nullable=False)
-    Description = Column(String)
+    SettingKey = Column(String(100), unique=True, nullable=False)
+    SettingValue = Column(Text, nullable=False)  # Use Text for potentially large values
+    Description = Column(Text)  # Use Text for descriptions
     
     __table_args__ = (
         UniqueConstraint('SettingKey'),

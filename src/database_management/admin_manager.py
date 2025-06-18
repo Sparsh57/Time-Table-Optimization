@@ -1,4 +1,9 @@
-from .dbconnection import get_db_session, create_tables
+from .dbconnection import (
+    get_db_session, 
+    create_tables, 
+    is_postgresql, 
+    get_organization_database_url
+)
 from .models import User
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text
@@ -7,26 +12,61 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def add_admin_user(db_path, name, email, created_by_admin_email=None):
+def get_org_name_from_path(db_path):
+    """
+    Extract organization name from database path.
+    For PostgreSQL schema paths, extract from 'schema:org_name' format.
+    For SQLite, this returns None as org_name isn't needed.
+    
+    :param db_path: Database path or schema identifier
+    :return: Organization name or None
+    """
+    if db_path and db_path.startswith("schema:"):
+        # Extract org name from schema path
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            return schema_name[4:]  # Remove 'org_' prefix
+    return None
+
+
+def add_admin_user(db_path, name, email, created_by_admin_email=None, org_name=None):
     """
     Add a new admin user to the system with hierarchy tracking.
     
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     :param name: Name of the admin user
     :param email: Email of the admin user
     :param created_by_admin_email: Email of the admin who is creating this user
+    :param org_name: Organization name (required for PostgreSQL)
     :return: True if successful, False otherwise
     """
+    # Auto-detect org_name if not provided
+    if org_name is None:
+        org_name = get_org_name_from_path(db_path)
+    
     # First, ensure tables exist
     try:
-        with get_db_session(db_path) as session:
-            session.execute(text("SELECT 1 FROM Users LIMIT 1"))
+        if is_postgresql() and org_name:
+            with get_db_session(get_organization_database_url(), org_name) as session:
+                session.execute(text("SELECT 1 FROM \"Users\" LIMIT 1"))
+        else:
+            with get_db_session(db_path) as session:
+                session.execute(text("SELECT 1 FROM Users LIMIT 1"))
     except Exception:
         logger.info("Users table not found, creating tables...")
-        create_tables(db_path)
+        if is_postgresql() and org_name:
+            create_tables(get_organization_database_url(), org_name)
+        else:
+            create_tables(db_path)
         logger.info("Tables created successfully")
     
-    with get_db_session(db_path) as session:
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+    
+    with session_context as session:
         try:
             # Get the creating admin's ID if provided
             created_by_admin_id = None
@@ -69,16 +109,27 @@ def add_admin_user(db_path, name, email, created_by_admin_email=None):
             return False, f"Database error: {str(e)}"
 
 
-def can_remove_admin(db_path, remover_email, target_email):
+def can_remove_admin(db_path, remover_email, target_email, org_name=None):
     """
     Check if an admin can remove another admin based on hierarchy.
     
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     :param remover_email: Email of the admin trying to remove
     :param target_email: Email of the admin to be removed
+    :param org_name: Organization name (required for PostgreSQL)
     :return: (can_remove, reason)
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name if not provided
+    if org_name is None:
+        org_name = get_org_name_from_path(db_path)
+    
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+    
+    with session_context as session:
         try:
             remover = session.query(User).filter_by(Email=remover_email, Role='Admin').first()
             target = session.query(User).filter_by(Email=target_email, Role='Admin').first()
@@ -115,22 +166,33 @@ def can_remove_admin(db_path, remover_email, target_email):
             return False, f"Error: {str(e)}"
 
 
-def remove_admin_user(db_path, email, remover_email=None):
+def remove_admin_user(db_path, email, remover_email=None, org_name=None):
     """
     Remove admin privileges from a user with hierarchy checks.
     
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     :param email: Email of the admin user to demote
     :param remover_email: Email of the admin performing the removal
+    :param org_name: Organization name (required for PostgreSQL)
     :return: True if successful, False otherwise
     """
+    # Auto-detect org_name if not provided
+    if org_name is None:
+        org_name = get_org_name_from_path(db_path)
+    
     # Check permissions first if remover is specified
     if remover_email:
-        can_remove, reason = can_remove_admin(db_path, remover_email, email)
+        can_remove, reason = can_remove_admin(db_path, remover_email, email, org_name)
         if not can_remove:
             return False, reason
     
-    with get_db_session(db_path) as session:
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+    
+    with session_context as session:
         try:
             user = session.query(User).filter_by(Email=email, Role='Admin').first()
             
@@ -152,14 +214,25 @@ def remove_admin_user(db_path, email, remover_email=None):
             return False, f"Database error: {str(e)}"
 
 
-def get_all_admins(db_path):
+def get_all_admins(db_path, org_name=None):
     """
     Get list of all admin users with hierarchy information.
     
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
+    :param org_name: Organization name (required for PostgreSQL)
     :return: List of admin user dictionaries
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name if not provided
+    if org_name is None:
+        org_name = get_org_name_from_path(db_path)
+    
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+    
+    with session_context as session:
         try:
             admins = session.query(User).filter_by(Role='Admin').all()
             result = []
@@ -177,15 +250,26 @@ def get_all_admins(db_path):
             return []
 
 
-def is_user_admin(db_path, email):
+def is_user_admin(db_path, email, org_name=None):
     """
     Check if a user is an admin.
     
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     :param email: Email to check
+    :param org_name: Organization name (required for PostgreSQL)
     :return: True if user is admin, False otherwise
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name if not provided
+    if org_name is None:
+        org_name = get_org_name_from_path(db_path)
+    
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+    
+    with session_context as session:
         try:
             admin = session.query(User).filter_by(Email=email, Role='Admin').first()
             return admin is not None
@@ -194,17 +278,28 @@ def is_user_admin(db_path, email):
             return False
 
 
-def ensure_first_admin(db_path, name, email):
+def ensure_first_admin(db_path, name, email, org_name=None):
     """
     Ensure there is at least one admin in the system and mark them as founder.
     This is typically called during initial setup.
     
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
     :param name: Name of the first admin
     :param email: Email of the first admin
+    :param org_name: Organization name (required for PostgreSQL)
     :return: True if successful, False otherwise
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name if not provided
+    if org_name is None:
+        org_name = get_org_name_from_path(db_path)
+    
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+    
+    with session_context as session:
         try:
             # Check if any admin exists
             admin_count = session.query(User).filter_by(Role='Admin').count()
@@ -231,14 +326,25 @@ def ensure_first_admin(db_path, name, email):
             return False, f"Database error: {str(e)}"
 
 
-def get_admin_count(db_path):
+def get_admin_count(db_path, org_name=None):
     """
     Get the total number of admin users.
     
-    :param db_path: Path to the database file
+    :param db_path: Path to the database file or schema identifier
+    :param org_name: Organization name (required for PostgreSQL)
     :return: Number of admin users
     """
-    with get_db_session(db_path) as session:
+    # Auto-detect org_name if not provided
+    if org_name is None:
+        org_name = get_org_name_from_path(db_path)
+    
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+    
+    with session_context as session:
         try:
             return session.query(User).filter_by(Role='Admin').count()
         except SQLAlchemyError as e:

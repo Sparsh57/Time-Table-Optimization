@@ -117,7 +117,7 @@ def get_db_path_for_org(org_name: str) -> str:
         raise HTTPException(status_code=500, detail=f"Error accessing meta-database: {e}")
 
 
-def fetch_user_role_from_org_db(email: str, db_path: str, user_name: str = None) -> str:
+def fetch_user_role_from_org_db(email: str, db_path: str, user_name: str = None, org_name: str = None) -> str:
     """
     Fetch the user's role from the organization's DB by email using SQLAlchemy.
     If user doesn't exist, creates them as a Student.
@@ -126,20 +126,42 @@ def fetch_user_role_from_org_db(email: str, db_path: str, user_name: str = None)
     This function is the key fix for the production issue where users were missing from the database.
     """
     try:
+        from src.database_management.dbconnection import is_postgresql, get_organization_database_url
+        
+        # Auto-detect org_name from db_path if not provided
+        if org_name is None and db_path and db_path.startswith("schema:"):
+            schema_name = db_path.replace("schema:", "")
+            if schema_name.startswith("org_"):
+                org_name = schema_name[4:]  # Remove 'org_' prefix
+        
         # First, ensure tables exist
         try:
-            with get_db_session(db_path) as session:
-                # Check if Users table exists by querying it
-                session.execute(text("SELECT 1 FROM Users LIMIT 1"))
-                logger.info(f"✅ Users table exists at {db_path}")
+            if is_postgresql() and org_name:
+                with get_db_session(get_organization_database_url(), org_name) as session:
+                    # Check if Users table exists by querying it
+                    session.execute(text("SELECT 1 FROM \"Users\" LIMIT 1"))
+                    logger.info(f"✅ Users table exists in schema for {org_name}")
+            else:
+                with get_db_session(db_path) as session:
+                    # Check if Users table exists by querying it
+                    session.execute(text("SELECT 1 FROM Users LIMIT 1"))
+                    logger.info(f"✅ Users table exists at {db_path}")
         except Exception as e:
             # If table doesn't exist, create all tables
-            logger.info(f"🔧 Users table not found at {db_path}, creating tables...")
-            create_tables(db_path)
-            logger.info(f"✅ Tables created successfully at {db_path}")
+            logger.info(f"🔧 Users table not found, creating tables...")
+            if is_postgresql() and org_name:
+                create_tables(get_organization_database_url(), org_name)
+            else:
+                create_tables(db_path)
+            logger.info(f"✅ Tables created successfully")
         
         # Now proceed with user lookup/creation
-        with get_db_session(db_path) as session:
+        if is_postgresql() and org_name:
+            session_context = get_db_session(get_organization_database_url(), org_name)
+        else:
+            session_context = get_db_session(db_path)
+        
+        with session_context as session:
             user = session.query(User).filter_by(Email=email).first()
             if user:
                 logger.info(f"✅ Found existing user: {email} with role: {user.Role}")
@@ -167,6 +189,7 @@ def fetch_user_role_from_org_db(email: str, db_path: str, user_name: str = None)
     except Exception as exc:
         logger.error(f"❌ Critical error in fetch_user_role_from_org_db for {email}: {exc}")
         logger.error(f"   Database path: {db_path}")
+        logger.error(f"   Organization: {org_name}")
         logger.error(f"   User name: {user_name}")
         raise HTTPException(status_code=500, detail=f"Error fetching/creating user: {exc}")
 
@@ -247,7 +270,7 @@ async def google_callback(request: Request, code: str):
             logger.info(f"User {user_email} belongs to organization: {org.OrgName}")
             
             # Fetch user role from the organization's database (creating user if needed)
-            user_role = fetch_user_role_from_org_db(user_email, org.DatabasePath, user_name)
+            user_role = fetch_user_role_from_org_db(user_email, org.DatabasePath, user_name, org.OrgName)
             
             # Store complete user info in session
             request.session["user"] = {
@@ -874,23 +897,33 @@ async def admin_management(request: Request):
         user_info = request.session.get("user")
         current_user_email = user_info.get("email") if user_info else None
         
+        # Get current organization name
+        org_name = request.session.get("org_name")
+        
         # Get all admins with hierarchy information
-        admins_raw = get_all_admins(db_path)
-        admin_count = get_admin_count(db_path)
+        admins_raw = get_all_admins(db_path, org_name)
+        admin_count = get_admin_count(db_path, org_name)
         
         # Enhance admin information with hierarchy and permissions
         admins = []
         for admin in admins_raw:
             # Check if current user can remove this admin
-            can_remove, reason = can_remove_admin(db_path, current_user_email, admin['email'])
+            can_remove, reason = can_remove_admin(db_path, current_user_email, admin['email'], org_name)
             
             # Get creator information
             created_by = None
             if admin.get('created_by_admin_id'):
-                with get_db_session(db_path) as session:
-                    creator = session.query(User).filter_by(UserID=admin['created_by_admin_id']).first()
-                    if creator:
-                        created_by = creator.Email
+                from src.database_management.dbconnection import is_postgresql, get_organization_database_url
+                if org_name and is_postgresql():
+                    with get_db_session(get_organization_database_url(), org_name) as session:
+                        creator = session.query(User).filter_by(UserID=admin['created_by_admin_id']).first()
+                        if creator:
+                            created_by = creator.Email
+                else:
+                    with get_db_session(db_path) as session:
+                        creator = session.query(User).filter_by(UserID=admin['created_by_admin_id']).first()
+                        if creator:
+                            created_by = creator.Email
             
             admin_info = {
                 **admin,
@@ -932,8 +965,9 @@ async def add_admin_route(request: Request, admin_name: str = Form(...), admin_e
         # Get current user email to track who created this admin
         user_info = request.session.get("user")
         current_user_email = user_info.get("email") if user_info else None
+        org_name = request.session.get("org_name")
         
-        success, message = add_admin_user(db_path, admin_name, admin_email, current_user_email)
+        success, message = add_admin_user(db_path, admin_name, admin_email, current_user_email, org_name)
         
         if success:
             # Redirect back to admin management with success message
@@ -967,8 +1001,9 @@ async def remove_admin_route(request: Request, admin_email: str = Form(...)):
         # Get current user email for hierarchy checks
         user_info = request.session.get("user")
         current_user_email = user_info.get("email") if user_info else None
+        org_name = request.session.get("org_name")
         
-        success, message = remove_admin_user(db_path, admin_email, current_user_email)
+        success, message = remove_admin_user(db_path, admin_email, current_user_email, org_name)
         
         # Redirect back to admin management
         return RedirectResponse(url="/admin_management", status_code=303)

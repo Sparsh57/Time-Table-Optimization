@@ -1,4 +1,11 @@
-from .dbconnection import get_meta_db_session, get_db_session, create_tables
+from .dbconnection import (
+    get_meta_db_session, 
+    get_db_session, 
+    create_tables,
+    is_postgresql,
+    get_organization_database_url,
+    get_schema_for_organization
+)
 from .models import Organization, User
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import or_
@@ -92,7 +99,7 @@ def create_organization_with_validation(org_name, org_domains, user_email, user_
     :param org_domains: Comma-separated list of allowed domains
     :param user_email: Email of the first admin user
     :param user_name: Name of the first admin user
-    :param db_path: Path to the organization database
+    :param db_path: Path to the organization database (SQLite) or URL (PostgreSQL)
     :param max_classes_per_slot: Maximum classes per time slot setting
     :return: (success, message, organization)
     """
@@ -103,11 +110,17 @@ def create_organization_with_validation(org_name, org_domains, user_email, user_
     
     try:
         with get_meta_db_session() as session:
+            # For PostgreSQL, use schema-based approach; for SQLite, use file paths
+            if is_postgresql():
+                database_path = f"schema:{get_schema_for_organization(org_name)}"
+            else:
+                database_path = db_path
+            
             # Create organization record
             new_org = Organization(
                 OrgName=org_name,
                 OrgDomains=org_domains,
-                DatabasePath=db_path
+                DatabasePath=database_path
             )
             session.add(new_org)
             session.commit()
@@ -115,15 +128,24 @@ def create_organization_with_validation(org_name, org_domains, user_email, user_
             logger.info(f"Created organization: {org_name}")
             
             # Create organization database and tables
-            create_tables(db_path)
+            if is_postgresql():
+                create_tables(get_organization_database_url(), org_name)
+            else:
+                create_tables(db_path)
             
             # Add first admin user to organization database as founder
             from .admin_manager import ensure_first_admin
-            ensure_first_admin(db_path, user_name, user_email)
+            if is_postgresql():
+                ensure_first_admin(database_path, user_name, user_email, org_name)
+            else:
+                ensure_first_admin(db_path, user_name, user_email)
             
             # Set the max classes per slot setting
             from .settings_manager import set_max_classes_per_slot
-            set_max_classes_per_slot(db_path, max_classes_per_slot)
+            if is_postgresql():
+                set_max_classes_per_slot(database_path, max_classes_per_slot, org_name)
+            else:
+                set_max_classes_per_slot(db_path, max_classes_per_slot)
             
             return True, f"Organization '{org_name}' created successfully", new_org
             
@@ -147,10 +169,18 @@ def get_organization_summary(org_name):
             
             # Get user counts from organization database
             try:
-                with get_db_session(org.DatabasePath) as org_session:
-                    admin_count = org_session.query(User).filter_by(Role='Admin').count()
-                    professor_count = org_session.query(User).filter_by(Role='Professor').count()
-                    student_count = org_session.query(User).filter_by(Role='Student').count()
+                if is_postgresql() and org.DatabasePath.startswith("schema:"):
+                    # Extract org name for schema access
+                    with get_db_session(get_organization_database_url(), org_name) as org_session:
+                        admin_count = org_session.query(User).filter_by(Role='Admin').count()
+                        professor_count = org_session.query(User).filter_by(Role='Professor').count()
+                        student_count = org_session.query(User).filter_by(Role='Student').count()
+                else:
+                    # SQLite path
+                    with get_db_session(org.DatabasePath) as org_session:
+                        admin_count = org_session.query(User).filter_by(Role='Admin').count()
+                        professor_count = org_session.query(User).filter_by(Role='Professor').count()
+                        student_count = org_session.query(User).filter_by(Role='Student').count()
             except Exception:
                 admin_count = professor_count = student_count = 0
             
@@ -239,16 +269,21 @@ def get_organization_by_user_role(user_email, required_role=None):
             return None, None, False
         
         # Check user role in organization database
-        with get_db_session(org.DatabasePath) as session:
-            user = session.query(User).filter_by(Email=user_email).first()
-            user_role = user.Role if user else 'Student'  # Default to Student
-            
-            has_required_role = True
-            if required_role:
-                has_required_role = (user_role == required_role)
-            
-            return org, user_role, has_required_role
-            
+        if is_postgresql() and org.DatabasePath.startswith("schema:"):
+            with get_db_session(get_organization_database_url(), org.OrgName) as session:
+                user = session.query(User).filter_by(Email=user_email).first()
+                user_role = user.Role if user else 'Student'  # Default to Student
+        else:
+            with get_db_session(org.DatabasePath) as session:
+                user = session.query(User).filter_by(Email=user_email).first()
+                user_role = user.Role if user else 'Student'  # Default to Student
+        
+        has_required_role = True
+        if required_role:
+            has_required_role = (user_role == required_role)
+        
+        return org, user_role, has_required_role
+        
     except Exception as e:
         logger.error(f"Error checking user organization role: {e}")
         return None, None, False 

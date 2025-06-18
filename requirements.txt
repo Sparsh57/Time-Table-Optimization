@@ -19,3 +19,4 @@ python-dotenv==1.0.0
 ortools== 9.12.4544
 python-multipart==0.0.7
 httpx==0.28.1
+psycopg2-binary==2.9.9

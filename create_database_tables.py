@@ -5,7 +5,9 @@ from src.database_management.dbconnection import (
     create_meta_tables, 
     get_db_session, 
     get_meta_db_session,
-    get_organization_by_name
+    get_organization_by_name,
+    is_postgresql,
+    get_organization_database_url
 )
 from src.database_management.models import User, Organization
 
@@ -78,23 +80,47 @@ def get_or_create_org_database(org_name, org_domains):
 
 
 # Function to initialize a new organization's database with required tables using SQLAlchemy
-def init_org_database(db_path):
+def init_org_database(db_path, org_name=None):
     """
     Initialize organization database using SQLAlchemy models.
     Ensures proper table creation and metadata synchronization.
     
-    :param db_path: Path to the organization's database file
+    :param db_path: Path to the organization's database file or schema identifier
+    :param org_name: Organization name (required for PostgreSQL)
     """
     try:
         # Create all tables using SQLAlchemy
-        create_tables(db_path)
+        if is_postgresql() and org_name:
+            create_tables(get_organization_database_url(), org_name)
+        else:
+            create_tables(db_path)
         
         # Verify tables were created successfully
-        with get_db_session(db_path) as session:
+        if is_postgresql() and org_name:
+            session_context = get_db_session(get_organization_database_url(), org_name)
+        else:
+            session_context = get_db_session(db_path)
+        
+        with session_context as session:
             from sqlalchemy import text
             
             # Check if all expected tables exist
-            result = session.execute(text("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"))
+            if is_postgresql():
+                # PostgreSQL query to check tables in schema
+                if org_name:
+                    from src.database_management.dbconnection import get_schema_for_organization
+                    schema_name = get_schema_for_organization(org_name)
+                    result = session.execute(text(
+                        "SELECT table_name FROM information_schema.tables WHERE table_schema = :schema_name ORDER BY table_name"
+                    ), {"schema_name": schema_name})
+                else:
+                    result = session.execute(text(
+                        "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name"
+                    ))
+            else:
+                # SQLite query
+                result = session.execute(text("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"))
+            
             tables = [row[0] for row in result.fetchall()]
             
             expected_tables = ['Users', 'Courses', 'Course_Professor', 'Course_Stud', 
@@ -104,12 +130,18 @@ def init_org_database(db_path):
             if missing_tables:
                 print(f"Warning: Missing tables: {missing_tables}")
                 # Try to create tables again
-                create_tables(db_path)
+                if is_postgresql() and org_name:
+                    create_tables(get_organization_database_url(), org_name)
+                else:
+                    create_tables(db_path)
                 print("Attempted to recreate missing tables")
             else:
                 print(f"All expected tables created successfully: {tables}")
         
-        print(f"Initialized organization database at: {db_path}")
+        if is_postgresql() and org_name:
+            print(f"Initialized organization database with schema: {org_name}")
+        else:
+            print(f"Initialized organization database at: {db_path}")
     except Exception as e:
         print(f"Error initializing database {db_path}: {e}")
         raise
