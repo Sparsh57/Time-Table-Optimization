@@ -1,6 +1,6 @@
 import os
 from fastapi import FastAPI, Request, UploadFile, File, HTTPException, status, Depends, Form, Body
-from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse, JSONResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.concurrency import run_in_threadpool
@@ -14,8 +14,11 @@ import json
 from typing import Optional
 import logging
 import pandas as pd
+import asyncio
 
 import openai
+from openai import OpenAI
+
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -86,6 +89,9 @@ load_dotenv()
 print(os.getenv("DATABASE_URL"))
 client_id = os.getenv("CLIENT_ID")
 client_secret = os.getenv("CLIENT_SECRET")
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
 
 app = FastAPI()
 
@@ -1090,7 +1096,7 @@ async def chat_assistant_api(request: Request, message: str = Body(..., embed=Tr
     ]
     try:
         resp = await run_in_threadpool(
-            openai.chat.completions.create,
+            client.chat.completions.create,
             model="gpt-4o",
             messages=prompt,
             temperature=0.7,)
