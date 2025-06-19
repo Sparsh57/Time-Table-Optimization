@@ -1049,6 +1049,58 @@ async def chat_assistant_page(request: Request):
     user_info = request.session.get("user")
     return templates.TemplateResponse("chat_assistant.html", {"request": request, "user": user_info})
 
+@app.post("/chat-assistant")
+async def chat_assistant_api(request: Request, message: str = Body(..., embed=True)):
+    """Return a ChatGPT-generated answer about the timetable."""
+    if not message:
+        raise HTTPException(status_code=400, detail="Message required")
+
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+    if not openai.api_key:
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
+
+    # build a schedule summary if available
+    user_info = request.session.get("user")
+    db_path   = request.session.get("db_path")
+    schedule_summary = ""
+    if db_path and timetable_made(db_path):
+        try:
+            if user_info and user_info.get("role") == "Student":
+                roll = user_info.get("roll_number")
+                data = get_student_schedule(roll, db_path)
+            else:
+                data = fetch_schedule_data(db_path)
+            schedule_summary = _build_schedule_summary(data)
+        except Exception as e:
+            logger.error(f"Failed to fetch schedule for chat assistant: {e}")
+
+    prompt = [
+        {
+            "role": "system",
+            "content": (
+                "You are a helpful timetable assistant. "
+                "Use the provided schedule to answer questions.\n"
+                + schedule_summary
+            ),
+        },
+        {"role": "user", "content": message},
+    ]
+    try:
+        resp = await run_in_threadpool(
+            openai.chat.completions.create,
+            model="gpt-4o",
+            messages=prompt,
+            temperature=0.7,)
+        answer = resp.choices[0].message.content.strip()
+    except Exception as e:
+        logger.exception("LLM call failed")
+        raise HTTPException(status_code=500, detail=f"Chat assistant error: {e}")
+
+    return {"reply": answer}
+
+
+
+
 # -------------------- Admin Management Routes --------------------
 @app.get("/admin_management", response_class=HTMLResponse)
 async def admin_management(request: Request):
