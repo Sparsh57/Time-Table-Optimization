@@ -16,15 +16,16 @@
     /* === Page & Container === */
     body, html {
       height: 100%; margin: 0;
-      background: #1e1e2f;
+      background: url('/static/images/background.png') center center / cover no-repeat;
       color: #ddd;
+      background: #070a55;
       display: flex; flex-direction: column;
       font-family: 'Roboto Mono', monospace;
     }
     .chat-container {
       flex: 1; display: flex; flex-direction: column;
-      max-width: 800px; width: 100%; margin: 30px auto;
-      background: #2b2b3c;
+      max-width: 1200px; width: 100%; margin: 30px auto;
+      background: #b9b9eb;
       border-radius: 8px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.5);
       overflow: hidden;
@@ -35,7 +36,7 @@
       flex: 1;
       padding: 24px;
       overflow-y: auto;
-      background: #222233;
+      background: url('/static/images/background.png') center center / cover no-repeat;
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -105,13 +106,13 @@
     }
     /* Send button */
     #send-btn {
-      position: absolute; right: 24px; top: 50%;
+      position: absolute; right: 24px; top: 30%;
       transform: translateY(-50%);
-      width: 48px; height: 48px;
+      width: 48px; height: 49px;
     }
     /* Loader spinner */
     #loader {
-      position: absolute; right: 88px; top: 50%;
+      position: absolute; right: 24px; top: 30%;
       transform: translateY(-50%);
       display: none;
     }
@@ -148,6 +149,7 @@
       </div>
     </div>
   </div>
+
 
   <!-- Materialize + Logic -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
