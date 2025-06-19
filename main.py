@@ -1043,6 +1043,12 @@ def _build_schedule_summary(schedule: list) -> str:
     lines = [f"{d} {s}-{e}: {c}" for d, s, e, c in schedule]
     return "\n".join(lines)
 
+@app.get("/chat-assistant", response_class=HTMLResponse)
+async def chat_assistant_page(request: Request):
+    """Render the chat assistant UI."""
+    user_info = request.session.get("user")
+    return templates.TemplateResponse("chat_assistant.html", {"request": request, "user": user_info})
+
 # -------------------- Admin Management Routes --------------------
 @app.get("/admin_management", response_class=HTMLResponse)
 async def admin_management(request: Request):
