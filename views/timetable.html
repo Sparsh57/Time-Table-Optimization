@@ -138,19 +138,7 @@
     </style>
 </head>
 <body>
-    <header>
-        <nav class="nav-wrapper indigo darken-4">
-            <div class="container">
-                <a href="/" class="brand-logo"><i class="material-icons left">schedule</i>Timetable</a>
-                <a href="#" data-target="mobile-demo" class="sidenav-trigger"><i class="material-icons">menu</i></a>
-                <ul class="right hide-on-med-and-down">
-                    <li><a href="/dashboard">Dashboard</a></li>
-                    <li><a href="/logout">Logout</a></li>
-                </ul>
-            </div>
-        </nav>
-    </header>
-
+    {% include 'navigation.html' %}
     <main>
         <div class="container">
             <h4 class="header">Weekly Timetable</h4>
