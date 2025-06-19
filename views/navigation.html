@@ -19,10 +19,12 @@
       <li><a href="/select_timeslot"><i class="material-icons left">access_time</i>Time Slots</a></li>
       <li><a href="/admin_management"><i class="material-icons left">admin_panel_settings</i>Admin Management</a></li>
       <li><a href="/timetable"><i class="material-icons left">view_module</i>View Timetable</a></li>
+       <li><a href="/chat-assistant"><i class="material-icons left">chat</i>AI Chat</a></li>
       {% elif user and user.role == 'Professor' %}
       <li><a href="/professor_slots"><i class="material-icons left">event_busy</i>Busy Slots</a></li>
       {% elif user and user.role == 'Student' %}
       <li><a href="/timetable/{{ user.roll_number }}"><i class="material-icons left">view_module</i>My Timetable</a></li>
+      <li><a href="/chat-assistant"><i class="material-icons left">chat</i>AI Chat</a></li>
       {% endif %}
 
       {% if user %}
@@ -59,6 +61,7 @@
       <li><a href="/select_timeslot"><i class="material-icons">access_time</i>Time Slots</a></li>
       <li><a href="/admin_management"><i class="material-icons">admin_panel_settings</i>Admin Management</a></li>
       <li><a href="/timetable"><i class="material-icons">view_module</i>View Timetable</a></li>
+      <li><a href="/chat-assistant"><i class="material-icons left">chat</i>AI Chat</a></li>
       {% elif user and user.role == 'Professor' %}
       <li><div class="divider"></div></li>
       <li><a class="subheader">Professor Tools</a></li>
@@ -67,6 +70,7 @@
       <li><div class="divider"></div></li>
       <li><a class="subheader">Student Tools</a></li>
       <li><a href="/timetable/{{ user.roll_number }}"><i class="material-icons">view_module</i>My Timetable</a></li>
+      <li><a href="/chat-assistant"><i class="material-icons left">chat</i>AI Chat</a></li>
       {% endif %}
 
       {% if user %}
