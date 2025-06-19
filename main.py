@@ -3,6 +3,7 @@ from fastapi import FastAPI, Request, UploadFile, File, HTTPException, status, D
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.concurrency import run_in_threadpool
 from starlette.staticfiles import StaticFiles
 from dotenv import load_dotenv
 import httpx
@@ -72,7 +73,9 @@ from src.database_management.organization_manager import (
     get_user_organization,
     should_redirect_to_registration,
     create_organization_with_validation,
-    check_domain_availability
+    check_domain_availability, 
+    delete_organization
+
 )
 from sqlalchemy import text
 
@@ -327,6 +330,27 @@ async def logout(request: Request):
     request.session.pop("db_path", None)
     return RedirectResponse(url="/", status_code=302)
 
+@app.post("/delete_organization")
+async def delete_organization_route(request: Request):
+    """Delete the current organization. Admin-only route."""
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Access forbidden: Admins only.")
+
+    org_name = request.session.get("org_name")
+    user_info = request.session.get("user")
+    admin_email = user_info.get("email") if user_info else None
+
+    if not org_name or not admin_email:
+        raise HTTPException(status_code=422, detail="Organization information missing from session.")
+
+    success, message = delete_organization(org_name, admin_email)
+
+    if success:
+        request.session.clear()
+        return RedirectResponse(url="/", status_code=303)
+    else:
+        logger.error(f"Organization deletion failed: {message}")
+        return RedirectResponse(url="/admin_management", status_code=303)
 
 # -------------------- Organization Registration --------------------
 @app.get("/register-organization", response_class=HTMLResponse)
@@ -1014,6 +1038,10 @@ async def testing(request: Request):
     return templates.TemplateResponse("test.html", {"request": request})
 
 
+def _build_schedule_summary(schedule: list) -> str:
+    """Helper to format schedule tuples for the chat assistant."""
+    lines = [f"{d} {s}-{e}: {c}" for d, s, e, c in schedule]
+    return "\n".join(lines)
 
 # -------------------- Admin Management Routes --------------------
 @app.get("/admin_management", response_class=HTMLResponse)
