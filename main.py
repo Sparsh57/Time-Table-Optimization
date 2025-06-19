@@ -14,6 +14,9 @@ import json
 from typing import Optional
 import logging
 import pandas as pd
+
+import openai
+
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 from collections import defaultdict
