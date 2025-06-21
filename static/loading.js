@@ -1,20 +1,19 @@
 /**
- * Enhanced Loading Screen System for Time-table Optimization
- * Provides loading indicators for different operations with progress tracking
+ * Simple Loading Screen System with Error Handling
+ * Automatically hides on errors, page navigation, and timeouts
  */
 
 class LoadingManager {
     constructor() {
-        this.currentOperation = null;
+        this.isVisible = false;
         this.startTime = null;
-        this.progressInterval = null;
-        this.progressSteps = [];
-        this.currentStep = 0;
+        this.timeoutId = null;
+        this.maxDuration = 60000; // 60 seconds max
         this.createLoadingOverlay();
+        this.setupErrorHandling();
     }
 
     createLoadingOverlay() {
-        // Create main loading overlay
         const overlay = document.createElement('div');
         overlay.id = 'loading-overlay';
         overlay.innerHTML = `
@@ -37,18 +36,6 @@ class LoadingManager {
                 <div class="loading-content">
                     <h5 id="loading-title">Processing...</h5>
                     <p id="loading-message">Please wait while we process your request.</p>
-                    <div id="loading-progress">
-                        <div class="progress">
-                            <div class="determinate" id="progress-bar" style="width: 0%"></div>
-                        </div>
-                        <span id="progress-text">0%</span>
-                    </div>
-                    <div id="loading-details"></div>
-                    <div id="step-tracker" style="display: none;">
-                        <h6>Progress Steps:</h6>
-                        <ul id="step-list" class="collection">
-                        </ul>
-                    </div>
                     <small id="loading-time">Elapsed: 0s</small>
                 </div>
             </div>
@@ -76,7 +63,7 @@ class LoadingManager {
                 padding: 40px;
                 border-radius: 12px;
                 text-align: center;
-                max-width: 500px;
+                max-width: 400px;
                 box-shadow: 0 10px 30px rgba(0,0,0,0.3);
                 animation: slideInUp 0.3s ease-out;
             }
@@ -96,70 +83,11 @@ class LoadingManager {
                 margin-bottom: 20px;
             }
 
-            #loading-progress {
-                margin: 20px 0;
-            }
-
-            #progress-text {
-                display: block;
-                margin-top: 10px;
-                font-weight: bold;
-                color: #1a237e;
-            }
-
-            #loading-details {
-                margin: 15px 0;
-                font-size: 0.9rem;
-                color: #666;
-                min-height: 20px;
-            }
-
             #loading-time {
                 color: #999;
                 font-size: 0.8rem;
-            }
-
-            #step-tracker {
-                margin: 20px 0;
-                text-align: left;
-                max-height: 200px;
-                overflow-y: auto;
-            }
-
-            #step-tracker h6 {
-                margin-bottom: 10px;
-                color: #1a237e;
-                text-align: center;
-            }
-
-            #step-list {
-                margin: 0;
-                border: none;
-            }
-
-            #step-list .collection-item {
-                border: none;
-                padding: 8px 15px;
-                font-size: 0.9rem;
-                background: #f8f9fa;
-                margin: 2px 0;
-                border-radius: 4px;
-                animation: fadeInSlide 0.3s ease-out;
-            }
-
-            @keyframes fadeInSlide {
-                from {
-                    opacity: 0;
-                    transform: translateX(-20px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateX(0);
-                }
-            }
-
-            .step-text {
-                color: #333;
+                display: block;
+                margin-top: 15px;
             }
         `;
 
@@ -167,22 +95,67 @@ class LoadingManager {
         document.body.appendChild(overlay);
     }
 
+    setupErrorHandling() {
+        // Hide loading on page errors
+        window.addEventListener('error', () => {
+            console.log('Page error detected, hiding loading screen');
+            this.hide();
+        });
+
+        // Hide loading on unhandled promise rejections
+        window.addEventListener('unhandledrejection', () => {
+            console.log('Unhandled promise rejection detected, hiding loading screen');
+            this.hide();
+        });
+
+        // Hide loading on page navigation
+        window.addEventListener('beforeunload', () => {
+            this.hide();
+        });
+
+        // Hide loading on page visibility change (tab switch, etc.)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && this.isVisible) {
+                this.hide();
+            }
+        });
+
+        // Monitor for HTTP errors by intercepting fetch requests
+        const originalFetch = window.fetch;
+        window.fetch = (...args) => {
+            return originalFetch(...args)
+                .then(response => {
+                    // Hide loading if we get an error response
+                    if (!response.ok && this.isVisible) {
+                        console.log(`HTTP error ${response.status} detected, hiding loading screen`);
+                        setTimeout(() => this.hide(), 500); // Small delay to allow error handling
+                    }
+                    return response;
+                })
+                .catch(error => {
+                    console.log('Fetch error detected, hiding loading screen');
+                    this.hide();
+                    throw error;
+                });
+        };
+    }
+
     show(options = {}) {
         const {
             title = 'Processing...',
             message = 'Please wait while we process your request.',
-            showProgress = false,
-            estimatedDuration = null
+            timeout = this.maxDuration
         } = options;
 
-        this.currentOperation = options.operation || 'general';
+        // Don't show if already visible
+        if (this.isVisible) return;
+
+        this.isVisible = true;
         this.startTime = Date.now();
 
         // Update content
         document.getElementById('loading-title').textContent = title;
         document.getElementById('loading-message').textContent = message;
-        document.getElementById('loading-progress').style.display = showProgress ? 'block' : 'none';
-        document.getElementById('loading-details').textContent = '';
 
         // Show overlay
         const overlay = document.getElementById('loading-overlay');
@@ -191,164 +164,59 @@ class LoadingManager {
         // Start time tracking
         this.startTimeTracking();
 
-        // Start progress simulation if needed
-        if (showProgress && estimatedDuration) {
-            this.simulateProgress(estimatedDuration);
-        }
+        // Set timeout to auto-hide
+        this.timeoutId = setTimeout(() => {
+            console.log('Loading timeout reached, hiding loading screen');
+            this.hide();
+        }, timeout);
+
+        console.log(`Loading screen shown: ${title}`);
     }
 
-    updateProgress(percentage, details = '', step = null) {
-        const progressBar = document.getElementById('progress-bar');
-        const progressText = document.getElementById('progress-text');
-        const detailsElement = document.getElementById('loading-details');
+    hide() {
+        if (!this.isVisible) return;
 
-        if (progressBar) {
-            progressBar.style.width = `${percentage}%`;
-            progressText.textContent = `${Math.round(percentage)}%`;
+        this.isVisible = false;
+        
+        // Hide overlay
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+            overlay.style.display = 'none';
         }
 
-        if (details) {
-            detailsElement.textContent = details;
+        // Clear timeout
+        if (this.timeoutId) {
+            clearTimeout(this.timeoutId);
+            this.timeoutId = null;
         }
 
-        // Update step tracker if step is provided
-        if (step) {
-            this.updateStepTracker(step);
-        }
-    }
-
-    updateStepTracker(step) {
-        const stepTracker = document.getElementById('step-tracker');
-        const stepList = document.getElementById('step-list');
+        // Reset state
+        this.startTime = null;
         
-        // Show step tracker
-        stepTracker.style.display = 'block';
-        
-        // Add new step
-        const stepItem = document.createElement('li');
-        stepItem.className = 'collection-item';
-        stepItem.innerHTML = `
-            <i class="material-icons left green-text">check</i>
-            <span class="step-text">${step}</span>
-            <span class="right grey-text">${new Date().toLocaleTimeString()}</span>
-        `;
-        
-        stepList.appendChild(stepItem);
-        
-        // Auto-scroll to latest step
-        stepItem.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    setProgressSteps(steps) {
-        this.progressSteps = steps;
-        this.currentStep = 0;
-        
-        // Clear existing step list
-        const stepList = document.getElementById('step-list');
-        stepList.innerHTML = '';
-    }
-
-    markStepComplete(stepText, percentage = null) {
-        this.currentStep++;
-        
-        // Calculate percentage if not provided
-        if (percentage === null && this.progressSteps.length > 0) {
-            percentage = (this.currentStep / this.progressSteps.length) * 100;
-        }
-        
-        this.updateProgress(percentage || 0, stepText, stepText);
-    }
-
-    simulateProgress(duration) {
-        let progress = 0;
-        const increment = 100 / (duration * 10); // Update every 100ms
-
-        this.progressInterval = setInterval(() => {
-            progress += increment;
-            if (progress >= 95) {
-                progress = 95; // Stop at 95% to wait for actual completion
-                clearInterval(this.progressInterval);
-            }
-            this.updateProgress(progress);
-        }, 100);
+        console.log('Loading screen hidden');
     }
 
     startTimeTracking() {
         const timeInterval = setInterval(() => {
-            if (!document.getElementById('loading-overlay').style.display === 'flex') {
+            if (!this.isVisible) {
                 clearInterval(timeInterval);
                 return;
             }
 
             const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
-            document.getElementById('loading-time').textContent = `Elapsed: ${elapsed}s`;
+            const timeElement = document.getElementById('loading-time');
+            if (timeElement) {
+                timeElement.textContent = `Elapsed: ${elapsed}s`;
+            }
         }, 1000);
-    }
-
-    hide() {
-        const overlay = document.getElementById('loading-overlay');
-        overlay.style.display = 'none';
-
-        if (this.progressInterval) {
-            clearInterval(this.progressInterval);
-            this.progressInterval = null;
-        }
-
-        // Reset progress
-        this.updateProgress(0);
-        this.currentOperation = null;
-        this.startTime = null;
     }
 
     // Predefined loading configurations for common operations
     showTimetableGeneration() {
-        const steps = [
-            'Validating course data',
-            'Processing student enrollments', 
-            'Analyzing professor availability',
-            'Checking time slot constraints',
-            'Running optimization algorithm',
-            'Resolving scheduling conflicts',
-            'Finalizing timetable',
-            'Saving results to database'
-        ];
-        
-        this.setProgressSteps(steps);
-        
         this.show({
             title: 'Generating Timetable',
-            message: 'Starting timetable generation process...',
-            operation: 'timetable_generation',
-            showProgress: true,
-            estimatedDuration: 30 // 30 seconds estimated
-        });
-        
-        // Simulate progress steps for demonstration
-        this.simulateProgressSteps();
-    }
-
-    simulateProgressSteps() {
-        const steps = [
-            { text: 'Validating course data', delay: 2000 },
-            { text: 'Processing student enrollments', delay: 3000 },
-            { text: 'Analyzing professor availability', delay: 2500 },
-            { text: 'Checking time slot constraints', delay: 3500 },
-            { text: 'Running optimization algorithm', delay: 8000 },
-            { text: 'Resolving scheduling conflicts', delay: 4000 },
-            { text: 'Finalizing timetable', delay: 2000 },
-            { text: 'Saving results to database', delay: 1500 }
-        ];
-
-        let totalDelay = 0;
-        steps.forEach((step, index) => {
-            totalDelay += step.delay;
-            setTimeout(() => {
-                this.markStepComplete(step.text);
-                this.updateProgress(
-                    ((index + 1) / steps.length) * 100,
-                    step.text
-                );
-            }, totalDelay);
+            message: 'Running optimization algorithm, this may take a few minutes...',
+            timeout: 120000 // 2 minutes for timetable generation
         });
     }
 
@@ -356,28 +224,7 @@ class LoadingManager {
         this.show({
             title: 'Processing Data',
             message: 'Uploading and validating your files...',
-            operation: 'data_upload',
-            showProgress: true,
-            estimatedDuration: 10
-        });
-    }
-
-    showSectionAllocation() {
-        this.show({
-            title: 'Allocating Sections',
-            message: 'Running student clustering and section assignment...',
-            operation: 'section_allocation',
-            showProgress: true,
-            estimatedDuration: 15
-        });
-    }
-
-    showScheduleGeneration() {
-        this.show({
-            title: 'Generating Schedule',
-            message: 'Creating personalized schedule for student...',
-            operation: 'schedule_generation',
-            showProgress: false
+            timeout: 30000 // 30 seconds for data upload
         });
     }
 
@@ -385,8 +232,7 @@ class LoadingManager {
         this.show({
             title: 'Database Operation',
             message: 'Updating database records...',
-            operation: 'database',
-            showProgress: false
+            timeout: 15000 // 15 seconds for database operations
         });
     }
 }
@@ -397,17 +243,17 @@ window.loadingManager = new LoadingManager();
 // Utility functions for easy use
 window.showLoading = (options) => window.loadingManager.show(options);
 window.hideLoading = () => window.loadingManager.hide();
-window.updateLoadingProgress = (percentage, details) => window.loadingManager.updateProgress(percentage, details);
 
-// Integration with form submissions
+// Integration with form submissions and navigation
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-show loading for form submissions that might take time
-    const longOperationForms = document.querySelectorAll('form[data-long-operation]');
+    // Auto-show loading for forms that might take time
+    const forms = document.querySelectorAll('form[data-long-operation]');
     
-    longOperationForms.forEach(form => {
+    forms.forEach(form => {
         form.addEventListener('submit', function(e) {
             const operationType = form.getAttribute('data-operation-type') || 'general';
             
+            // Show appropriate loading screen
             switch(operationType) {
                 case 'timetable-generation':
                     window.loadingManager.showTimetableGeneration();
@@ -415,8 +261,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 case 'data-upload':
                     window.loadingManager.showDataUpload();
                     break;
-                case 'section-allocation':
-                    window.loadingManager.showSectionAllocation();
+                case 'database':
+                    window.loadingManager.showDatabaseOperation();
                     break;
                 default:
                     window.showLoading({
@@ -427,17 +273,38 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Auto-show loading for specific buttons
-    const longOperationButtons = document.querySelectorAll('button[data-long-operation], a[data-long-operation]');
+    // Auto-show loading for buttons/links that might take time
+    const buttons = document.querySelectorAll('button[data-long-operation], a[data-long-operation]');
     
-    longOperationButtons.forEach(button => {
+    buttons.forEach(button => {
         button.addEventListener('click', function(e) {
-            const operationType = button.getAttribute('data-operation-type') || 'general';
             const title = button.getAttribute('data-loading-title') || 'Processing';
             const message = button.getAttribute('data-loading-message') || 'Please wait...';
             
             window.showLoading({ title, message });
         });
+    });
+
+    // Monitor for page redirects and form responses
+    let lastUrl = location.href;
+    const observer = new MutationObserver(() => {
+        // Hide loading if URL changes (redirect happened)
+        if (location.href !== lastUrl) {
+            lastUrl = location.href;
+            window.loadingManager.hide();
+        }
+        
+        // Hide loading if error messages appear on page
+        const errorElements = document.querySelectorAll('.error, .alert-danger, [class*="error"]');
+        if (errorElements.length > 0 && window.loadingManager.isVisible) {
+            console.log('Error element detected on page, hiding loading screen');
+            setTimeout(() => window.loadingManager.hide(), 1000);
+        }
+    });
+    
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
     });
 });
 
