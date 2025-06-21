@@ -493,27 +493,68 @@ async def send_admin_data(
     if not db_path:
         raise HTTPException(status_code=422, detail="Database path not provided in session.")
 
-    truncate_detail(db_path)
-    responses = {}
-    files = {
+    # 2. Validate that files are properly uploaded and not empty
+    files_to_validate = {
         "courses_file": courses_file,
         "faculty_preferences_file": faculty_preferences_file,
         "student_courses_file": student_courses_file,
     }
+    
+    for file_name, file in files_to_validate.items():
+        # Check if file has a proper filename and size
+        if not file.filename or file.filename.strip() == "":
+            raise HTTPException(
+                status_code=400, 
+                detail=f"No {file_name.replace('_', ' ')} uploaded. Please select a valid file."
+            )
+        
+        # Check file size (must be greater than 0)
+        if file.size == 0:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"The {file_name.replace('_', ' ')} is empty. Please upload a valid file with data."
+            )
+        
+        # Check file extension
+        if not file.filename.lower().endswith(('.csv', '.xlsx')):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid file format for {file_name.replace('_', ' ')}. Please upload a CSV or Excel file."
+            )
 
+    # 3. Only truncate data after validation passes
+    truncate_detail(db_path)
+    responses = {}
     data = {}
+    
+    # 4. Load each file into a DataFrame
+    for file_key, file in files_to_validate.items():
+        try:
+            if file.filename.endswith('.csv'):
+                data[file_key] = pd.read_csv(file.file)
+            elif file.filename.endswith('.xlsx'):
+                file_bytes = await file.read()
+                data[file_key] = pd.read_excel(BytesIO(file_bytes))
+            
+            # Validate that the DataFrame is not empty
+            if data[file_key].empty:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"The {file_key.replace('_', ' ')} contains no data rows. Please check your file."
+                )
+                    
+        except pd.errors.EmptyDataError:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"The {file_key.replace('_', ' ')} is empty or corrupted. Please upload a valid file."
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Error reading {file_key.replace('_', ' ')}: {str(e)}"
+            )
 
-    # -- Load each file into a DataFrame
-    for file_key, file in files.items():
-        if file.filename.endswith('.csv'):
-            data[file_key] = pd.read_csv(file.file)
-        elif file.filename.endswith('.xlsx'):
-            file_bytes = await file.read()
-            data[file_key] = pd.read_excel(BytesIO(file_bytes))
-        else:
-            responses[file.filename] = "Unsupported file format"
-
-    # -- Insert data into DB
+    # 5. Insert data into DB and track success
     files_to_process = {
         "insert_user_data": ([data["courses_file"], data["student_courses_file"]], insert_user_data),
         "courses_file": (data["courses_file"], insert_courses_professors),
@@ -521,26 +562,50 @@ async def send_admin_data(
         "student_courses_file": (data["student_courses_file"], insert_course_students)
     }
 
+    successful_insertions = 0
     for file_key, (file_data, db_function) in files_to_process.items():
         try:
             db_function(file_data, db_path)
             responses[file_key] = "Data inserted successfully"
+            successful_insertions += 1
         except Exception as e:
+            logger.error(f"Error inserting data for {file_key}: {e}")
             responses[file_key] = str(e)
 
-    # -- Ensure time slots exist before generating timetable
+    # 6. Only proceed with timetable generation if all data was inserted successfully
+    if successful_insertions < len(files_to_process):
+        error_details = []
+        for key, response in responses.items():
+            if "successfully" not in response:
+                error_details.append(f"{key}: {response}")
+        
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Data insertion failed. Cannot generate timetable. Errors: {'; '.join(error_details)}"
+        )
+
+    # 7. Ensure time slots exist before generating timetable
     ensure_default_time_slots(db_path)
 
-    # -- Generate timetable
-    gen_timetable_auto(
-        db_path,
-        add_prof_constraints    = toggle_prof,
-        add_timeslot_capacity   = toggle_capacity,
-        add_student_conflicts   = toggle_student,
-        add_no_same_day         = toggle_same_day,
-        add_no_consec_days      = toggle_consec_days)
-
-    return RedirectResponse(url="/timetable", status_code=status.HTTP_303_SEE_OTHER)
+    # 8. Generate timetable only after successful data insertion
+    try:
+        gen_timetable_auto(
+            db_path,
+            add_prof_constraints    = toggle_prof,
+            add_timeslot_capacity   = toggle_capacity,
+            add_student_conflicts   = toggle_student,
+            add_no_same_day         = toggle_same_day,
+            add_no_consec_days      = toggle_consec_days)
+        
+        logger.info("Timetable generation completed successfully")
+        return RedirectResponse(url="/timetable", status_code=status.HTTP_303_SEE_OTHER)
+        
+    except Exception as e:
+        logger.error(f"Error generating timetable: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Data uploaded successfully, but timetable generation failed: {str(e)}"
+        )
 
 
 # -------------------- Page Endpoints --------------------

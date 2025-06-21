@@ -224,14 +224,59 @@ const selectedFiles = {
    * Submits all three files and the column mappings to /send_admin_data.
    */
   async function submitAll() {
+  const validationDiv = document.getElementById("submitValidation");
+  validationDiv.innerText = ""; // Clear previous errors
+  
+  // Validate files are selected
   if (!selectedFiles.courses || !selectedFiles.faculty || !selectedFiles.students) {
+    const missingFiles = [];
+    if (!selectedFiles.courses) missingFiles.push("Courses file");
+    if (!selectedFiles.faculty) missingFiles.push("Faculty preferences file");
+    if (!selectedFiles.students) missingFiles.push("Student courses file");
+    
+    validationDiv.innerText = `Missing: ${missingFiles.join(", ")}. Please preview all files first.`;
     alert("Please preview all three files before submitting.");
     return;
   }
 
-  // Show loading screen for timetable generation
-  if (window.loadingManager) {
-    window.loadingManager.showTimetableGeneration();
+  // Validate files have content
+  const fileValidation = [
+    { name: "courses", file: selectedFiles.courses, displayName: "Courses file" },
+    { name: "faculty", file: selectedFiles.faculty, displayName: "Faculty preferences file" },
+    { name: "students", file: selectedFiles.students, displayName: "Student courses file" }
+  ];
+
+  for (const item of fileValidation) {
+    if (!item.file || item.file.size === 0) {
+      validationDiv.innerText = `${item.displayName} is empty or invalid. Please select a valid file with data.`;
+      alert(`${item.displayName} is empty or invalid. Please select a valid file with data.`);
+      return;
+    }
+    
+    if (!item.file.name.toLowerCase().endsWith('.csv') && !item.file.name.toLowerCase().endsWith('.xlsx')) {
+      validationDiv.innerText = `${item.displayName} must be a CSV or Excel file.`;
+      alert(`${item.displayName} must be a CSV or Excel file.`);
+      return;
+    }
+  }
+
+  // Validate preview data exists and has content
+  if (!previewData.courses || previewData.courses.length === 0) {
+    validationDiv.innerText = "Courses file has no data. Please upload a file with valid course data.";
+    alert("Courses file has no data. Please upload a file with valid course data.");
+    return;
+  }
+  
+  if (!previewData.faculty || previewData.faculty.length === 0) {
+    validationDiv.innerText = "Faculty preferences file has no data. Please upload a file with valid faculty data.";
+    alert("Faculty preferences file has no data. Please upload a file with valid faculty data.");
+    return;
+  }
+  
+  if (!previewData.students || previewData.students.length === 0) {
+    validationDiv.innerText = "Student courses file has no data. Please upload a file with valid student enrollment data.";
+    alert("Student courses file has no data. Please upload a file with valid student enrollment data.");
+    return;
   }
 
   let formData = new FormData();
@@ -240,7 +285,7 @@ const selectedFiles = {
   formData.append("student_courses_file", selectedFiles.students);
   formData.append("column_mappings", JSON.stringify(columnMappings));
 
-  // ← NEW: append the five toggles
+  // Append the constraint toggles
   formData.append("toggle_prof",    document.getElementById("toggle_prof").checked);
   formData.append("toggle_capacity",document.getElementById("toggle_capacity").checked);
   formData.append("toggle_student", document.getElementById("toggle_student").checked);
@@ -252,14 +297,25 @@ const selectedFiles = {
       method: "POST",
       body: formData
     });
-    if (response.redirected) {
-      window.location.href = response.url;
+    
+    if (response.ok) {
+      if (response.redirected) {
+        window.location.href = response.url;
+      } else {
+        const data = await response.json();
+        alert("Success: " + JSON.stringify(data));
+      }
     } else {
-      const data = await response.json();
-      alert("Final submission response: " + JSON.stringify(data));
+      // Handle error responses
+      const errorData = await response.json();
+      const errorMessage = errorData.detail || "Unknown error occurred";
+      validationDiv.innerText = errorMessage;
+      alert("Error: " + errorMessage);
     }
   } catch (err) {
     console.error("Submission error:", err);
-    alert("Submission failed. Check console for details.");
+    const errorMessage = "Submission failed: " + err.message;
+    validationDiv.innerText = errorMessage;
+    alert(errorMessage);
   }
 }
