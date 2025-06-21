@@ -83,26 +83,48 @@ def insert_professor_busy_slots(file, db_path):
                 except Exception as e:
                     logger.error(f"Error processing row {index}: {e}")
 
-            # Get existing busy slots to avoid duplicates
-            existing_busy_slots = set()
-            for busy_slot in session.query(ProfessorBusySlot).all():
-                existing_busy_slots.add((busy_slot.ProfessorID, busy_slot.SlotID))
+            # Remove duplicates within the current batch first
+            seen_combinations = set()
+            deduplicated_slots = []
+            for slot in busy_slots_to_insert:
+                combo = (slot['ProfessorID'], slot['SlotID'])
+                if combo not in seen_combinations:
+                    seen_combinations.add(combo)
+                    deduplicated_slots.append(slot)
 
-            # Filter out existing busy slots
-            new_busy_slots = [
-                slot for slot in busy_slots_to_insert
-                if (slot['ProfessorID'], slot['SlotID']) not in existing_busy_slots
-            ]
+            logger.info(f"Removed {len(busy_slots_to_insert) - len(deduplicated_slots)} duplicate entries from current batch")
 
-            # Bulk insert new busy slots
-            if new_busy_slots:
-                session.bulk_insert_mappings(ProfessorBusySlot, new_busy_slots)
+            # Use PostgreSQL's ON CONFLICT for robust duplicate handling
+            if deduplicated_slots:
+                if is_postgresql():
+                    # Use raw SQL with ON CONFLICT for PostgreSQL
+                    insert_stmt = text("""
+                        INSERT INTO "Professor_BusySlots" ("ProfessorID", "SlotID") 
+                        VALUES (:ProfessorID, :SlotID) 
+                        ON CONFLICT ("ProfessorID", "SlotID") DO NOTHING
+                    """)
+                    session.execute(insert_stmt, deduplicated_slots)
+                else:
+                    # For SQLite, use the existing approach with duplicate checking
+                    existing_busy_slots = set()
+                    for busy_slot in session.query(ProfessorBusySlot).all():
+                        existing_busy_slots.add((busy_slot.ProfessorID, busy_slot.SlotID))
+
+                    # Filter out existing busy slots
+                    new_busy_slots = [
+                        slot for slot in deduplicated_slots
+                        if (slot['ProfessorID'], slot['SlotID']) not in existing_busy_slots
+                    ]
+                    
+                    if new_busy_slots:
+                        session.bulk_insert_mappings(ProfessorBusySlot, new_busy_slots)
+
                 session.commit()
-                logger.info(f"Bulk inserted {len(new_busy_slots)} professor busy slots")
-                print(f"Successfully bulk inserted {len(new_busy_slots)} professor busy slots.")
+                logger.info(f"Successfully processed {len(deduplicated_slots)} professor busy slots")
+                print(f"Successfully processed {len(deduplicated_slots)} professor busy slots.")
             else:
-                logger.info("No new professor busy slots to insert")
-                print("No new professor busy slots to insert.")
+                logger.info("No professor busy slots to insert")
+                print("No professor busy slots to insert.")
 
         except SQLAlchemyError as e:
             session.rollback()
@@ -252,20 +274,39 @@ def insert_professor_busy_slots_from_ui(slots, professor_id, db_path):
 
     with session_context as session:
         try:
-            for slot_id in slots:
-                # Check if busy slot already exists
-                existing = session.query(ProfessorBusySlot).filter_by(
-                    ProfessorID=professor_id, SlotID=slot_id).first()
-                
-                if not existing:
-                    new_busy_slot = ProfessorBusySlot(
-                        ProfessorID=professor_id,
-                        SlotID=slot_id
-                    )
-                    session.add(new_busy_slot)
+            # Remove duplicates from input slots
+            unique_slots = list(set(slots))
+            
+            # Prepare data for bulk insert
+            busy_slots_data = [
+                {'ProfessorID': professor_id, 'SlotID': slot_id}
+                for slot_id in unique_slots
+            ]
+            
+            if busy_slots_data:
+                if is_postgresql():
+                    # Use raw SQL with ON CONFLICT for PostgreSQL
+                    insert_stmt = text("""
+                        INSERT INTO "Professor_BusySlots" ("ProfessorID", "SlotID") 
+                        VALUES (:ProfessorID, :SlotID) 
+                        ON CONFLICT ("ProfessorID", "SlotID") DO NOTHING
+                    """)
+                    session.execute(insert_stmt, busy_slots_data)
+                else:
+                    # For SQLite, check for existing entries
+                    for slot_id in unique_slots:
+                        existing = session.query(ProfessorBusySlot).filter_by(
+                            ProfessorID=professor_id, SlotID=slot_id).first()
+                        
+                        if not existing:
+                            new_busy_slot = ProfessorBusySlot(
+                                ProfessorID=professor_id,
+                                SlotID=slot_id
+                            )
+                            session.add(new_busy_slot)
                     
             session.commit()
-            logger.info(f"Inserted busy slots for professor {professor_id}")
+            logger.info(f"Processed {len(unique_slots)} busy slots for professor {professor_id}")
             
         except SQLAlchemyError as e:
             session.rollback()
