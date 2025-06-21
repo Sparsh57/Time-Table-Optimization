@@ -71,19 +71,26 @@ def gen_timetable(db_path, max_classes_per_slot=24,
     # Preprocess courses and schedule
     courses = create_course_dictionary(student_course_map, course_professor_map, professor_busy_slots, time_slots)
     diagnose_same_day_constraints(courses, course_credit_map)
-    schedule_data = schedule_courses(courses, student_course_map, course_professor_map, course_credit_map, course_type_map, [], 
+    schedule_data, infeasibility_reason = schedule_courses(courses, student_course_map, course_professor_map, course_credit_map, course_type_map, [], 
                                    add_prof_constraints, add_timeslot_capacity, add_student_conflicts, 
                                    add_no_same_day, add_no_consec_days, max_classes_per_slot)
 
     print("Schedule Data")
     print(schedule_data)
+    print("Infeasibility Reason:", infeasibility_reason)
+    
+    # If the schedule is empty, return the infeasibility reason
+    if schedule_data.empty:
+        return schedule_data, pd.DataFrame(), infeasibility_reason
+    
     print()
     print("Courses on the same day")
     print(find_courses_with_multiple_slots_on_same_day(schedule_data))
     print("Conflicts")
-    print(check_conflicts(schedule_data, student_course_map))
+    conflicts = check_conflicts(schedule_data, student_course_map)
+    print(conflicts)
     schedule(schedule_data, db_path)
-    return schedule_data, check_conflicts(schedule_data, student_course_map)
+    return schedule_data, conflicts, infeasibility_reason
 
 
 def gen_timetable_with_sections(db_path, max_classes_per_slot=24,
@@ -144,9 +151,14 @@ def gen_timetable_with_sections(db_path, max_classes_per_slot=24,
     # DEBUG: Print time slot information
     print(f"🕐 DEBUG: Found {len(time_slots)} time slots in database")
     if len(time_slots) == 0:
-        print("❌ CRITICAL ERROR: No time slots found! Please add time slots via /select_timeslot")
-        print("⚠️  Cannot generate timetable without time slots")
-        return pd.DataFrame(columns=["Course ID", "Scheduled Time"]), pd.DataFrame()
+        error_msg = ("CRITICAL ERROR: No time slots found!\n\n"
+                    "Cannot generate timetable without time slots.\n\n"
+                    "Solutions:\n"
+                    "• Add time slots via /select_timeslot\n"
+                    "• Check if time slots were properly saved to database\n"
+                    "• Verify database connection is working")
+        print(f"❌ {error_msg}")
+        return pd.DataFrame(columns=["Course ID", "Scheduled Time"]), pd.DataFrame(), error_msg
     else:
         print(f"✅ Time slots available: {time_slots[:5]}..." if len(time_slots) > 5 else f"✅ Time slots available: {time_slots}")
     
@@ -161,12 +173,18 @@ def gen_timetable_with_sections(db_path, max_classes_per_slot=24,
     diagnose_same_day_constraints(courses, course_credit_map)
     
     # Generate schedule
-    schedule_data = schedule_courses(courses, student_course_map, course_professor_map_all, course_credit_map, course_type_map, [], 
+    schedule_data, infeasibility_reason = schedule_courses(courses, student_course_map, course_professor_map_all, course_credit_map, course_type_map, [], 
                                    add_prof_constraints, add_timeslot_capacity, add_student_conflicts, 
                                    add_no_same_day, add_no_consec_days, max_classes_per_slot)
 
     print("Schedule Data (Section-aware)")
     print(schedule_data)
+    print("Infeasibility Reason:", infeasibility_reason)
+    
+    # If the schedule is empty, return the infeasibility reason
+    if schedule_data.empty:
+        return schedule_data, pd.DataFrame(), infeasibility_reason
+    
     print()
     print("Courses on the same day")
     print(find_courses_with_multiple_slots_on_same_day(schedule_data))
@@ -177,7 +195,7 @@ def gen_timetable_with_sections(db_path, max_classes_per_slot=24,
     # Save schedule to database
     schedule(schedule_data, db_path)
     
-    return schedule_data, conflicts
+    return schedule_data, conflicts, infeasibility_reason
 
 
 def has_multi_section_courses(db_path):

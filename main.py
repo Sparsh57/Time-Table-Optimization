@@ -589,7 +589,7 @@ async def send_admin_data(
 
     # 8. Generate timetable only after successful data insertion
     try:
-        gen_timetable_auto(
+        result = gen_timetable_auto(
             db_path,
             add_prof_constraints    = toggle_prof,
             add_timeslot_capacity   = toggle_capacity,
@@ -597,7 +597,23 @@ async def send_admin_data(
             add_no_same_day         = toggle_same_day,
             add_no_consec_days      = toggle_consec_days)
         
-        logger.info("Timetable generation completed successfully")
+        # Handle both old and new return formats
+        if len(result) == 3:
+            schedule_data, conflicts, infeasibility_reason = result
+            if schedule_data.empty:
+                # Store infeasibility reason in session to display to user
+                request.session["infeasibility_reason"] = infeasibility_reason
+                logger.info(f"Timetable generation failed: {infeasibility_reason}")
+            else:
+                # Clear any previous infeasibility reason
+                request.session.pop("infeasibility_reason", None)
+                logger.info("Timetable generation completed successfully")
+        else:
+            # Fallback for old format
+            schedule_data, conflicts = result
+            request.session.pop("infeasibility_reason", None)
+            logger.info("Timetable generation completed successfully")
+        
         return RedirectResponse(url="/timetable", status_code=status.HTTP_303_SEE_OTHER)
         
     except Exception as e:
@@ -733,6 +749,9 @@ async def show_timetable(request: Request):
     # Admin path - Always show timetable page (successful or failed)
     schedule_data = fetch_schedule_data(db_path) if timetable_made(db_path) else []
     
+    # Get infeasibility reason from session if available
+    infeasibility_reason = request.session.get("infeasibility_reason", None)
+    
     # Get section mapping data (only if timetable was successful)
     section_mapping_data = {}
     section_summary = None
@@ -768,7 +787,8 @@ async def show_timetable(request: Request):
             "user": user_info,
             "schedule_data": schedule_data,
             "section_mapping_data": section_mapping_data,
-            "section_summary": section_summary
+            "section_summary": section_summary,
+            "infeasibility_reason": infeasibility_reason
         }
     )
 
@@ -969,6 +989,10 @@ async def clear_schedule(request: Request):
             session.commit()
             
         logger.info(f"Cleared {deleted_count} scheduled courses")
+        
+        # Also clear any stored infeasibility reason
+        request.session.pop("infeasibility_reason", None)
+        
         return JSONResponse(status_code=200, content={"message": f"Cleared {deleted_count} scheduled courses. You can now update time slots."})
         
     except Exception as e:

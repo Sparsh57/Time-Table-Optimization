@@ -23,7 +23,7 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                      add_student_conflicts: bool = True,
                      add_no_same_day: bool = True,
                      add_no_consec_days: bool = False,                
-                     max_classes_per_slot: int = 24) -> pd.DataFrame:
+                     max_classes_per_slot: int = 24) -> tuple[pd.DataFrame, str]:
     """
     Debug-friendly scheduling function with incremental constraint phases:
 
@@ -34,10 +34,11 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                Additionally, a very soft extra penalty is added if a student's two required courses clash.
       PHASE 5) No same course twice on the same day (hard constraint).
 
-    If a phase is infeasible, we print a debug message and return an empty DataFrame.
-    If all phases succeed, we return the final schedule from PHASE 5.
+    If a phase is infeasible, we return an empty DataFrame and an error message.
+    If all phases succeed, we return the schedule and success message.
 
-    NOTE: The function signature is unchanged. The incremental approach is done internally.
+    Returns:
+        tuple: (schedule_dataframe, infeasibility_reason_or_success_message)
     """
 
     # ---------------------------------------------------------
@@ -56,13 +57,14 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
         all_available_slots.update(course_info.get('time_slots', []))
 
     if len(all_available_slots) == 0:
-        print("[CRITICAL ERROR] No time slots available across all courses!")
-        print("This usually means:")
-        print("1. No time slots were inserted into the database")
-        print("2. All time slots are blocked by professor busy slots")
-        print("3. Time slot data was not loaded properly")
-        print("Please check the time slot configuration and try again.")
-        return pd.DataFrame(columns=["Course ID", "Scheduled Time"])
+        error_msg = ("CRITICAL ERROR: No time slots available across all courses!\n\n"
+                    "This usually means:\n"
+                    "• No time slots were inserted into the database\n"
+                    "• All time slots are blocked by professor busy slots\n"
+                    "• Time slot data was not loaded properly\n\n"
+                    "Please check the time slot configuration and try again.")
+        print(f"[CRITICAL ERROR] {error_msg}")
+        return pd.DataFrame(columns=["Course ID", "Scheduled Time"]), error_msg
 
     print(f"[INFO] Found {len(all_available_slots)} unique time slots available for scheduling")
 
@@ -73,8 +75,14 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
         needed = course_credits.get(c_id, 2)  # default if missing
         possible = len(info["time_slots"])
         if needed > possible:
-            print(f"[PRE-CHECK] Course '{c_id}' needs {needed} sessions but only has {possible} slot(s). Infeasible.")
-            return pd.DataFrame(columns=["Course ID", "Scheduled Time"])
+            error_msg = (f"PHASE 1 PRE-CHECK FAILED: Course '{c_id}' needs {needed} sessions "
+                        f"but only has {possible} slot(s) available.\n\n"
+                        f"Solutions:\n"
+                        f"• Add more time slots to the schedule\n"
+                        f"• Check if professor busy slots are too restrictive\n"
+                        f"• Verify course credit requirements are correct")
+            print(f"[PRE-CHECK] {error_msg}")
+            return pd.DataFrame(columns=["Course ID", "Scheduled Time"]), error_msg
 
     def solve_phase(
         phase: str,
@@ -258,9 +266,15 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                                    add_same=False,
                                    add_consec=False)
     if p1_status == cp_model.INFEASIBLE:
-        print("[DEBUG] Infeasible at PHASE 1: Basic 'credits' constraints.")
-        print("💡 Check if courses have enough available time slots for their credit requirements")
-        return pd.DataFrame(columns=["Course ID", "Scheduled Time"])
+        error_msg = ("PHASE 1 FAILED: Basic 'credits' constraints cannot be satisfied.\n\n"
+                    "This means one or more courses don't have enough available time slots "
+                    "to meet their credit requirements.\n\n"
+                    "Solutions:\n"
+                    "• Add more time slots to the schedule\n"
+                    "• Check if professor busy slots are too restrictive\n"
+                    "• Verify course credit requirements are realistic")
+        print(f"[DEBUG] {error_msg}")
+        return pd.DataFrame(columns=["Course ID", "Scheduled Time"]), error_msg
 
     # PHASE 2
     p2_status, p2_df = solve_phase("PHASE 2",
@@ -270,9 +284,16 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                                    add_same=False,
                                    add_consec=False)
     if p2_status == cp_model.INFEASIBLE:
-        print("[DEBUG] Infeasible at PHASE 2: Professor no-overlap constraints.")
-        print("💡 Check professor assignments and busy slots - some professors may be overloaded")
-        return pd.DataFrame(columns=["Course ID", "Scheduled Time"])
+        error_msg = ("PHASE 2 FAILED: Professor scheduling conflicts detected.\n\n"
+                    "One or more professors are assigned to teach multiple courses "
+                    "at the same time, or their busy slots are too restrictive.\n\n"
+                    "Solutions:\n"
+                    "• Review professor assignments for overlapping courses\n"
+                    "• Check professor busy slot selections\n"
+                    "• Consider redistributing courses among professors\n"
+                    "• Add more available time slots for overloaded professors")
+        print(f"[DEBUG] {error_msg}")
+        return pd.DataFrame(columns=["Course ID", "Scheduled Time"]), error_msg
 
     # PHASE 3
     p3_status, p3_df = solve_phase("PHASE 3",
@@ -282,9 +303,16 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                                    add_same=False,
                                    add_consec=False)
     if p3_status == cp_model.INFEASIBLE:
-        print(f"[DEBUG] Infeasible at PHASE 3: Time slot capacity <= {MAX_CLASSES_PER_SLOT}.")
-        print(f"💡 Increase max classes per slot from {MAX_CLASSES_PER_SLOT} or add more time slots")
-        return pd.DataFrame(columns=["Course ID", "Scheduled Time"])
+        error_msg = (f"PHASE 3 FAILED: Time slot capacity limit exceeded.\n\n"
+                    f"The current limit of {MAX_CLASSES_PER_SLOT} classes per time slot "
+                    f"is insufficient to accommodate all required course sessions.\n\n"
+                    f"Solutions:\n"
+                    f"• Increase max classes per slot from {MAX_CLASSES_PER_SLOT} in time slot settings\n"
+                    f"• Add more time slots to spread out the course load\n"
+                    f"• Reduce the number of courses or course sections\n"
+                    f"• Consider splitting large courses into multiple sections")
+        print(f"[DEBUG] {error_msg}")
+        return pd.DataFrame(columns=["Course ID", "Scheduled Time"]), error_msg
 
     # PHASE 4
     p4_status, p4_df = solve_phase("PHASE 4",
@@ -294,9 +322,16 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                                    add_same=False,
                                    add_consec=False)
     if p4_status == cp_model.INFEASIBLE:
-        # Rare for soft conflicts to cause infeasibility, but we check anyway
-        print("[DEBUG] Infeasible at PHASE 4: Student conflict constraints.")
-        return pd.DataFrame(columns=["Course ID", "Scheduled Time"])
+        error_msg = ("PHASE 4 FAILED: Student conflict constraints (rare).\n\n"
+                    "The soft student conflict constraints are causing infeasibility, "
+                    "which is unusual since they are designed to be flexible.\n\n"
+                    "Solutions:\n"
+                    "• This suggests a deeper scheduling problem\n"
+                    "• Try regenerating with fewer constraint options enabled\n"
+                    "• Review student course enrollments for unusual patterns\n"
+                    "• Contact system administrator")
+        print(f"[DEBUG] {error_msg}")
+        return pd.DataFrame(columns=["Course ID", "Scheduled Time"]), error_msg
 
     # PHASE 5: No same course twice on the same day
     p5_status, p5_df = solve_phase("PHASE 5",
@@ -306,9 +341,16 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                                    add_same=add_no_same_day,
                                    add_consec=False)
     if p5_status == cp_model.INFEASIBLE:
-        print("[DEBUG] Infeasible at PHASE 5: The 'no same course twice on the same day' constraint.")
-        print("Check if any course's distribution of slots forces multiple sessions on the same day.")
-        return pd.DataFrame(columns=["Course ID", "Scheduled Time"])
+        error_msg = ("PHASE 5 FAILED: 'No same course twice on the same day' constraint.\n\n"
+                    "One or more courses require multiple sessions but only have "
+                    "available time slots on the same day(s).\n\n"
+                    "Solutions:\n"
+                    "• Add time slots on different days\n"
+                    "• Review professor busy slots - some may be blocking too many days\n"
+                    "• Check if courses have realistic credit requirements\n"
+                    "• Consider disabling the 'same day' constraint if appropriate")
+        print(f"[DEBUG] {error_msg}")
+        return pd.DataFrame(columns=["Course ID", "Scheduled Time"]), error_msg
 
     print("[DEBUG] Schedule found through PHASE 5 constraints.")
     # PHASE 6: No consecutive days (toggleable)
@@ -320,9 +362,17 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                                        add_same=add_no_same_day,
                                        add_consec=add_no_consec_days)
         if p6_status == cp_model.INFEASIBLE:
-            print("[DEBUG] Infeasible at PHASE 6: No consecutive days constraint.")
-            return pd.DataFrame(columns=["Course ID", "Scheduled Time"])
+            error_msg = ("PHASE 6 FAILED: 'No consecutive days' constraint.\n\n"
+                        "The requirement to avoid scheduling courses on consecutive days "
+                        "cannot be satisfied with the current time slot configuration.\n\n"
+                        "Solutions:\n"
+                        "• Add more time slots spread across different days\n"
+                        "• Consider disabling the 'consecutive days' constraint\n"
+                        "• Review course credit requirements\n"
+                        "• Check professor availability across different days")
+            print(f"[DEBUG] {error_msg}")
+            return pd.DataFrame(columns=["Course ID", "Scheduled Time"]), error_msg
         print("[DEBUG] Schedule found through PHASE 6 constraints.")
-        return p6_df
+        return p6_df, "Schedule found through PHASE 6 constraints."
 
-    return p5_df
+    return p5_df, "Schedule found through PHASE 5 constraints."
