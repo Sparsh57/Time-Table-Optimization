@@ -14,24 +14,21 @@ class LoadingManager {
     }
 
     createLoadingOverlay() {
-        const overlay = document.createElement('div');
-        overlay.id = 'loading-overlay';
-        overlay.innerHTML = `
+        // Check if overlay already exists in the DOM
+        let overlay = document.getElementById('loading-overlay');
+        
+        if (!overlay) {
+            // Create overlay if it doesn't exist
+            overlay = document.createElement('div');
+            overlay.id = 'loading-overlay';
+            document.body.appendChild(overlay);
+        }
+        
+        // Set the HTML content
+        const htmlContent = `
             <div class="loading-container">
                 <div class="loading-spinner">
-                    <div class="preloader-wrapper big active">
-                        <div class="spinner-layer spinner-blue-only">
-                            <div class="circle-clipper left">
-                                <div class="circle"></div>
-                            </div>
-                            <div class="gap-patch">
-                                <div class="circle"></div>
-                            </div>
-                            <div class="circle-clipper right">
-                                <div class="circle"></div>
-                            </div>
-                        </div>
-                    </div>
+                    <div class="custom-spinner"></div>
                 </div>
                 <div class="loading-content">
                     <h5 id="loading-title">Processing...</h5>
@@ -40,32 +37,68 @@ class LoadingManager {
                 </div>
             </div>
         `;
+        
+        overlay.innerHTML = htmlContent;
+        
+        // Force a reflow to ensure content is rendered
+        overlay.offsetHeight;
 
         // Add CSS styles
         const style = document.createElement('style');
+        style.id = 'loading-manager-styles';
+        
+        // Remove existing styles if they exist
+        const existingStyle = document.getElementById('loading-manager-styles');
+        if (existingStyle) {
+            existingStyle.remove();
+        }
+        
         style.textContent = `
             #loading-overlay {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(26, 35, 126, 0.9);
-                z-index: 10000;
-                display: none;
-                align-items: center;
-                justify-content: center;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                background: rgba(26, 35, 126, 0.9) !important;
+                z-index: 99999 !important;
+                display: none !important;
+                align-items: center !important;
+                justify-content: center !important;
                 backdrop-filter: blur(5px);
+                font-family: 'Poppins', Arial, sans-serif !important;
+            }
+
+            #loading-overlay.show {
+                display: flex !important;
             }
 
             .loading-container {
-                background: white;
-                padding: 40px;
-                border-radius: 12px;
-                text-align: center;
-                max-width: 400px;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-                animation: slideInUp 0.3s ease-out;
+                background: white !important;
+                padding: 40px !important;
+                border-radius: 12px !important;
+                text-align: center !important;
+                max-width: 400px !important;
+                min-width: 300px !important;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important;
+                animation: slideInUp 0.3s ease-out !important;
+                position: relative !important;
+                z-index: 100000 !important;
+            }
+
+            .custom-spinner {
+                width: 40px !important;
+                height: 40px !important;
+                border: 4px solid #f3f3f3 !important;
+                border-top: 4px solid #2196F3 !important;
+                border-radius: 50% !important;
+                animation: spin 1s linear infinite !important;
+                margin: 0 auto !important;
+            }
+
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
             }
 
             @keyframes slideInUp {
@@ -80,28 +113,43 @@ class LoadingManager {
             }
 
             .loading-spinner {
-                margin-bottom: 20px;
+                margin-bottom: 20px !important;
+            }
+
+            #loading-title {
+                color: #333 !important;
+                margin: 0 0 10px 0 !important;
+                font-size: 1.5rem !important;
+                font-weight: 600 !important;
+            }
+
+            #loading-message {
+                color: #666 !important;
+                margin: 0 0 10px 0 !important;
+                font-size: 1rem !important;
+                line-height: 1.4 !important;
             }
 
             #loading-time {
-                color: #999;
-                font-size: 0.8rem;
-                display: block;
-                margin-top: 15px;
+                color: #999 !important;
+                font-size: 0.8rem !important;
+                display: block !important;
+                margin-top: 15px !important;
             }
         `;
 
         document.head.appendChild(style);
-        document.body.appendChild(overlay);
+        
+        // Final verification
+        setTimeout(() => {
+            const finalCheck = document.getElementById('loading-overlay');
+            if (!finalCheck || !finalCheck.querySelector('.loading-container')) {
+                console.error('LoadingManager: Overlay initialization failed');
+            }
+        }, 100);
     }
 
     setupErrorHandling() {
-        // Hide loading on page errors
-        window.addEventListener('error', () => {
-            console.log('Page error detected, hiding loading screen');
-            this.hide();
-        });
-
         // Hide loading on unhandled promise rejections
         window.addEventListener('unhandledrejection', () => {
             console.log('Unhandled promise rejection detected, hiding loading screen');
@@ -127,13 +175,11 @@ class LoadingManager {
                 .then(response => {
                     // Hide loading if we get an error response
                     if (!response.ok && this.isVisible) {
-                        console.log(`HTTP error ${response.status} detected, hiding loading screen`);
                         setTimeout(() => this.hide(), 500); // Small delay to allow error handling
                     }
                     return response;
                 })
                 .catch(error => {
-                    console.log('Fetch error detected, hiding loading screen');
                     this.hide();
                     throw error;
                 });
@@ -150,27 +196,78 @@ class LoadingManager {
         // Don't show if already visible
         if (this.isVisible) return;
 
+        // Verify overlay content exists before showing
+        const overlay = document.getElementById('loading-overlay');
+        if (!overlay) {
+            console.error('Overlay element not found! Recreating...');
+            this.createLoadingOverlay();
+            // Try again after recreating
+            const newOverlay = document.getElementById('loading-overlay');
+            if (!newOverlay) {
+                console.error('Failed to create overlay element!');
+                return;
+            }
+        }
+
+        // If overlay is empty, recreate content
+        if (overlay.childElementCount === 0) {
+            const htmlContent = `
+                <div class="loading-container">
+                    <div class="loading-spinner">
+                        <div class="custom-spinner"></div>
+                    </div>
+                    <div class="loading-content">
+                        <h5 id="loading-title">Processing...</h5>
+                        <p id="loading-message">Please wait while we process your request.</p>
+                        <small id="loading-time">Elapsed: 0s</small>
+                    </div>
+                </div>
+            `;
+            overlay.innerHTML = htmlContent;
+        }
+
         this.isVisible = true;
         this.startTime = Date.now();
 
         // Update content
-        document.getElementById('loading-title').textContent = title;
-        document.getElementById('loading-message').textContent = message;
+        const titleElement = document.getElementById('loading-title');
+        const messageElement = document.getElementById('loading-message');
+        
+        if (titleElement) {
+            titleElement.textContent = title;
+        } else {
+            console.error('Title element not found!');
+        }
+        
+        if (messageElement) {
+            messageElement.textContent = message;
+        } else {
+            console.error('Message element not found!');
+        }
 
-        // Show overlay
-        const overlay = document.getElementById('loading-overlay');
-        overlay.style.display = 'flex';
+        // Show overlay using class
+        if (overlay) {
+            overlay.classList.add('show');
+            
+            // Force style recalculation
+            overlay.offsetHeight;
+            
+            // Check if container is visible
+            const container = overlay.querySelector('.loading-container');
+            if (!container) {
+                console.error('Loading container not found in overlay!');
+            }
+        } else {
+            console.error('Loading overlay element not found!');
+        }
 
         // Start time tracking
         this.startTimeTracking();
 
         // Set timeout to auto-hide
         this.timeoutId = setTimeout(() => {
-            console.log('Loading timeout reached, hiding loading screen');
             this.hide();
         }, timeout);
-
-        console.log(`Loading screen shown: ${title}`);
     }
 
     hide() {
@@ -178,10 +275,10 @@ class LoadingManager {
 
         this.isVisible = false;
         
-        // Hide overlay
+        // Hide overlay using class
         const overlay = document.getElementById('loading-overlay');
         if (overlay) {
-            overlay.style.display = 'none';
+            overlay.classList.remove('show');
         }
 
         // Clear timeout
@@ -192,8 +289,6 @@ class LoadingManager {
 
         // Reset state
         this.startTime = null;
-        
-        console.log('Loading screen hidden');
     }
 
     startTimeTracking() {
@@ -235,9 +330,84 @@ class LoadingManager {
             timeout: 15000 // 15 seconds for database operations
         });
     }
+
+    // Progress step tracking methods
+    setProgressSteps(steps) {
+        this.progressSteps = steps || [];
+        this.completedSteps = [];
+        this.currentProgress = 0;
+        this.updateProgressDisplay();
+    }
+
+    markStepComplete(stepName, progressPercentage = null) {
+        if (!this.progressSteps) return;
+        
+        if (!this.completedSteps.includes(stepName)) {
+            this.completedSteps.push(stepName);
+        }
+        
+        if (progressPercentage !== null) {
+            this.currentProgress = Math.max(this.currentProgress, progressPercentage);
+        } else {
+            // Auto-calculate progress based on completed steps
+            this.currentProgress = Math.floor((this.completedSteps.length / this.progressSteps.length) * 100);
+        }
+        
+        this.updateProgressDisplay();
+    }
+
+    updateProgressDisplay() {
+        if (!this.isVisible) return;
+        
+        const messageElement = document.getElementById('loading-message');
+        const progressElement = document.getElementById('loading-progress');
+        
+        if (this.progressSteps && this.progressSteps.length > 0) {
+            const currentStep = this.completedSteps.length < this.progressSteps.length ? 
+                               this.progressSteps[this.completedSteps.length] : 
+                               this.progressSteps[this.progressSteps.length - 1];
+            
+            if (messageElement) {
+                messageElement.innerHTML = `
+                    <div style="margin-bottom: 10px;">${currentStep || 'Processing...'}</div>
+                    <div style="background: rgba(255,255,255,0.2); border-radius: 10px; padding: 3px; margin-bottom: 10px;">
+                        <div style="background: #4CAF50; height: 6px; border-radius: 8px; width: ${this.currentProgress}%; transition: width 0.3s ease;"></div>
+                    </div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">${this.currentProgress}% Complete</div>
+                `;
+            }
+        }
+    }
+
+    // Add method to reinitialize overlay if needed
+    reinitialize() {
+        this.createLoadingOverlay();
+    }
+
+    // Add method to force content creation
+    forceCreateContent() {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+            const htmlContent = `
+                <div class="loading-container">
+                    <div class="loading-spinner">
+                        <div class="custom-spinner"></div>
+                    </div>
+                    <div class="loading-content">
+                        <h5 id="loading-title">Processing...</h5>
+                        <p id="loading-message">Please wait while we process your request.</p>
+                        <small id="loading-time">Elapsed: 0s</small>
+                    </div>
+                </div>
+            `;
+            overlay.innerHTML = htmlContent;
+            return overlay.childElementCount > 0;
+        }
+        return false;
+    }
 }
 
-// Global loading manager instance
+// Global loading manager instance - create immediately when script loads
 window.loadingManager = new LoadingManager();
 
 // Utility functions for easy use
@@ -297,7 +467,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Hide loading if error messages appear on page
         const errorElements = document.querySelectorAll('.error, .alert-danger, [class*="error"]');
         if (errorElements.length > 0 && window.loadingManager.isVisible) {
-            console.log('Error element detected on page, hiding loading screen');
             setTimeout(() => window.loadingManager.hide(), 1000);
         }
     });

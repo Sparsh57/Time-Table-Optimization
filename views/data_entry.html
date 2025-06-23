@@ -133,71 +133,229 @@
     </div>
   </footer>
 
-  <!-- Enhanced Loading System -->
+  <!-- Loading overlay for LoadingManager -->
+  <div id="loading-overlay"></div>
+
+  <!-- Materialize JS - Load first -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <!-- Loading Manager - Load before custom script -->
   <script src="/static/loading.js"></script>
-  <!-- Materialize JS -->
+  <!-- Custom Script - Load after Materialize and Loading -->
   <script src="/static/script.js"></script>
   
+  <!-- Initialize Materialize components and add simple loading test -->
   <script>
-  // Enhanced data entry with loading integration
-  document.addEventListener('DOMContentLoaded', function() {
-    // Add loading attributes to the main form
-    const form = document.querySelector('form');
-    if (form) {
-      form.setAttribute('data-long-operation', 'true');
-      form.setAttribute('data-operation-type', 'data-upload');
-    }
+    // Initialize global variables for preview data and column mappings
+    window.previewData = {
+      courses: [],
+      faculty: [],
+      students: []
+    };
     
-    // Override submitAll function to show enhanced loading with steps
-    window.originalSubmitAll = window.submitAll;
-    window.submitAll = function() {
-      // Show enhanced loading with real-time steps
+    window.columnMappings = {
+      courses_file: {},
+      faculty_preferences_file: {},
+      student_courses_file: {}
+    };
+
+    // Initialize LoadingManager for inline functions
+    let inlineLoadingManager;
+    
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+      // Use the global loadingManager instance created by loading.js
       if (window.loadingManager) {
-        window.loadingManager.showTimetableGeneration();
-        
-        // Set up progress tracking steps
-        const steps = [
-          'Uploading course data',
-          'Processing faculty preferences', 
-          'Analyzing student enrollments',
-          'Validating data integrity',
-          'Initializing optimization model',
-          'Phase 1: Basic constraints',
-          'Phase 2: Professor availability',
-          'Phase 3: Capacity constraints',
-          'Phase 4: Student conflicts',
-          'Phase 5: Same-day restrictions',
-          'Phase 6: Consecutive day optimization',
-          'Finalizing schedule',
-          'Saving to database'
-        ];
-        
-        window.loadingManager.setProgressSteps(steps);
-        
-        // Mark first step complete immediately
-        setTimeout(() => {
-          window.loadingManager.markStepComplete('Uploading course data', 8);
-        }, 500);
-        
-        setTimeout(() => {
-          window.loadingManager.markStepComplete('Processing faculty preferences', 15);
-        }, 1500);
-        
-        setTimeout(() => {
-          window.loadingManager.markStepComplete('Analyzing student enrollments', 23);
-        }, 2500);
-        
-        setTimeout(() => {
-          window.loadingManager.markStepComplete('Validating data integrity', 31);
-        }, 3000);
+        inlineLoadingManager = window.loadingManager;
+      }
+    });
+
+    // Validate and submit all files
+    function submitAllFiles() {
+      const coursesFile = document.getElementById('coursesInput').files[0];
+      const facultyFile = document.getElementById('facultyInput').files[0];
+      const studentsFile = document.getElementById('studentsInput').files[0];
+
+      if (!coursesFile || !facultyFile || !studentsFile) {
+        alert('Please select all three files before submitting.');
+        return;
+      }
+
+      // Check preview data from multiple sources
+      const validationErrors = [];
+      
+      // Check window.previewData (inline context)
+      let coursesValid = window.previewData.courses && window.previewData.courses.length > 0;
+      let facultyValid = window.previewData.faculty && window.previewData.faculty.length > 0;
+      let studentsValid = window.previewData.students && window.previewData.students.length > 0;
+      
+      // Also check external script's previewData if available
+      if (typeof previewData !== 'undefined') {
+        coursesValid = coursesValid || (previewData.courses && previewData.courses.length > 0);
+        facultyValid = facultyValid || (previewData.faculty && previewData.faculty.length > 0);
+        studentsValid = studentsValid || (previewData.students && previewData.students.length > 0);
       }
       
-      // Call original function
-      if (window.originalSubmitAll) {
-        window.originalSubmitAll();
+      if (!coursesValid) {
+        validationErrors.push('Courses file');
       }
-    };
-  });
+      if (!facultyValid) {
+        validationErrors.push('Faculty preferences file');
+      }
+      if (!studentsValid) {
+        validationErrors.push('Student courses file');
+      }
+
+      if (validationErrors.length > 0) {
+        alert(`Please preview the following files first: ${validationErrors.join(", ")}`);
+        return;
+      }
+
+      // Use the same loading approach as the test function
+      if (inlineLoadingManager) {
+        // Check if overlay is empty and force create content if needed
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay && overlay.childElementCount === 0) {
+          if (typeof inlineLoadingManager.forceCreateContent === 'function') {
+            inlineLoadingManager.forceCreateContent();
+          } else {
+            const htmlContent = `
+              <div class="loading-container">
+                <div class="loading-spinner">
+                  <div class="custom-spinner"></div>
+                </div>
+                <div class="loading-content">
+                  <h5 id="loading-title">Processing...</h5>
+                  <p id="loading-message">Please wait while we process your request.</p>
+                  <small id="loading-time">Elapsed: 0s</small>
+                </div>
+              </div>
+            `;
+            overlay.innerHTML = htmlContent;
+          }
+        }
+        
+        // Small delay to ensure content is rendered before showing
+        setTimeout(() => {
+          inlineLoadingManager.showTimetableGeneration();
+        }, 50);
+      } else if (window.loadingManager) {
+        // Check if overlay is empty and force create content if needed
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay && overlay.childElementCount === 0) {
+          if (typeof window.loadingManager.forceCreateContent === 'function') {
+            window.loadingManager.forceCreateContent();
+          }
+        }
+        
+        // Small delay to ensure content is rendered before showing
+        setTimeout(() => {
+          window.loadingManager.showTimetableGeneration();
+        }, 50);
+      } else {
+        showInlineLoadingFallback();
+      }
+
+      // Use external script's columnMappings if available, otherwise use window.columnMappings
+      let mappingsToUse = window.columnMappings;
+      if (typeof columnMappings !== 'undefined') {
+        mappingsToUse = columnMappings;
+      }
+
+      const formData = new FormData();
+      formData.append('courses_file', coursesFile);
+      formData.append('faculty_preferences_file', facultyFile);
+      formData.append('student_courses_file', studentsFile);
+      formData.append('column_mappings', JSON.stringify(mappingsToUse));
+      formData.append('toggle_prof', document.getElementById('toggle_prof').checked);
+      formData.append('toggle_capacity', document.getElementById('toggle_capacity').checked);
+      formData.append('toggle_student', document.getElementById('toggle_student').checked);
+      formData.append('toggle_same_day', document.getElementById('toggle_same_day').checked);
+      formData.append('toggle_consec_days', document.getElementById('toggle_consec_days').checked);
+
+      fetch('/send_admin_data', {
+        method: 'POST',
+        body: formData,
+        redirect: 'follow'
+      })
+      .then(response => {
+        // Hide loading screen using the same manager that showed it
+        if (inlineLoadingManager) {
+          inlineLoadingManager.hide();
+        } else if (window.loadingManager) {
+          window.loadingManager.hide();
+        } else {
+          hideInlineLoadingFallback();
+        }
+        
+        if (response.ok) {
+          window.location.href = '/timetable';
+        } else {
+          return response.json().then(data => {
+            alert('Error: ' + (data.detail || 'Unknown error'));
+          });
+        }
+      })
+      .catch(error => {
+        // Hide loading screen using the same manager that showed it
+        if (inlineLoadingManager) {
+          inlineLoadingManager.hide();
+        } else if (window.loadingManager) {
+          window.loadingManager.hide();
+        } else {
+          hideInlineLoadingFallback();
+        }
+        
+        alert('Submission failed: ' + error.message);
+        console.error('Submission error:', error);
+      });
+    }
+
+    // Fallback loading functions for when LoadingManager is not available
+    function showInlineLoadingFallback() {
+      const existingOverlay = document.getElementById('fallback-loading-overlay');
+      if (existingOverlay) existingOverlay.remove();
+
+      const overlay = document.createElement('div');
+      overlay.id = 'fallback-loading-overlay';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-family: Arial, sans-serif;
+      `;
+      overlay.innerHTML = `
+        <div style="text-align: center; background: white; color: black; padding: 40px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+          <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+          <h3 style="margin-bottom: 10px;">Generating Timetable</h3>
+          <p style="margin: 0;">Please wait while we process your files...</p>
+        </div>
+        <style>
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        </style>
+      `;
+      document.body.appendChild(overlay);
+    }
+
+    function hideInlineLoadingFallback() {
+      const overlay = document.getElementById('fallback-loading-overlay');
+      if (overlay) overlay.remove();
+    }
+
+
+
+    // Make functions globally available
+    window.submitAll = submitAllFiles;
   </script>
 </body>
 </html>
