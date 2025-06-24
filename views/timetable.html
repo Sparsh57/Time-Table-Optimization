@@ -174,8 +174,8 @@
                     <i class="material-icons right">post_add</i>
                 </button>
             </div>
-            
-            {% if schedule_data %}
+
+            {% if grouped_schedule %}
             <table class="highlight responsive-table">
                 <thead>
                     <tr>
@@ -186,21 +186,17 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for row in schedule_data %}
-                    {% if loop.index0 % 6 == 0 %}
-                    <tr>
-                        <td rowspan="6">{{ row[0] }}</td>
-                        <td>{{ row[1] }}</td>
-                        <td>{{ row[2] }}</td>
-                        <td>{{ row[3] }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td>{{ row[1] }}</td>
-                        <td>{{ row[2] }}</td>
-                        <td>{{ row[3] }}</td>
-                    </tr>
-                    {% endif %}
+                    {% for day, slots in grouped_schedule.items() %}
+                        {% for slot in slots %}
+                            <tr>
+                                {% if loop.first %}
+                                    <td rowspan="{{ slots|length }}">{{ day }}</td>
+                                {% endif %}
+                                <td>{{ slot.start }}</td>
+                                <td>{{ slot.end }}</td>
+                                <td>{{ slot.courses }}</td>
+                            </tr>
+                        {% endfor %}
                     {% endfor %}
                 </tbody>
             </table>

@@ -759,7 +759,13 @@ async def show_timetable(request: Request):
     if schedule_data:
         section_mapping_df = get_section_mapping_dataframe(db_path)
         section_summary = get_section_allocation_summary(db_path)
-        
+        grouped_schedule = defaultdict(list)
+        for day, start, end, courses in schedule_data:
+            grouped_schedule[day].append({
+                "start": start,
+                "end": end,
+                "courses": courses
+            })
         # Process section mapping for template
         if not section_mapping_df.empty:
             # Group by course and section
@@ -785,7 +791,7 @@ async def show_timetable(request: Request):
         {
             "request": request,
             "user": user_info,
-            "schedule_data": schedule_data,
+            "grouped_schedule": dict(grouped_schedule),
             "section_mapping_data": section_mapping_data,
             "section_summary": section_summary,
             "infeasibility_reason": infeasibility_reason
