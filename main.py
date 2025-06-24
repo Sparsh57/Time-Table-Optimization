@@ -755,11 +755,11 @@ async def show_timetable(request: Request):
     # Get section mapping data (only if timetable was successful)
     section_mapping_data = {}
     section_summary = None
-    
+    grouped_schedule = defaultdict(list)
     if schedule_data:
         section_mapping_df = get_section_mapping_dataframe(db_path)
         section_summary = get_section_allocation_summary(db_path)
-        grouped_schedule = defaultdict(list)
+        
         for day, start, end, courses in schedule_data:
             grouped_schedule[day].append({
                 "start": start,
