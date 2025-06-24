@@ -16,7 +16,7 @@ const selectedFiles = {
     faculty_preferences_file: {},
     student_courses_file: {}
   };
-
+  
   // Make variables globally accessible
   window.selectedFiles = selectedFiles;
   window.previewData = window.previewData || previewData;
@@ -89,7 +89,7 @@ const selectedFiles = {
 
       // Save raw preview data for this file type (UPDATE BOTH LOCAL AND GLOBAL)
       previewData[fileType] = data.preview || [];
-      window.previewData[fileType] = data.preview || [];
+        window.previewData[fileType] = data.preview || [];
 
       // Sync to global objects
       syncToGlobal();
@@ -122,7 +122,7 @@ const selectedFiles = {
     if (rows.length === 0) {
       return;
     }
-
+  
     const columns = Object.keys(rows[0]);
     columns.forEach(col => {
       const th = document.createElement("th");
@@ -248,7 +248,7 @@ const selectedFiles = {
         student_courses_file: {}
       };
     }
-    window.columnMappings[fileKey] = mapping;
+      window.columnMappings[fileKey] = mapping;
 
     // Rename keys in local previewData and update table for visual feedback.
     let newPreview = previewData[fileType].map(row => {
@@ -273,7 +273,7 @@ const selectedFiles = {
         students: []
       };
     }
-    window.previewData[fileType] = newPreview;
+      window.previewData[fileType] = newPreview;
 
     // Sync to global objects
     syncToGlobal();
@@ -300,7 +300,7 @@ const selectedFiles = {
       
       validationDiv.innerText = `Missing: ${missingFiles.join(", ")}. Please preview all files first.`;
       alert("Please preview all three files before submitting.");
-      return;
+        return;
     }
 
     // Validate preview data exists and has content
@@ -371,36 +371,66 @@ const selectedFiles = {
       const response = await fetch("/send_admin_data", {
         method: "POST",
         body: formData,
-        redirect: 'follow'  // Allow fetch to follow redirects
+        redirect: 'manual'  // Don't follow redirects automatically
       });
       
-      if (response.ok) {
-        // Hide loading and redirect
-        if (loadingManager) {
-          loadingManager.hide();
-        } else {
-          hideSimpleLoading();
-        }
-        window.location.href = '/timetable';
-      } else {
-        // Handle error responses
-        if (loadingManager) {
-          loadingManager.hide();
-        } else {
-          hideSimpleLoading();
-        }
-        const errorData = await response.json();
-        const errorMessage = errorData.detail || "Unknown error occurred";
-        validationDiv.innerText = errorMessage;
-        alert("Error: " + errorMessage);
-      }
-    } catch (err) {
-      console.error("Submission error:", err);
+      // Hide loading screen first
       if (loadingManager) {
         loadingManager.hide();
       } else {
         hideSimpleLoading();
       }
+      
+      // Handle redirects (success case)
+      if (response.status === 303 || response.status === 302) {
+        // Server wants to redirect to timetable page - this is success
+        window.location.href = '/timetable';
+        return;
+      }
+      
+      if (response.ok) {
+        // Direct success response
+        window.location.href = '/timetable';
+        return;
+      }
+      
+      // Handle error responses
+      let errorMessage = "Unknown error occurred";
+      
+      try {
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorMessage;
+        } else {
+          // Response is HTML or other format
+          const errorText = await response.text();
+          // Extract error message from HTML if possible
+          if (errorText.includes('detail')) {
+            errorMessage = `Server error (${response.status}): Please check your data and try again.`;
+          } else {
+            errorMessage = `Server error (${response.status}): ${response.statusText}`;
+          }
+        }
+      } catch (parseError) {
+        console.error("Error parsing response:", parseError);
+        errorMessage = `Server error (${response.status}): ${response.statusText}`;
+      }
+      
+      validationDiv.innerText = errorMessage;
+      alert("Error: " + errorMessage);
+      
+    } catch (err) {
+      console.error("Submission error:", err);
+      
+      // Hide loading screen
+      if (loadingManager) {
+        loadingManager.hide();
+      } else {
+        hideSimpleLoading();
+      }
+      
       const errorMessage = "Submission failed: " + err.message;
       validationDiv.innerText = errorMessage;
       alert(errorMessage);
