@@ -1,193 +1,206 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register Organization</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Register Organization – Timetable System</title>
 
-    <!-- Materialize CSS and Google Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap"
+    rel="stylesheet"
+  />
+  <!-- Material Icons -->
+  <link
+    href="https://fonts.googleapis.com/icon?family=Material+Icons"
+    rel="stylesheet"
+  />
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- AOS CSS -->
+  <link
+    href="https://unpkg.com/aos@2.3.4/dist/aos.css"
+    rel="stylesheet"
+  />
 
-    <style>
-        /* General styling */
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: #f5f5f5;
-            margin: 0;
-        }
-
-        /* Header Styling */
-        nav {
-            background-color: #1a237e;
-        }
-
-        nav a.brand-logo {
-            font-size: 1.5rem;
-            margin-left: 10px;
-        }
-
-        /* Container Styling */
-        .container {
-            margin-top: 50px;
-            max-width: 600px;
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-        }
-
-        h3 {
-            text-align: center;
-            color: #1a237e;
-        }
-
-        .input-field label {
-            color: #1a237e;
-        }
-
-        .btn-submit {
-            background-color: #1a237e;
-            color: white;
-            width: 100%;
-            padding: 10px;
-            border-radius: 5px;
-            transition: box-shadow 0.3s ease;
-        }
-
-        .btn-submit:hover {
-            box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .note {
-            text-align: center;
-            font-size: 0.9rem;
-            color: #777;
-            margin-top: 10px;
-        }
-
-        /* Footer Styling */
-        footer {
-            background-color: #1a237e;
-            color: white;
-            padding: 15px;
-            text-align: center;
-            margin-top: 30px;
-        }
-    </style>
+  <style>
+    body { font-family: 'Poppins', sans-serif; }
+  </style>
 </head>
 
-<body>
+<body class="min-h-screen bg-gray-50 text-gray-800 flex flex-col">
+  {% include 'navigation.html' %}
 
-    <!-- Navigation -->
-    <nav>
-        <div class="nav-wrapper">
-            <a href="/" class="brand-logo left">Timetable</a>
+  <main class="flex-1 container mx-auto px-4 py-8 max-w-xl">
+    <h1 class="text-2xl font-semibold mb-6" data-aos="fade-up">
+      Register Your Organization
+    </h1>
+
+    <!-- Error Message -->
+    {% if error %}
+    <div
+      class="flex items-center bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6"
+      data-aos="fade-up" data-aos-delay="50"
+    >
+      <span class="material-icons mr-2">error</span>
+      <div>
+        <strong>Registration Error:</strong> {{ error }}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Success Message -->
+    {% if success %}
+    <div
+      class="flex items-center bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6"
+      data-aos="fade-up" data-aos-delay="50"
+    >
+      <span class="material-icons mr-2">check_circle</span>
+      <div>{{ success }}</div>
+    </div>
+    {% endif %}
+
+    <!-- Form Card -->
+    <div
+      class="bg-white shadow rounded-lg p-6 mb-8"
+      data-aos="fade-up" data-aos-delay="100"
+    >
+      <form action="/register-organization" method="POST" class="space-y-6">
+        <!-- Your Email -->
+        <div>
+          <label for="email" class="block text-gray-700 mb-1">Your Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            value="{{ user.email }}"
+            readonly
+            class="w-full border-gray-300 rounded px-3 py-2 bg-gray-100 cursor-not-allowed"
+          />
         </div>
-    </nav>
 
-    <!-- Register Organization Form -->
-    <div class="container">
-        <h3>Register Your Organization</h3>
-
-        <!-- Error Message Display -->
-        {% if error %}
-        <div class="card-panel red lighten-4 red-text text-darken-2">
-            <i class="material-icons left">error</i>
-            <strong>Registration Error:</strong> {{ error }}
+        <!-- Detected Domain -->
+        <div>
+          <label for="domain" class="block text-gray-700 mb-1">Detected Domain</label>
+          <input
+            type="text"
+            id="domain"
+            name="domain"
+            value="{{ user.email.split('@')[-1] }}"
+            readonly
+            class="w-full border-gray-300 rounded px-3 py-2 bg-gray-100 cursor-not-allowed"
+          />
         </div>
-        {% endif %}
 
-        <!-- Success Message Display -->
-        {% if success %}
-        <div class="card-panel green lighten-4 green-text text-darken-2">
-            <i class="material-icons left">check_circle</i>
-            {{ success }}
+        <!-- Organization Name -->
+        <div>
+          <label for="org_name" class="block text-gray-700 mb-1">Organization Name</label>
+          <input
+            type="text"
+            id="org_name"
+            name="org_name"
+            value="{{ org_name or '' }}"
+            required
+            class="w-full border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+          <p class="text-gray-500 text-sm mt-1">
+            Choose a unique name for your organization
+          </p>
         </div>
-        {% endif %}
 
-        <form action="/register-organization" method="POST">
-
-            <!-- User Email (Auto-filled, Read-only) -->
-            <div class="input-field">
-                <input type="email" id="email" name="email" value="{{ user.email }}" readonly>
-                <label for="email" class="active">Your Email</label>
-            </div>
-
-            <!-- Extracted Domain (Auto-filled, Read-only) -->
-            <div class="input-field">
-                <input type="text" id="domain" name="domain" value="{{ user.email.split('@')[-1] }}" readonly>
-                <label for="domain" class="active">Detected Domain</label>
-            </div>
-
-            <!-- Organization Name -->
-            <div class="input-field">
-                <input type="text" id="org_name" name="org_name" value="{{ org_name or '' }}" required>
-                <label for="org_name" {% if org_name %}class="active"{% endif %}>Organization Name</label>
-                <span class="helper-text" data-error="Organization name is required" data-success="">
-                    Choose a unique name for your organization
-                </span>
-            </div>
-
-            <!-- Allowed Email Extensions -->
-            <div class="input-field">
-                <input type="text" id="allowed_domains" name="allowed_domains" 
-                       value="{{ allowed_domains or user.email.split('@')[-1] }}" required>
-                <label for="allowed_domains" class="active">Allowed Email Domains (comma-separated)</label>
-                <span class="helper-text" data-error="At least one domain is required" data-success="">
-                    Example: university.edu, college.edu (your domain must be included)
-                </span>
-            </div>
-
-            <!-- User Name -->
-            <div class="input-field">
-                <input type="text" id="user_name" name="user_name" value="{{ user_name or user.name or '' }}" required>
-                <label for="user_name" {% if user_name or user.name %}class="active"{% endif %}>Your Name</label>
-                <span class="helper-text" data-error="Your name is required" data-success="">
-                    This will be your display name as an administrator
-                </span>
-            </div>
-
-            <!-- Max Classes Per Slot Setting -->
-            <div class="input-field">
-                <input type="number" id="max_classes_per_slot" name="max_classes_per_slot" 
-                       value="{{ max_classes_per_slot or 24 }}" min="1" max="100" required>
-                <label for="max_classes_per_slot" class="active">Max Classes Per Time Slot</label>
-                <span class="helper-text" data-error="Please enter a valid number" data-success="">
-                    Maximum number of classes that can be scheduled in a single time slot (recommended: 20-30)
-                </span>
-            </div>
-
-            <!-- Submit Button -->
-            <button type="submit" class="btn-submit waves-effect waves-light">
-                <i class="material-icons left">business</i>
-                Register Organization
-            </button>
-        </form>
-
-        <div class="card-panel blue lighten-5 blue-text text-darken-2" style="margin-top: 20px;">
-            <h6><i class="material-icons left">info</i>Important Notes:</h6>
-            <ul>
-                <li>Once registered, you will be set as the admin of this organization</li>
-                <li>Organization names must be unique across the system</li>
-                <li>Email domains cannot be shared between organizations</li>
-                <li>Your email domain must be included in the allowed domains list</li>
-                <li>Other users with matching email domains will automatically join your organization</li>
-            </ul>
+        <!-- Allowed Email Domains -->
+        <div>
+          <label for="allowed_domains" class="block text-gray-700 mb-1">
+            Allowed Email Domains (comma-separated)
+          </label>
+          <input
+            type="text"
+            id="allowed_domains"
+            name="allowed_domains"
+            value="{{ allowed_domains or user.email.split('@')[-1] }}"
+            required
+            class="w-full border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+          <p class="text-gray-500 text-sm mt-1">
+            Example: university.edu, college.edu (include your domain)
+          </p>
         </div>
+
+        <!-- Your Name -->
+        <div>
+          <label for="user_name" class="block text-gray-700 mb-1">Your Name</label>
+          <input
+            type="text"
+            id="user_name"
+            name="user_name"
+            value="{{ user_name or user.name or '' }}"
+            required
+            class="w-full border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+          <p class="text-gray-500 text-sm mt-1">
+            This will be your display name as administrator
+          </p>
+        </div>
+
+        <!-- Max Classes Per Slot -->
+        <div>
+          <label for="max_classes_per_slot" class="block text-gray-700 mb-1">
+            Max Classes Per Time Slot
+          </label>
+          <input
+            type="number"
+            id="max_classes_per_slot"
+            name="max_classes_per_slot"
+            value="{{ max_classes_per_slot or 24 }}"
+            min="1" max="100"
+            required
+            class="w-full border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+          <p class="text-gray-500 text-sm mt-1">
+            Max number of classes in one time slot (recommended: 20–30)
+          </p>
+        </div>
+
+        <!-- Submit -->
+        <button
+          type="submit"
+          class="w-full inline-flex justify-center items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+        >
+          <span class="material-icons">business</span>
+          Register Organization
+        </button>
+      </form>
     </div>
 
+    <!-- Important Notes -->
+    <div
+      class="bg-blue-50 border-l-4 border-blue-400 text-blue-700 p-4 rounded-lg"
+      data-aos="fade-up" data-aos-delay="150"
+    >
+      <h2 class="font-semibold mb-2">
+        <span class="material-icons align-text-bottom">info</span>
+        Important Notes
+      </h2>
+      <ul class="list-disc list-inside space-y-1 text-gray-700">
+        <li>Once registered, you become the organization admin.</li>
+        <li>Organization names must be unique.</li>
+        <li>Email domains cannot be shared between organizations.</li>
+        <li>Your domain must appear in allowed domains list.</li>
+        <li>Other users with matching domains auto-join your org.</li>
+      </ul>
+    </div>
+  </main>
+
     <!-- Footer -->
-    <footer>
-        © 2024 Timetable System. All rights reserved.
-    </footer>
+    {% include 'footer.html' %}
 
-    <!-- Materialize JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-
+  <!-- AOS JS -->
+  <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      AOS.init({ duration: 600, easing: 'ease-out', once: true });
+    });
+  </script>
 </body>
 </html>

@@ -1,48 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <title>Access Denied</title>
-    <style>
-        body {
-            display: flex;
-            min-height: 100vh;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background-color: #f4f4f4;
-        }
-        .content {
-            text-align: center;
-            padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-            background: white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #d32f2f;
-        }
-        p {
-            color: #666;
-        }
-        .home-button {
-            background-color: #5c6bc0;
-            color: white;
-        }
-    </style>
-</head>
-<body>
-    <div class="content">
-        <h1><i class="material-icons large">error_outline</i></h1>
-        <h1>Access Denied</h1>
-        <p>You are not authorized to access this application. Please contact the administrator if you think this is a mistake.</p>
-        <a href="/" class="btn home-button">Return Home</a>
-    </div>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Access Denied – Timetable System</title>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <!-- Google Fonts -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap"
+    rel="stylesheet"
+  />
+  <!-- Material Icons -->
+  <link
+    href="https://fonts.googleapis.com/icon?family=Material+Icons"
+    rel="stylesheet"
+  />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- AOS CSS -->
+  <link
+    href="https://unpkg.com/aos@2.3.4/dist/aos.css"
+    rel="stylesheet"
+  />
+  <!-- Your overrides -->
+  <link href="/static/unified.css" rel="stylesheet"/>
+
+  <style>
+    body { font-family: 'Poppins', sans-serif; }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center bg-gray-50 text-gray-800">
+  <div class="text-center p-6 bg-white rounded-lg shadow-lg max-w-sm" data-aos="fade-down">
+    <span class="material-icons text-red-600 text-6xl">error_outline</span>
+    <h1 class="mt-4 text-3xl font-semibold">Access Denied</h1>
+    <p class="mt-2 text-gray-700">
+      You are not authorized to access this application.<br/>
+      Please contact your administrator if you think this is a mistake.
+    </p>
+    <a
+      href="/"
+      class="mt-6 inline-block px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+    >
+      Return Home
+    </a>
+  </div>
+  <!-- Footer -->
+  {% include 'footer.html' %}
+
+  <!-- AOS JS -->
+  <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      AOS.init({ duration: 600, easing: 'ease-out', once: true });
+    });
+  </script>
 </body>
 </html>

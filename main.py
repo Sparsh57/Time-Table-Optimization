@@ -988,18 +988,20 @@ async def clear_schedule(request: Request):
             session_context = get_db_session(get_organization_database_url(), org_name)
         else:
             session_context = get_db_session(db_path)
-        
-        with session_context as session:
-            # Clear all scheduled courses
-            deleted_count = session.query(Schedule).delete()
-            session.commit()
+        #deleting everything for now
+        truncate_detail(db_path)
+        #with session_context as session:
+        #    # Clear all scheduled courses
+        #    deleted_count = session.query(Schedule).delete()
+        #    session.commit()
             
-        logger.info(f"Cleared {deleted_count} scheduled courses")
+        #logger.info(f"Cleared {deleted_count} scheduled courses")
+        logger.info(f"Cleared all tables in the database")
         
         # Also clear any stored infeasibility reason
         request.session.pop("infeasibility_reason", None)
         
-        return JSONResponse(status_code=200, content={"message": f"Cleared {deleted_count} scheduled courses. You can now update time slots."})
+        return JSONResponse(status_code=200, content={"message": f"Cleared all tables in the database. You can now update time slots."})
         
     except Exception as e:
         logger.error(f"Error clearing schedule: {e}")

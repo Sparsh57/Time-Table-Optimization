@@ -1,120 +1,231 @@
-<!-- Navigation Bar Template --> 
-<nav class="indigo darken-4">
-  <div class="nav-wrapper">
-    <!-- Logo -->
-    <a href="/" class="brand-logo left">
-      <i class="material-icons left">schedule</i>
-      OurClock
-    </a>
-    <a href="#" data-target="nav-mobile" class="sidenav-trigger">
-      <i class="material-icons">menu</i>
-    </a>
+<body class="min-h-screen flex flex-col bg-gray-50 text-gray-800">
+  <!-- NAVBAR -->
+  <nav class="bg-indigo-900 text-white fixed w-full z-50 shadow">
+    <div class="max-w-6xl mx-auto px-4 flex items-center justify-between h-16">
+      <!-- Logo -->
+      <a href="/" class="flex items-center text-lg font-semibold">
+        <i class="material-icons align-middle mr-1">schedule</i>
+        <span>OurClock</span>
+      </a>
+      <!-- Mobile toggle -->
+      <button id="nav-toggle" class="md:hidden focus:outline-none">
+        <i class="material-icons">menu</i>
+      </button>
+      <!-- Desktop links -->
+      <ul id="nav-menu" class="hidden md:flex items-center space-x-4">
+        <li><a href="/home" class="flex items-center hover:text-gray-300">
+          <i class="material-icons mr-1">home</i>Home
+        </a></li>
 
-    <!-- Desktop Navigation -->
-    <ul class="right hide-on-med-and-down">
-      <li><a href="/home"><i class="material-icons left">home</i>Home</a></li>
+        {% if user and user.role == 'Admin' %}
+        <li class="relative">
+          <button id="admin-dropdown-btn"
+                  class="flex items-center hover:text-gray-300 focus:outline-none">
+            <i class="material-icons mr-1">admin_panel_settings</i>Admin Options
+            <i class="material-icons ml-1">arrow_drop_down</i>
+          </button>
+          <ul id="admin-dropdown"
+              class="hidden absolute right-0 mt-2 w-48 bg-white text-indigo-900 rounded shadow">
+            <li>
+              <a href="/get_admin_data"
+                 class="block px-4 py-2 hover:bg-gray-100">
+                <i class="material-icons align-text-bottom mr-1">cloud_upload</i>
+                Data Entry
+              </a>
+            </li>
+            <li>
+              <a href="/select_timeslot"
+                 class="block px-4 py-2 hover:bg-gray-100">
+                <i class="material-icons align-text-bottom mr-1">access_time</i>
+                Time Slots
+              </a>
+            </li>
+            <li>
+              <a href="/admin_management"
+                 class="block px-4 py-2 hover:bg-gray-100">
+                <i class="material-icons align-text-bottom mr-1">admin_panel_settings</i>
+                Manage Admins
+              </a>
+            </li>
+            <li>
+              <a href="/timetable"
+                 class="block px-4 py-2 hover:bg-gray-100">
+                <i class="material-icons align-text-bottom mr-1">view_module</i>
+                View Timetable
+              </a>
+            </li>
+            <li>
+              <a href="/chat-assistant"
+                 class="block px-4 py-2 hover:bg-gray-100">
+                <i class="material-icons align-text-bottom mr-1">chat</i>
+                AI Chat
+              </a>
+            </li>
+          </ul>
+        </li>
 
-      {% if user and user.role == 'Admin' %}
-      <li><a href="/get_admin_data"><i class="material-icons left">cloud_upload</i>Data Entry</a></li>
-      <li><a href="/select_timeslot"><i class="material-icons left">access_time</i>Time Slots</a></li>
-      <li><a href="/admin_management"><i class="material-icons left">admin_panel_settings</i>Admin Management</a></li>
-      <li><a href="/timetable"><i class="material-icons left">view_module</i>View Timetable</a></li>
-       <li><a href="/chat-assistant"><i class="material-icons left">chat</i>AI Chat</a></li>
-      {% elif user and user.role == 'Professor' %}
-      <li><a href="/professor_slots"><i class="material-icons left">event_busy</i>Busy Slots</a></li>
-      {% elif user and user.role == 'Student' %}
-      <li><a href="/timetable/{{ user.roll_number }}"><i class="material-icons left">view_module</i>My Timetable</a></li>
-      <li><a href="/chat-assistant"><i class="material-icons left">chat</i>AI Chat</a></li>
-      {% endif %}
+        {% elif user and user.role == 'Professor' %}
+        <li>
+          <a href="/professor_slots" class="flex items-center hover:text-gray-300">
+            <i class="material-icons mr-1">event_busy</i>Busy Slots
+          </a>
+        </li>
 
-      {% if user %}
-        <li><a href="/profile"><i class="material-icons left">person</i>Account</a></li>
-        <li><a href="/logout"><i class="material-icons left">exit_to_app</i>Logout</a></li>
-      {% else %}
-        <li><a href="/auth/google"><i class="material-icons left">login</i>Login</a></li>
-      {% endif %}
-    </ul>
+        {% elif user and user.role == 'Student' %}
+        <li>
+          <a href="/timetable/{{ user.roll_number }}"
+             class="flex items-center hover:text-gray-300">
+            <i class="material-icons mr-1">view_module</i>My Timetable
+          </a>
+        </li>
+        <li>
+          <a href="/chat-assistant" class="flex items-center hover:text-gray-300">
+            <i class="material-icons mr-1">chat</i>AI Chat
+          </a>
+        </li>
+        {% endif %}
 
-    <!-- Mobile Navigation -->
-    <ul id="nav-mobile" class="sidenav">
-      <li>
-        <div class="user-view">
-          {% if user %}
-            <div class="background blue darken-2"></div>
-            {% if user.picture %}
-              <a href="#user"><img class="circle" src="{{ user.picture }}"></a>
-            {% endif %}
-            <a href="#name"><span class="white-text name">{{ user.name or user.email }}</span></a>
-            <a href="#email"><span class="white-text email">{{ user.email }}</span></a>
-            {% if user.role %}
-              <a href="#role"><span class="white-text role">{{ user.role }}</span></a>
-            {% endif %}
-          {% endif %}
-        </div>
-      </li>
-      <li><a href="/home"><i class="material-icons">home</i>Home</a></li>
+        {% if user %}
+        <li>
+          <a href="/profile" class="flex items-center hover:text-gray-300">
+            <i class="material-icons mr-1">person</i>Account
+          </a>
+        </li>
+        <li>
+          <a href="/logout" class="flex items-center hover:text-gray-300">
+            <i class="material-icons mr-1">exit_to_app</i>Logout
+          </a>
+        </li>
+        {% else %}
+        <li>
+          <a href="/auth/google" class="flex items-center hover:text-gray-300">
+            <i class="material-icons mr-1">login</i>Login
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </div>
 
-      {% if user and user.role == 'Admin' %}
-      <li><div class="divider"></div></li>
-      <li><a class="subheader">Admin Tools</a></li>
-      <li><a href="/get_admin_data"><i class="material-icons">cloud_upload</i>Data Entry</a></li>
-      <li><a href="/select_timeslot"><i class="material-icons">access_time</i>Time Slots</a></li>
-      <li><a href="/admin_management"><i class="material-icons">admin_panel_settings</i>Admin Management</a></li>
-      <li><a href="/timetable"><i class="material-icons">view_module</i>View Timetable</a></li>
-      <li><a href="/chat-assistant"><i class="material-icons left">chat</i>AI Chat</a></li>
-      {% elif user and user.role == 'Professor' %}
-      <li><div class="divider"></div></li>
-      <li><a class="subheader">Professor Tools</a></li>
-      <li><a href="/professor_slots"><i class="material-icons">event_busy</i>Busy Slots</a></li>
-      {% elif user and user.role == 'Student' %}
-      <li><div class="divider"></div></li>
-      <li><a class="subheader">Student Tools</a></li>
-      <li><a href="/timetable/{{ user.roll_number }}"><i class="material-icons">view_module</i>My Timetable</a></li>
-      <li><a href="/chat-assistant"><i class="material-icons left">chat</i>AI Chat</a></li>
-      {% endif %}
+    <!-- Mobile menu -->
+    <div id="mobile-menu" class="md:hidden hidden bg-indigo-900">
+      <ul class="flex flex-col py-2">
+        <li>
+          <a href="/home"
+             class="block px-4 py-2 hover:bg-indigo-800">Home</a>
+        </li>
 
-      {% if user %}
-        <li><div class="divider"></div></li>
-        <li><a href="/dashboard"><i class="material-icons">dashboard</i>Dashboard</a></li>
-        <li><a href="/profile"><i class="material-icons">person</i>Account</a></li>
-        <li><a href="/logout"><i class="material-icons">exit_to_app</i>Logout</a></li>
-      {% else %}
-        <li><a href="/auth/google"><i class="material-icons">login</i>Login</a></li>
-      {% endif %}
-    </ul>
+        {% if user and user.role == 'Admin' %}
+        <li><hr class="border-indigo-800"></li>
+        <li class="px-4 py-1 text-indigo-300 uppercase text-xs">Admin Tools</li>
+        <li><a href="/get_admin_data" class="block px-4 py-2 hover:bg-indigo-800">
+          Data Entry
+        </a></li>
+        <li><a href="/select_timeslot" class="block px-4 py-2 hover:bg-indigo-800">
+          Time Slots
+        </a></li>
+        <li><a href="/admin_management" class="block px-4 py-2 hover:bg-indigo-800">
+          Manage Admins
+        </a></li>
+        <li><a href="/timetable" class="block px-4 py-2 hover:bg-indigo-800">
+          View Timetable
+        </a></li>
+        <li><a href="/chat-assistant" class="block px-4 py-2 hover:bg-indigo-800">
+          AI Chat
+        </a></li>
+
+        {% elif user and user.role == 'Professor' %}
+        <li><hr class="border-indigo-800"></li>
+        <li class="px-4 py-1 text-indigo-300 uppercase text-xs">Professor Tools</li>
+        <li><a href="/professor_slots" class="block px-4 py-2 hover:bg-indigo-800">
+          Busy Slots
+        </a></li>
+
+        {% elif user and user.role == 'Student' %}
+        <li><hr class="border-indigo-800"></li>
+        <li class="px-4 py-1 text-indigo-300 uppercase text-xs">Student Tools</li>
+        <li><a href="/timetable/{{ user.roll_number }}" class="block px-4 py-2 hover:bg-indigo-800">
+          My Timetable
+        </a></li>
+        <li><a href="/chat-assistant" class="block px-4 py-2 hover:bg-indigo-800">
+          AI Chat
+        </a></li>
+        {% endif %}
+
+        {% if user %}
+        <li><hr class="border-indigo-800"></li>
+        <li><a href="/dashboard" class="block px-4 py-2 hover:bg-indigo-800">
+          Dashboard
+        </a></li>
+        <li><a href="/profile" class="block px-4 py-2 hover:bg-indigo-800">
+          Account
+        </a></li>
+        <li><a href="/logout" class="block px-4 py-2 hover:bg-indigo-800">
+          Logout
+        </a></li>
+        {% else %}
+        <li>
+          <a href="/auth/google" class="block px-4 py-2 hover:bg-indigo-800">
+            Login
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Org Info Bar -->
+  {% if user and user.org %}
+  <div class="mt-16 bg-blue-100 text-blue-800 text-sm py-1 px-4">
+    <i class="material-icons align-middle text-xs">business</i>
+    Organization: <strong>{{ user.org }}</strong>
+    {% if user.role %} | Role: <strong>{{ user.role }}</strong>{% endif %}
   </div>
-</nav>
-
-<!-- Organization Info Bar (for admins) -->
-{% if user and user.org %}
-<div class="blue lighten-4 blue-text text-darken-2" style="padding: 5px 20px; font-size: 14px;">
-  <i class="material-icons tiny">business</i>
-  Organization: <strong>{{ user.org }}</strong>
-  {% if user.role %}
-    | Role: <strong>{{ user.role }}</strong>
   {% endif %}
-</div>
-{% endif %}
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Initialize mobile sidenav
-  var elems = document.querySelectorAll('.sidenav');
-  M.Sidenav.init(elems);
+  <!-- Hero, Features, Footer etc. as before... -->
+  <!-- … (rest of your page) … -->
 
-  // Highlight active link
-  var path = window.location.pathname;
-  document.querySelectorAll('nav .nav-wrapper ul.right li a').forEach(function(a) {
-    if (a.getAttribute('href') === path) {
-      a.parentElement.classList.add('active');
-    }
-  });
+  <!-- AOS & navbar scripts -->
+  <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Preloader
+      const pre = document.getElementById('preloader');
+      setTimeout(()=> pre.style.opacity = '0', 800);
+      setTimeout(()=> pre.style.display = 'none', 1200);
 
-  // Toggle .scrolled on nav when the user scrolls
-  var nav = document.querySelector('nav');
-  window.addEventListener('scroll', function() {
-    if (window.scrollY > 20) nav.classList.add('scrolled');
-    else nav.classList.remove('scrolled');
-  });
-});
-</script>
+      // AOS
+      AOS.init({ duration:800, easing:'ease-out', once:true });
+
+      // Mobile menu toggle
+      const navToggle = document.getElementById('nav-toggle');
+      const mobileMenu = document.getElementById('mobile-menu');
+      navToggle.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+      });
+
+      // Admin dropdown toggle
+      const adminBtn = document.getElementById('admin-dropdown-btn');
+      const adminMenu = document.getElementById('admin-dropdown');
+      if (adminBtn) {
+        adminBtn.addEventListener('click', e => {
+          e.stopPropagation();
+          adminMenu.classList.toggle('hidden');
+        });
+        // click outside to close
+        document.addEventListener('click', () => {
+          adminMenu.classList.add('hidden');
+        });
+      }
+
+      // Back-to-top (if you use it)
+      const back = document.getElementById('backToTop');
+      if (back) {
+        window.addEventListener('scroll', () => {
+          back.classList.toggle('hidden', window.scrollY < 300);
+        });
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,361 +1,212 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Admin Dashboard - Data Entry</title>
+  <meta charset="UTF-8" />
+  <title>Admin Dashboard – Data Entry</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Google Fonts: Poppins -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap"
+    rel="stylesheet"
+  />
+
   <!-- Material Icons -->
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-  <!-- Materialize CSS -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-  <!-- Your custom styles -->
-  <link rel="stylesheet" href="/static/main.css">
+  <link
+    href="https://fonts.googleapis.com/icon?family=Material+Icons"
+    rel="stylesheet"
+  />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- AOS CSS -->
+  <link
+    href="https://unpkg.com/aos@2.3.4/dist/aos.css"
+    rel="stylesheet"
+  />
 
   <style>
-    /* Enforce Poppins everywhere */
-    body {
-      font-family: 'Poppins', sans-serif !important;
-    }
+    body { font-family: 'Poppins', sans-serif; }
   </style>
 </head>
-<body>
-  <header>
-    {% include 'navigation.html' %}
-  </header>
+<body class="min-h-screen flex flex-col bg-gray-50 text-gray-800">
 
-  <main class="container">
-    <h4>Upload, Preview &amp; Map Files</h4>
+  <!-- Navigation -->
+  {% include 'navigation.html' %}
 
-    <!-- Constraint Toggles -->
-    <div class="card-panel">
-      <h5>Scheduling Constraints</h5>
-      <p class="red-text text-darken-1"><em>*Uncheck to disable that constraint</em></p>
-      <div class="row">
-        <div class="col s6 m4">
-          <label>
-            <input type="checkbox" id="toggle_prof" name="toggle_prof" checked />
-            <span>Professor Conflict</span>
-          </label>
-        </div>
-        <div class="col s6 m4">
-          <label>
-            <input type="checkbox" id="toggle_capacity" name="toggle_capacity" checked />
-            <span>Max Slot Capacity</span>
-          </label>
-        </div>
-        <div class="col s6 m4">
-          <label>
-            <input type="checkbox" id="toggle_student" name="toggle_student" checked />
-            <span>Student Conflicts</span>
-          </label>
-        </div>
-        <div class="col s6 m4">
-          <label>
-            <input type="checkbox" id="toggle_same_day" name="toggle_same_day" checked />
-            <span>No Same-Day Sessions</span>
-          </label>
-        </div>
-        <div class="col s6 m4">
-          <label>
-            <input type="checkbox" id="toggle_consec_days" name="toggle_consec_days" checked />
-            <span>No Consecutive-Day Sessions</span>
-          </label>
-        </div>
+  <!-- Main Content -->
+  <main class="flex-1 container mx-auto px-4 py-8">
+    <h2
+      class="text-3xl font-semibold mb-6"
+      data-aos="fade-up"
+    >
+      Upload, Preview &amp; Map Files
+    </h2>
+
+    <!-- Scheduling Constraints -->
+    <section
+      class="bg-white shadow-lg rounded-lg p-6 mb-8"
+      data-aos="fade-up"
+    >
+      <h3 class="text-xl font-medium mb-2">Scheduling Constraints</h3>
+      <p class="text-red-600 italic mb-4">
+        *Uncheck to disable that constraint
+      </p>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" id="toggle_prof" checked />
+          <span>Professor Conflict</span>
+        </label>
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" id="toggle_capacity" checked />
+          <span>Max Slot Capacity</span>
+        </label>
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" id="toggle_student" checked />
+          <span>Student Conflicts</span>
+        </label>
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" id="toggle_same_day" checked />
+          <span>No Same-Day Sessions</span>
+        </label>
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" id="toggle_consec_days" checked />
+          <span>No Consecutive-Day Sessions</span>
+        </label>
       </div>
-    </div>
+    </section>
 
-    <!-- Courses Section -->
-    <div class="card-panel">
-      <h5>Courses File</h5>
-      <input type="file" id="coursesInput" accept=".csv,.xlsx">
-      <button class="btn blue" onclick="previewFile('courses')">Preview &amp; Map</button>
-      <div id="coursesError" class="red-text"></div>
-      <table class="striped">
-        <thead><tr id="coursesHeader"></tr></thead>
-        <tbody id="coursesBody"></tbody>
-      </table>
+    <!-- Courses Upload -->
+    <section
+      class="bg-white shadow-lg rounded-lg p-6 mb-8"
+      data-aos="fade-up" data-aos-delay="100"
+    >
+      <h3 class="text-xl font-medium mb-4">Courses File</h3>
+      <div class="flex flex-col md:flex-row md:items-center md:space-x-4 mb-4">
+        <input
+          type="file"
+          id="coursesInput"
+          accept=".csv,.xlsx"
+          class="border rounded p-2 flex-1 mb-3 md:mb-0"
+        />
+        <button
+          class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+          onclick="previewFile('courses')"
+        >
+          Preview &amp; Map
+        </button>
+      </div>
+      <p id="coursesError" class="text-red-600 mb-4"></p>
+      <div class="overflow-x-auto mb-4">
+        <table class="min-w-full bg-white table-auto border">
+          <thead class="bg-gray-100">
+            <tr id="coursesHeader"></tr>
+          </thead>
+          <tbody id="coursesBody"></tbody>
+        </table>
+      </div>
       <div id="coursesMapping"></div>
-    </div>
+    </section>
 
-    <!-- Faculty Section -->
-    <div class="card-panel">
-      <h5>Faculty Preferences File</h5>
-      <input type="file" id="facultyInput" accept=".csv,.xlsx">
-      <button class="btn blue" onclick="previewFile('faculty')">Preview &amp; Map</button>
-      <div id="facultyError" class="red-text"></div>
-      <table class="striped">
-        <thead><tr id="facultyHeader"></tr></thead>
-        <tbody id="facultyBody"></tbody>
-      </table>
-      <div id="facultyMapping"></div>
-    </div>
-
-    <!-- Students Section -->
-    <div class="card-panel">
-      <h5>Student Courses File</h5>
-      <input type="file" id="studentsInput" accept=".csv,.xlsx">
-      <button class="btn blue" onclick="previewFile('students')">Preview &amp; Map</button>
-      <div id="studentsError" class="red-text"></div>
-      <table class="striped">
-        <thead><tr id="studentsHeader"></tr></thead>
-        <tbody id="studentsBody"></tbody>
-      </table>
-      <div id="studentsMapping"></div>
-    </div>
-
-    <!-- Final Submit All -->
-    <div class="section center">
-      <div id="submitValidation" class="red-text" style="margin-bottom: 10px;"></div>
-      <button class="btn green" onclick="submitAll()">Submit All Files</button>
-      <div class="grey-text" style="margin-top: 10px;">
-        <small>⚠️ All three files must be previewed before submission</small>
+    <!-- Faculty Upload -->
+    <section
+      class="bg-white shadow-lg rounded-lg p-6 mb-8"
+      data-aos="fade-up" data-aos-delay="200"
+    >
+      <h3 class="text-xl font-medium mb-4">
+        Faculty Preferences File
+      </h3>
+      <div class="flex flex-col md:flex-row md:items-center md:space-x-4 mb-4">
+        <input
+          type="file"
+          id="facultyInput"
+          accept=".csv,.xlsx"
+          class="border rounded p-2 flex-1 mb-3 md:mb-0"
+        />
+        <button
+          class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+          onclick="previewFile('faculty')"
+        >
+          Preview &amp; Map
+        </button>
       </div>
+      <p id="facultyError" class="text-red-600 mb-4"></p>
+      <div class="overflow-x-auto mb-4">
+        <table class="min-w-full bg-white table-auto border">
+          <thead class="bg-gray-100">
+            <tr id="facultyHeader"></tr>
+          </thead>
+          <tbody id="facultyBody"></tbody>
+        </table>
+      </div>
+      <div id="facultyMapping"></div>
+    </section>
+
+    <!-- Students Upload -->
+    <section
+      class="bg-white shadow-lg rounded-lg p-6 mb-8"
+      data-aos="fade-up" data-aos-delay="300"
+    >
+      <h3 class="text-xl font-medium mb-4">
+        Student Courses File
+      </h3>
+      <div class="flex flex-col md:flex-row md:items-center md:space-x-4 mb-4">
+        <input
+          type="file"
+          id="studentsInput"
+          accept=".csv,.xlsx"
+          class="border rounded p-2 flex-1 mb-3 md:mb-0"
+        />
+        <button
+          class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+          onclick="previewFile('students')"
+        >
+          Preview &amp; Map
+        </button>
+      </div>
+      <p id="studentsError" class="text-red-600 mb-4"></p>
+      <div class="overflow-x-auto mb-4">
+        <table class="min-w-full bg-white table-auto border">
+          <thead class="bg-gray-100">
+            <tr id="studentsHeader"></tr>
+          </thead>
+          <tbody id="studentsBody"></tbody>
+        </table>
+      </div>
+      <div id="studentsMapping"></div>
+    </section>
+
+    <!-- Submit All Files -->
+    <div
+      class="text-center mb-12"
+      data-aos="fade-up" data-aos-delay="400"
+    >
+      <p id="submitValidation" class="text-red-600 mb-4"></p>
+      <button
+        class="px-6 py-3 bg-green-600 text-white rounded hover:bg-green-700 transition"
+        onclick="submitAll()"
+      >
+        Submit All Files
+      </button>
+      <p class="text-gray-500 mt-3 text-sm">
+        ⚠️ All three files must be previewed before submission
+      </p>
     </div>
   </main>
 
-  <footer class="page-footer blue">
-    <div class="container">
-      <div class="row">
-        <div class="col l6 s12">
-          <h5 class="white-text">Timetable Admin</h5>
-          <p class="grey-text text-lighten-4">Manage your academic scheduling efficiently.</p>
-        </div>
-        <div class="col l4 offset-l2 s12">
-          <h5 class="white-text">Resources</h5>
-          <ul>
-            <li><a class="grey-text text-lighten-3" href="#!">Support</a></li>
-            <li><a class="grey-text text-lighten-3" href="#!">Documentation</a></li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </footer>
+  <!-- Footer -->
+  {% include 'footer.html' %}
 
-  <!-- Loading overlay for LoadingManager -->
+  <!-- Loading Overlay -->
   <div id="loading-overlay"></div>
 
-  <!-- Materialize JS - Load first -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-  <!-- Loading Manager - Load before custom script -->
+  <!-- Scripts -->
   <script src="/static/loading.js"></script>
-  <!-- Custom Script - Load after Materialize and Loading -->
   <script src="/static/script.js"></script>
-  
-  <!-- Initialize Materialize components and add simple loading test -->
+  <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
   <script>
-    // Initialize global variables for preview data and column mappings
-    window.previewData = {
-      courses: [],
-      faculty: [],
-      students: []
-    };
-    
-    window.columnMappings = {
-      courses_file: {},
-      faculty_preferences_file: {},
-      student_courses_file: {}
-    };
-
-    // Initialize LoadingManager for inline functions
-    let inlineLoadingManager;
-    
-    // Initialize when DOM is ready
-    document.addEventListener('DOMContentLoaded', function() {
-      // Use the global loadingManager instance created by loading.js
-      if (window.loadingManager) {
-        inlineLoadingManager = window.loadingManager;
-      }
-    });
-
-    // Validate and submit all files
-    function submitAllFiles() {
-      const coursesFile = document.getElementById('coursesInput').files[0];
-      const facultyFile = document.getElementById('facultyInput').files[0];
-      const studentsFile = document.getElementById('studentsInput').files[0];
-
-      if (!coursesFile || !facultyFile || !studentsFile) {
-        alert('Please select all three files before submitting.');
-        return;
-      }
-
-      // Check preview data from multiple sources
-      const validationErrors = [];
-      
-      // Check window.previewData (inline context)
-      let coursesValid = window.previewData.courses && window.previewData.courses.length > 0;
-      let facultyValid = window.previewData.faculty && window.previewData.faculty.length > 0;
-      let studentsValid = window.previewData.students && window.previewData.students.length > 0;
-      
-      // Also check external script's previewData if available
-      if (typeof previewData !== 'undefined') {
-        coursesValid = coursesValid || (previewData.courses && previewData.courses.length > 0);
-        facultyValid = facultyValid || (previewData.faculty && previewData.faculty.length > 0);
-        studentsValid = studentsValid || (previewData.students && previewData.students.length > 0);
-      }
-      
-      if (!coursesValid) {
-        validationErrors.push('Courses file');
-      }
-      if (!facultyValid) {
-        validationErrors.push('Faculty preferences file');
-      }
-      if (!studentsValid) {
-        validationErrors.push('Student courses file');
-      }
-
-      if (validationErrors.length > 0) {
-        alert(`Please preview the following files first: ${validationErrors.join(", ")}`);
-        return;
-      }
-
-      // Use the same loading approach as the test function
-      if (inlineLoadingManager) {
-        // Check if overlay is empty and force create content if needed
-        const overlay = document.getElementById('loading-overlay');
-        if (overlay && overlay.childElementCount === 0) {
-          if (typeof inlineLoadingManager.forceCreateContent === 'function') {
-            inlineLoadingManager.forceCreateContent();
-          } else {
-            const htmlContent = `
-              <div class="loading-container">
-                <div class="loading-spinner">
-                  <div class="custom-spinner"></div>
-                </div>
-                <div class="loading-content">
-                  <h5 id="loading-title">Processing...</h5>
-                  <p id="loading-message">Please wait while we process your request.</p>
-                  <small id="loading-time">Elapsed: 0s</small>
-                </div>
-              </div>
-            `;
-            overlay.innerHTML = htmlContent;
-          }
-        }
-        
-        // Small delay to ensure content is rendered before showing
-        setTimeout(() => {
-          inlineLoadingManager.showTimetableGeneration();
-        }, 50);
-      } else if (window.loadingManager) {
-        // Check if overlay is empty and force create content if needed
-        const overlay = document.getElementById('loading-overlay');
-        if (overlay && overlay.childElementCount === 0) {
-          if (typeof window.loadingManager.forceCreateContent === 'function') {
-            window.loadingManager.forceCreateContent();
-          }
-        }
-        
-        // Small delay to ensure content is rendered before showing
-        setTimeout(() => {
-          window.loadingManager.showTimetableGeneration();
-        }, 50);
-      } else {
-        showInlineLoadingFallback();
-      }
-
-      // Use external script's columnMappings if available, otherwise use window.columnMappings
-      let mappingsToUse = window.columnMappings;
-      if (typeof columnMappings !== 'undefined') {
-        mappingsToUse = columnMappings;
-      }
-
-      const formData = new FormData();
-      formData.append('courses_file', coursesFile);
-      formData.append('faculty_preferences_file', facultyFile);
-      formData.append('student_courses_file', studentsFile);
-      formData.append('column_mappings', JSON.stringify(mappingsToUse));
-      formData.append('toggle_prof', document.getElementById('toggle_prof').checked);
-      formData.append('toggle_capacity', document.getElementById('toggle_capacity').checked);
-      formData.append('toggle_student', document.getElementById('toggle_student').checked);
-      formData.append('toggle_same_day', document.getElementById('toggle_same_day').checked);
-      formData.append('toggle_consec_days', document.getElementById('toggle_consec_days').checked);
-
-      fetch('/send_admin_data', {
-        method: 'POST',
-        body: formData,
-        redirect: 'follow'
-      })
-      .then(response => {
-        // Hide loading screen using the same manager that showed it
-        if (inlineLoadingManager) {
-          inlineLoadingManager.hide();
-        } else if (window.loadingManager) {
-          window.loadingManager.hide();
-        } else {
-          hideInlineLoadingFallback();
-        }
-        
-        if (response.ok) {
-          window.location.href = '/timetable';
-        } else {
-          return response.json().then(data => {
-            alert('Error: ' + (data.detail || 'Unknown error'));
-          });
-        }
-      })
-      .catch(error => {
-        // Hide loading screen using the same manager that showed it
-        if (inlineLoadingManager) {
-          inlineLoadingManager.hide();
-        } else if (window.loadingManager) {
-          window.loadingManager.hide();
-        } else {
-          hideInlineLoadingFallback();
-        }
-        
-        alert('Submission failed: ' + error.message);
-        console.error('Submission error:', error);
-      });
-    }
-
-    // Fallback loading functions for when LoadingManager is not available
-    function showInlineLoadingFallback() {
-      const existingOverlay = document.getElementById('fallback-loading-overlay');
-      if (existingOverlay) existingOverlay.remove();
-
-      const overlay = document.createElement('div');
-      overlay.id = 'fallback-loading-overlay';
-      overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: rgba(0, 0, 0, 0.8);
-        z-index: 99999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-family: Arial, sans-serif;
-      `;
-      overlay.innerHTML = `
-        <div style="text-align: center; background: white; color: black; padding: 40px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-          <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
-          <h3 style="margin-bottom: 10px;">Generating Timetable</h3>
-          <p style="margin: 0;">Please wait while we process your files...</p>
-        </div>
-        <style>
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        </style>
-      `;
-      document.body.appendChild(overlay);
-    }
-
-    function hideInlineLoadingFallback() {
-      const overlay = document.getElementById('fallback-loading-overlay');
-      if (overlay) overlay.remove();
-    }
-
-
-
-    // Make functions globally available
-    window.submitAll = submitAllFiles;
+    AOS.init({ duration: 800, easing: 'ease-out', once: true });
   </script>
 </body>
 </html>

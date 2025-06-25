@@ -1,385 +1,323 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link href="/static/main.css" rel="stylesheet">
-    <title>Timetable Dashboard</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-    <style>
-        body {
-            background-color: #e3f2fd;
-            font-family: 'Roboto', sans-serif;
-        }
-        nav {
-            background-color: #3f51b5; /* Indigo theme */
-        }
-        .brand-logo, .nav-wrapper ul li a {
-            font-family: 'Montserrat', sans-serif;
-            font-weight: bold;
-        }
-        .brand-logo {
-            font-size: 1.8rem;
-        }
-        .btn, .btn:active, .btn:focus{
-            background-color: #3949ab; /* Lighter indigo for buttons */
-            transition: background-color 0.3s ease;
-        }
-        .btn:hover {
-            background-color: #1f2760; /* Slightly darker on hover */
-        }
-        .btn:pre {
-            background-color: #5260b7; /* Slightly darker on hover */
-        }
-        .header {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-top: 40px;
-            text-align: center;
-            color: #1a237e; /* Deep indigo text for headers */
-        }
-        table {
-            box-shadow: 0px 4px 15px rgba(0,0,0,0.1);
-        }
-        td {
-            border: 1px solid;
-        }
-        table thead {
-            background-color: #3949ab; /* Darker indigo for table headers */
-            color: #fff;
-        }
-        table tbody tr:hover {
-            background-color: #eceff1; /* Very light grey for hover */
-            transition: background-color 0.3s ease;
-        }
-        .card-panel {
-            border-radius: 10px;
-            padding: 15px 25px;
-        }
-        footer {
-            background-color: #3f51b5; /* Consistent indigo footer */
-            padding: 40px 0;
-        }
-        footer a {
-            color: #bdc3c7;
-        }
-        footer a:hover {
-            color: #fff;
-        }
-        footer .white-text {
-            font-size: 1.2rem;
-        }
-        .spacer {
-            height: 50px; /* Adjust the height as needed */
-        }
-        .section-mapping {
-            margin-top: 40px;
-        }
-        .section-card {
-            margin-bottom: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .section-header {
-            background-color: #3949ab;
-            color: white;
-            padding: 15px;
-            border-radius: 8px 8px 0 0;
-            font-weight: bold;
-        }
-        .section-content {
-            padding: 20px;
-            background-color: white;
-            border-radius: 0 0 8px 8px;
-        }
-        .section-item {
-            background-color: #f5f5f5;
-            margin: 10px 0;
-            padding: 15px;
-            border-radius: 6px;
-            border-left: 4px solid #3949ab;
-        }
-        .student-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 10px;
-            margin-top: 10px;
-        }
-        .student-item {
-            background-color: #e8eaf6;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-size: 0.9rem;
-        }
-        .stats-summary {
-            background: linear-gradient(135deg, #3949ab, #5c6bc0);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        .stats-item {
-            display: inline-block;
-            margin: 0 20px;
-            text-align: center;
-        }
-        .stats-number {
-            font-size: 2rem;
-            font-weight: bold;
-            display: block;
-        }
-        .stats-label {
-            font-size: 0.9rem;
-            opacity: 0.9;
-        }
-    </style>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Timetable Dashboard</title>
+
+  <!-- Google Fonts -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap"
+    rel="stylesheet"
+  />
+  <!-- Material Icons -->
+  <link
+    href="https://fonts.googleapis.com/icon?family=Material+Icons"
+    rel="stylesheet"
+  />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- AOS CSS -->
+  <link
+    href="https://unpkg.com/aos@2.3.4/dist/aos.css"
+    rel="stylesheet"
+  />
+
+  <style>
+    body { font-family: 'Poppins', sans-serif; }
+    /* CSS tooltip */
+    .tooltip {
+      position: relative;
+    }
+    .tooltip > .tooltip-text {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-bottom: 0.5rem;
+      padding: 0.25rem 0.5rem;
+      white-space: nowrap;
+      font-size: 0.75rem;
+      background: rgba(55,65,81,0.9);
+      color: white;
+      border-radius: 0.25rem;
+      opacity: 0;
+      transition: opacity 0.15s ease-in-out;
+      pointer-events: none;
+    }
+    .tooltip:hover > .tooltip-text {
+      opacity: 1;
+    }
+  </style>
 </head>
-<body>
-    {% include 'navigation.html' %}
-    <main>
-        <div class="container">
-            <h4 class="header">Weekly Timetable</h4>
-            <div class="row">
-                <button id="download-csv" class="btn waves-effect waves-light tooltipped" data-position="left" name="Download as CSV">
-                    Download Timetable CSV
-                    <i class="material-icons right">downloading</i>
-                </button>
-                <button id="download-section-mapping" class="btn waves-effect waves-light tooltipped" data-position="left" name="Download Section Mapping">
-                    Download Section Mapping
-                    <i class="material-icons right">people</i>
-                </button>
-                
-                <!-- Conflicts Download (only show if schedule exists) -->
-                {% if schedule_data %}
-                <button id="download-conflicts" class="btn waves-effect waves-light tooltipped" 
-                        data-position="top" data-tooltip="Download detected conflicts">
-                    Download Conflicts
-                    <i class="material-icons right">warning</i>
-                </button>
-                {% endif %}
-                
-                <button id="download-section-mapping" class="btn waves-effect waves-light tooltipped" data-position="left" name="Download Section Mapping">
-                    Download Section Mapping
-                    <i class="material-icons right">group</i>
-                </button>
-                <button id="get-data" class="btn waves-effect waves-light tooltipped" data-position="left" name="Generate new table">
-                    Generate New Schedule
-                    <i class="material-icons right">post_add</i>
-                </button>
-                <button id="send-schedule" class="btn waves-effect waves-light tooltipped" data-position="left" name="Get a single schedule">
-                    Get a single schedule
-                    <i class="material-icons right">post_add</i>
-                </button>
-            </div>
 
-            {% if grouped_schedule %}
-            <table class="highlight responsive-table">
-                <thead>
-                    <tr>
-                        <th>Day</th>
-                        <th>Start Time</th>
-                        <th>End Time</th>
-                        <th>Courses</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for day, slots in grouped_schedule.items() %}
-                        {% for slot in slots %}
-                            <tr>
-                                {% if loop.first %}
-                                    <td rowspan="{{ slots|length }}">{{ day }}</td>
-                                {% endif %}
-                                <td>{{ slot.start }}</td>
-                                <td>{{ slot.end }}</td>
-                                <td>{{ slot.courses }}</td>
-                            </tr>
-                        {% endfor %}
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <!-- Infeasibility Message -->
-            <div class="card lighten-1" style="margin-top: 30px; background-color: #3949ab;">
-                <div class="card-content white-text">
-                    <span class="card-title">
-                        <i class="material-icons left">error</i>
-                        Timetable Generation Failed
-                    </span>
-                    
-                    {% if infeasibility_reason %}
-                    <!-- Specific Error Message from Algorithm -->
-                    <div style="background-color: rgba(255,255,255,0.1); padding: 15px; border-radius: 5px; margin: 15px 0;">
-                        <h6><i class="material-icons left tiny">bug_report</i>Detailed Diagnosis:</h6>
-                        <pre style="color: #fff; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.9rem; margin: 10px 0;">{{ infeasibility_reason }}</pre>
-                    </div>
-                    {% else %}
-                    <!-- Fallback Generic Message -->
-                    <p style="font-size: 1.1rem; margin-bottom: 20px;">
-                        <strong>The timetable could not be generated due to infeasible constraints.</strong>
-                    </p>
-                    
-                    <div class="row">
-                        <div class="col s12 m6">
-                            <h6><i class="material-icons left tiny">info</i>Common Issues:</h6>
-                            <ul style="padding-left: 20px;">
-                                <li><strong>Capacity exceeded:</strong> Too many classes for available time slots</li>
-                                <li><strong>Professor conflicts:</strong> Professors assigned to overlapping time slots</li>
-                                <li><strong>Insufficient time slots:</strong> Not enough slots for course requirements</li>
-                                <li><strong>Day constraints:</strong> Courses need more days than available</li>
-                            </ul>
-                        </div>
-                        <div class="col s12 m6">
-                            <h6><i class="material-icons left tiny">build</i>Solutions:</h6>
-                            <ul style="padding-left: 20px;">
-                                <li>Increase max classes per slot in time slot settings</li>
-                                <li>Add more time slots to the schedule</li>
-                                <li>Review professor busy slot assignments</li>
-                                <li>Reduce course credit requirements if possible</li>
-                            </ul>
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="card-action lighten-1", style="background-color: #3949ab;">
-                    <a href="/get_admin_data" class="btn waves-effect waves-light">
-                        <i class="material-icons left">refresh</i>Try Again
-                    </a>
-                    <a href="/select_timeslot" class="btn waves-effect waves-light">
-                        <i class="material-icons left">schedule</i>Adjust Time Slots
-                    </a>
-                </div>
-            </div>
-            {% endif %}
+<body class="min-h-screen flex flex-col bg-gray-50 text-gray-800">
+  {% include 'navigation.html' %}
 
-            <!-- Section Mapping Display -->
-            {% if section_mapping_data %}
-            <div class="section-mapping">
-                <h4 class="header">Student-Section Allocation</h4>
-                
-                <!-- Statistics Summary -->
-                {% if section_summary and section_summary.courses %}
-                <div class="stats-summary">
-                    <div class="stats-item">
-                        <span class="stats-number">{{ section_summary.total_multi_section_courses }}</span>
-                        <span class="stats-label">Multi-Section Courses</span>
-                    </div>
-                    <div class="stats-item">
-                        <span class="stats-number">{{ section_summary.total_sections }}</span>
-                        <span class="stats-label">Total Sections</span>
-                    </div>
-                    <div class="stats-item">
-                        <span class="stats-number">{{ section_summary.total_students_in_sections }}</span>
-                        <span class="stats-label">Students Allocated</span>
-                    </div>
-                    <div class="stats-item">
-                        <span class="stats-number">{{ "%.1f"|format(section_summary.section_size_stats.avg) }}</span>
-                        <span class="stats-label">Avg Section Size</span>
-                    </div>
-                </div>
-                {% endif %}
+  <main class="flex-1 container mx-auto px-4 py-8 space-y-8">
 
-                <!-- Course Section Details -->
-                {% for course, sections in section_mapping_data.items() %}
-                <div class="section-card">
-                    <div class="section-header">
-                        <i class="material-icons left">school</i>
-                        {{ course }} ({{ sections|length }} sections)
-                    </div>
-                    <div class="section-content">
-                        {% for section_num, section_data in sections.items() %}
-                        <div class="section-item">
-                            <h6><i class="material-icons tiny">class</i> Section {{ section_num }} ({{ section_data.count }} students)</h6>
-                            <div class="student-list">
-                                {% for student in section_data.students %}
-                                <div class="student-item">
-                                    <i class="material-icons tiny">person</i>
-                                    <strong>{{ student.roll_no }}</strong>
-                                    {% if student.name != 'N/A' %}
-                                        <br><small>{{ student.name }}</small>
-                                    {% endif %}
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <div class="section-mapping">
-                <h4 class="header">Student-Section Allocation</h4>
-                <div class="card-panel blue lighten-4">
-                    <i class="material-icons left">info</i>
-                    No multi-section courses found. All courses have single sections.
-                </div>
-            </div>
-            {% endif %}
+    <!-- Title -->
+    <h1 class="text-2xl font-semibold" data-aos="fade-up">Weekly Timetable</h1>
+
+    <!-- Action Buttons -->
+    <div class="flex flex-wrap gap-3" data-aos="fade-up" data-aos-delay="100">
+      <button
+        id="download-csv"
+        class="tooltip inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+      >
+        <span class="material-icons">download</span>
+        Download CSV
+        <div class="tooltip-text">Download Timetable CSV</div>
+      </button>
+
+      <button
+        id="download-section-mapping"
+        class="tooltip inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
+      >
+        <span class="material-icons">people</span>
+        Section Mapping
+        <div class="tooltip-text">Download Section Mapping</div>
+      </button>
+
+      {% if grouped_schedule %}
+      <button
+        id="download-conflicts"
+        class="tooltip inline-flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
+      >
+        <span class="material-icons">warning</span>
+        Conflicts
+        <div class="tooltip-text">Download detected conflicts</div>
+      </button>
+      {% endif %}
+
+      <button
+        id="get-data"
+        class="tooltip inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+      >
+        <span class="material-icons">post_add</span>
+        Generate New
+        <div class="tooltip-text">Generate new schedule</div>
+      </button>
+
+      <button
+        id="send-schedule"
+        class="tooltip inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded hover:bg-violet-700 transition"
+      >
+        <span class="material-icons">post_add</span>
+        Single Schedule
+        <div class="tooltip-text">Get a single schedule</div>
+      </button>
+    </div>
+
+    <!-- Timetable Table -->
+    {% if grouped_schedule %}
+    <div class="overflow-x-auto" data-aos="fade-up" data-aos-delay="200">
+      <table class="min-w-full bg-white shadow rounded-lg divide-y divide-gray-200">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="px-4 py-2 text-left">Day</th>
+            <th class="px-4 py-2 text-left">Start Time</th>
+            <th class="px-4 py-2 text-left">End Time</th>
+            <th class="px-4 py-2 text-left">Courses</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+          {% for day, slots in grouped_schedule.items() %}
+            {% for slot in slots %}
+            <tr class="hover:bg-gray-50">
+              {% if loop.first %}
+              <td class="px-4 py-2" rowspan="{{ slots|length }}">{{ day }}</td>
+              {% endif %}
+              <td class="px-4 py-2">{{ slot.start }}</td>
+              <td class="px-4 py-2">{{ slot.end }}</td>
+              <td class="px-4 py-2">{{ slot.courses }}</td>
+            </tr>
+            {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <!-- Infeasibility Message -->
+    <div
+      class="bg-indigo-600 text-white rounded-lg p-6 shadow-lg"
+      data-aos="fade-up" data-aos-delay="200"
+    >
+      <div class="flex items-center mb-4">
+        <span class="material-icons text-2xl">error</span>
+        <h2 class="ml-2 text-xl font-semibold">Timetable Generation Failed</h2>
+      </div>
+
+      {% if infeasibility_reason %}
+      <div class="bg-indigo-500 bg-opacity-25 p-4 rounded mb-4">
+        <h3 class="font-medium mb-2">
+          <span class="material-icons align-text-bottom">bug_report</span>
+          Detailed Diagnosis:
+        </h3>
+        <pre class="bg-indigo-700 bg-opacity-50 p-3 rounded text-sm font-mono overflow-auto">
+{{ infeasibility_reason }}
+        </pre>
+      </div>
+      {% else %}
+      <p class="mb-4 text-lg">
+        <strong>The timetable could not be generated due to infeasible constraints.</strong>
+      </p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+        <div>
+          <h4 class="font-semibold mb-2">
+            <span class="material-icons align-text-bottom">info</span>
+            Common Issues:
+          </h4>
+          <ul class="list-disc list-inside space-y-1">
+            <li><strong>Capacity exceeded:</strong> Too many classes per slot</li>
+            <li><strong>Professor conflicts:</strong> Overlapping assignments</li>
+            <li><strong>Insufficient slots:</strong> Not enough time blocks</li>
+            <li><strong>Day constraints:</strong> Courses need more days than available</li>
+          </ul>
         </div>
-        <div class="row"></div>
-        <div class="row"></div>
-        <div class="row spacer"></div>
-    </main>
-
-    <footer class="page-footer indigo darken-3">
-        <div class="container">
-            <div class="row">
-                <div class="col l6 s12">
-                    <h5 class="white-text">About the Timetable System</h5>
-                    <p class="grey-text text-lighten-4">Efficiently manage and view academic schedules with our advanced system.</p>
-                </div>
-                <div class="col l4 offset-l2 s12">
-                    <h5 class="white-text">Quick Links</h5>
-                    <ul>
-                        <li><a class="grey-text text-lighten-3" href="#!">Help</a></li>
-                        <li><a class="grey-text text-lighten-3" href="#!">Contact</a></li>
-                        <li><a class="grey-text text-lighten-3" href="#!">Suggestions</a></li>
-                    </ul>
-                </div>
-            </div>
+        <div>
+          <h4 class="font-semibold mb-2">
+            <span class="material-icons align-text-bottom">build</span>
+            Solutions:
+          </h4>
+          <ul class="list-disc list-inside space-y-1">
+            <li>Increase max classes per slot</li>
+            <li>Add more time slots</li>
+            <li>Review professor busy slots</li>
+            <li>Reduce course requirements</li>
+          </ul>
         </div>
-    </footer>   
-    <script>
-        document.getElementById('download-csv').onclick = function() {
-            window.location.href = '/download-timetable';
+      </div>
+      {% endif %}
+
+      <div class="flex gap-3">
+        <a
+          href="/get_admin_data"
+          class="px-4 py-2 bg-white text-indigo-600 rounded hover:bg-gray-100 transition"
+        >
+          <span class="material-icons align-text-bottom">refresh</span>
+          Try Again
+        </a>
+        <a
+          href="/select_timeslot"
+          class="px-4 py-2 bg-white text-indigo-600 rounded hover:bg-gray-100 transition"
+        >
+          <span class="material-icons align-text-bottom">schedule</span>
+          Adjust Slots
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Section Mapping -->
+    {% if section_mapping_data %}
+    <section class="space-y-8" data-aos="fade-up">
+      <h2 class="text-2xl font-semibold">Student-Section Allocation</h2>
+
+      {% if section_summary and section_summary.courses %}
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div class="bg-white p-4 rounded shadow text-center">
+          <div class="text-3xl font-bold">{{ section_summary.total_multi_section_courses }}</div>
+          <div class="text-gray-600">Multi-Section Courses</div>
+        </div>
+        <div class="bg-white p-4 rounded shadow text-center">
+          <div class="text-3xl font-bold">{{ section_summary.total_sections }}</div>
+          <div class="text-gray-600">Total Sections</div>
+        </div>
+        <div class="bg-white p-4 rounded shadow text-center">
+          <div class="text-3xl font-bold">{{ section_summary.total_students_in_sections }}</div>
+          <div class="text-gray-600">Students Allocated</div>
+        </div>
+        <div class="bg-white p-4 rounded shadow text-center">
+          <div class="text-3xl font-bold">{{ section_summary.section_size_stats.avg|round(1) }}</div>
+          <div class="text-gray-600">Avg Section Size</div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% for course, sections in section_mapping_data.items() %}
+      <div class="bg-white rounded-lg shadow p-6 space-y-4">
+        <div class="flex items-center text-lg font-semibold">
+          <span class="material-icons mr-2 text-indigo-600">school</span>
+          {{ course }} ({{ sections|length }} sections)
+        </div>
+        <div class="space-y-4">
+          {% for section_num, section_data in sections.items() %}
+          <div class="border border-gray-200 rounded p-4 space-y-2">
+            <div class="flex items-center font-medium">
+              <span class="material-icons mr-1 text-gray-600">class</span>
+              Section {{ section_num }} ({{ section_data.count }} students)
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {% for student in section_data.students %}
+              <div class="flex items-center gap-2 bg-gray-50 p-2 rounded">
+                <span class="material-icons text-gray-600">person</span>
+                <div>
+                  <div class="font-semibold">{{ student.roll_no }}</div>
+                  {% if student.name != 'N/A' %}
+                  <div class="text-gray-500 text-sm">{{ student.name }}</div>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </section>
+    {% else %}
+    <div
+      class="bg-blue-100 text-blue-800 rounded-lg p-4 text-center"
+      data-aos="fade-up"
+    >
+      <span class="material-icons align-middle mr-1">info</span>
+      No multi-section courses found. All courses have single sections.
+    </div>
+    {% endif %}
+
+  </main>
+
+  <!-- Footer -->
+  {% include 'footer.html' %}
+
+  <!-- AOS init + Button Handlers -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // AOS
+      AOS.init({ duration: 800, easing: 'ease-out', once: true });
+
+      // Button actions
+      document.getElementById('download-csv').onclick = () => {
+        window.location.href = '/download-timetable';
+      };
+      document.getElementById('download-section-mapping').onclick = () => {
+        window.location.href = '/download-section-mapping';
+      };
+      const conflictsBtn = document.getElementById('download-conflicts');
+      if (conflictsBtn) {
+        conflictsBtn.onclick = () => {
+          if (window.loadingManager) {
+            window.loadingManager.show({
+              title: 'Checking for Conflicts',
+              message: 'Analyzing schedule for conflicts…',
+              showProgress: false
+            });
+          }
+          window.location.href = '/download-conflicts';
+          setTimeout(() => window.loadingManager?.hide(), 3000);
         };
-        document.getElementById('download-section-mapping').onclick = function() {
-            window.location.href = '/download-section-mapping';
-        };
-        
-        // Conflicts download functionality (only if button exists)
-        const conflictsBtn = document.getElementById('download-conflicts');
-        if (conflictsBtn) {
-            conflictsBtn.onclick = function() {
-                // Show loading while checking conflicts
-                if (window.loadingManager) {
-                    window.loadingManager.show({
-                        title: 'Checking for Conflicts',
-                        message: 'Analyzing schedule for student and professor conflicts...',
-                        showProgress: false
-                    });
-                }
-                
-                // Download conflicts
-                window.location.href = '/download-conflicts';
-                
-                // Hide loading after a delay (since download doesn't redirect)
-                setTimeout(() => {
-                    if (window.loadingManager) {
-                        window.loadingManager.hide();
-                    }
-                }, 3000);
-            };
-        }
-        document.getElementById('get-data').onclick = function() {
-            window.location.href = '/get_admin_data';
-        };
-        document.getElementById('send-schedule').onclick = function() {
-            window.location.href = '/get_role_no';
-        };
-    </script>
+      }
+      document.getElementById('get-data').onclick = () => {
+        window.location.href = '/get_admin_data';
+      };
+      document.getElementById('send-schedule').onclick = () => {
+        window.location.href = '/get_role_no';
+      };
+    });
+  </script>
 </body>
 </html>

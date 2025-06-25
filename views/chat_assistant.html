@@ -1,222 +1,154 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Timetable AI Assistant</title>
 
-  <!-- Materialize CSS + Icons -->
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css"/>
+  <!-- Google Fonts -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap"
+    rel="stylesheet"
+  />
+  <!-- Material Icons -->
+  <link
+    href="https://fonts.googleapis.com/icon?family=Material+Icons"
+    rel="stylesheet"
+  />
 
-  <!-- Mono font for that “terminal” vibe -->
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap" rel="stylesheet"/>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- AOS -->
+  <link
+    href="https://unpkg.com/aos@2.3.4/dist/aos.css"
+    rel="stylesheet"
+  />
+  <!-- Toastify -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/toastify-js@1.12.0/dist/toastify.min.css"
+    rel="stylesheet"
+  />
+
+  <!-- Your overrides -->
+  <link href="/static/unified.css" rel="stylesheet"/>
 
   <style>
-    /* === Page & Container === */
-    body, html {
-      height: 100%; margin: 0;
-      background: url('/static/images/background.png') center center / cover no-repeat;
-      color: #ddd;
-      background: #070a55;
-      display: flex; flex-direction: column;
-      font-family: 'Roboto Mono', monospace;
-    }
-    .chat-container {
-      flex: 1; display: flex; flex-direction: column;
-      max-width: 1200px; width: 100%; margin: 30px auto;
-      background: #b9b9eb;
-      border-radius: 8px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-      overflow: hidden;
-    }
-
-    /* === Message Log === */
-    #chat-log {
-      flex: 1;
-      padding: 24px;
-      overflow-y: auto;
-      background: url('/static/images/background.png') center center / cover no-repeat;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .message {
-      position: relative;
-      padding: 12px 18px;
-      border-radius: 16px;
-      animation: fadeIn 0.2s ease-out;
-      word-wrap: break-word;
-      max-width: 70%;
-      display: inline-block;
-    }
-    .message.user {
-      align-self: flex-end;
-      background: linear-gradient(135deg, #00FFC2 0%, #00A6FF 100%);
-      color: #111;
-      border-bottom-right-radius: 4px;
-    }
-    .message.assistant {
-      align-self: flex-start;
-      background: #2e2e42;
-      color: #eee;
-      border-bottom-left-radius: 4px;
-      border: 1px solid #444465;
-    }
-    /* “Speech” tails */
-    .message.user::after {
-      content: '';
-      position: absolute; bottom: 0; right: -8px;
-      border-top: 8px solid #00A6FF;
-      border-left: 8px solid transparent;
-    }
-    .message.assistant::before {
-      content: '';
-      position: absolute; bottom: 0; left: -8px;
-      border-top: 8px solid #2e2e42;
-      border-right: 8px solid transparent;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    /* === Input Area === */
-    .input-area {
-      position: relative;
-      display: flex; align-items: center;
-      padding: 16px;
-      background: #1f1f35;
-      border-top: 1px solid #444;
-    }
-    .input-area .input-field {
-      flex: 1; margin: 0; position: relative;
-    }
-    .input-area input {
-      width: 100%;
-      padding: 12px 64px 12px 16px;
-      background: #2b2b3c;
-      border: 1px solid #444465;
-      border-radius: 24px;
-      color: #eee;
-      font-family: inherit;
-    }
-    .input-area input::placeholder {
-      color: #777;
-    }
-    /* Send button */
-    #send-btn {
-      position: absolute; right: 24px; top: 30%;
-      transform: translateY(-50%);
-      width: 48px; height: 49px;
-    }
-    /* Loader spinner */
-    #loader {
-      position: absolute; right: 24px; top: 30%;
-      transform: translateY(-50%);
-      display: none;
-    }
-    /* Custom scrollbar */
-    #chat-log::-webkit-scrollbar { width: 6px; }
-    #chat-log::-webkit-scrollbar-thumb {
-      background: rgba(0,0,0,0.4);
-      border-radius: 3px;
-    }
+    body { font-family: 'Poppins', sans-serif; }
+    .message { max-width: 80%; }
+    .message.user { align-self: flex-end; background: #c7d2fe; }
+    .message.assistant { align-self: flex-start; background: #e5e7eb; }
   </style>
 </head>
-<body>
 
+<body class="min-h-screen flex flex-col bg-gray-50 text-gray-800">
   {% include 'navigation.html' %}
 
-  <div class="chat-container">
-    <div id="chat-log"></div>
+  <main class="flex-1 container mx-auto px-4 py-8 flex flex-col max-w-xl">
+    <!-- Chat Log -->
+    <div
+      id="chat-log"
+      class="flex-1 overflow-y-auto space-y-3 p-4 bg-white rounded-lg shadow"
+      data-aos="fade-up"
+    ></div>
 
-    <div class="input-area">
+    <!-- Input Area -->
+    <div
+      class="relative flex items-center gap-2 mt-4 p-3 bg-white rounded-lg shadow"
+      data-aos="fade-up" data-aos-delay="100"
+    >
       <!-- Loader -->
-      <div id="loader" class="preloader-wrapper small active">
-        <div class="spinner-layer spinner-blue-only">
-          <div class="circle-clipper left"><div class="circle"></div></div>
-          <div class="gap-patch"><div class="circle"></div></div>
-          <div class="circle-clipper right"><div class="circle"></div></div>
-        </div>
+      <div id="loader" class="absolute left-3 hidden">
+        <div class="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
 
-      <div class="input-field">
-        <input id="message-input" type="text" placeholder="Ask your timetable AI…">
-        <button id="send-btn" class="btn-floating blue accent-2">
-          <i class="material-icons">send</i>
-        </button>
-      </div>
+      <input
+        id="message-input"
+        type="text"
+        placeholder="Ask your timetable AI…"
+        class="flex-1 pl-10 pr-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400"
+      />
+      <button
+        id="send-btn"
+        class="inline-flex items-center justify-center w-9 h-9 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition"
+      >
+        <span class="material-icons">send</span>
+      </button>
     </div>
-  </div>
+  </main>
+  <!-- Footer -->
+  {% include 'footer.html' %}
 
+  <!-- AOS & Toastify JS -->
+  <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/toastify-js@1.12.0/dist/toastify.min.js"></script>
 
-  <!-- Materialize + Logic -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', function(){
-      // initialize sidenav
-      M.Sidenav.init(document.querySelectorAll('.sidenav'));
+  document.addEventListener('DOMContentLoaded', () => {
+    AOS.init({ duration: 600, easing: 'ease-out', once: true });
 
-      const logEl    = document.getElementById('chat-log');
-      const inputEl  = document.getElementById('message-input');
-      const btnEl    = document.getElementById('send-btn');
-      const loaderEl = document.getElementById('loader');
+    const logEl    = document.getElementById('chat-log');
+    const inputEl  = document.getElementById('message-input');
+    const btnEl    = document.getElementById('send-btn');
+    const loaderEl = document.getElementById('loader');
 
-      // replay cached history
-      const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
-      history.forEach(({sender, text}) => {
-        const msg = document.createElement('div');
-        msg.className = `message ${sender}`;
-        msg.textContent = text;
-        logEl.appendChild(msg);
-      });
+    // Load history
+    const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
+    history.forEach(({ sender, text }) => {
+      appendMessage(text, sender, false);
+    });
+    logEl.scrollTop = logEl.scrollHeight;
+
+    function appendMessage(text, sender, save = true) {
+      const msg = document.createElement('div');
+      msg.className = `message ${sender} p-3 rounded-lg`;
+      msg.textContent = text;
+      logEl.appendChild(msg);
       logEl.scrollTop = logEl.scrollHeight;
 
-      function appendMessage(text, sender) {
-        const msg = document.createElement('div');
-        msg.className = `message ${sender}`;
-        msg.textContent = text;
-        logEl.appendChild(msg);
-        logEl.scrollTop = logEl.scrollHeight;
-        // cache
-        const h = JSON.parse(localStorage.getItem('chat_history') || '[]');
-        h.push({sender, text});
-        localStorage.setItem('chat_history', JSON.stringify(h));
+      if (save) {
+        history.push({ sender, text });
+        localStorage.setItem('chat_history', JSON.stringify(history));
+      }
+    }
+
+    async function sendMessage() {
+      const txt = inputEl.value.trim();
+      if (!txt) return;
+
+      appendMessage(txt, 'user');
+      inputEl.value = '';
+      btnEl.disabled = true;
+      inputEl.disabled = true;
+      loaderEl.classList.remove('hidden');
+
+      try {
+        const res = await fetch('/chat-assistant', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: txt })
+        });
+        const { reply } = await res.json();
+        appendMessage(reply, 'assistant');
+      } catch (err) {
+        Toastify({
+          text: 'Error contacting assistant',
+          backgroundColor: '#dc2626',
+          gravity: 'top', position: 'right',
+          duration: 3000
+        }).showToast();
       }
 
-      async function sendMessage(){
-        const txt = inputEl.value.trim();
-        if(!txt) return;
-        appendMessage(txt, 'user');
-        inputEl.value = '';
-        btnEl.disabled = true;
-        inputEl.disabled = true;
-        loaderEl.style.display = 'block';
+      loaderEl.classList.add('hidden');
+      btnEl.disabled = false;
+      inputEl.disabled = false;
+      inputEl.focus();
+    }
 
-        try {
-          const res = await fetch('/chat-assistant', {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({message: txt})
-          });
-          const {reply} = await res.json();
-          appendMessage(reply, 'assistant');
-        } catch {
-          M.toast({html:'Error contacting assistant', classes:'red'});
-        }
-
-        loaderEl.style.display = 'none';
-        btnEl.disabled = false;
-        inputEl.disabled = false;
-        inputEl.focus();
-      }
-
-      btnEl.addEventListener('click', sendMessage);
-      inputEl.addEventListener('keypress', e => {
-        if(e.key === 'Enter') sendMessage();
-      });
+    btnEl.addEventListener('click', sendMessage);
+    inputEl.addEventListener('keypress', e => {
+      if (e.key === 'Enter') sendMessage();
     });
+  });
   </script>
 </body>
 </html>
