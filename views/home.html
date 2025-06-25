@@ -1,234 +1,241 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Timetable System</title>
 
   <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-  <!-- Materialize CSS -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap"
+    rel="stylesheet"
+  />
 
   <!-- Material Icons -->
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-  <!-- Shared Styles -->
-  <link rel="stylesheet" href="/static/main.css">
+  <link
+    href="https://fonts.googleapis.com/icon?family=Material+Icons"
+    rel="stylesheet"
+  />
 
-  <!-- ScrollReveal for scroll animations -->
-  <script src="https://unpkg.com/scrollreveal"></script>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- AOS CSS -->
+  <link
+    href="https://unpkg.com/aos@2.3.4/dist/aos.css"
+    rel="stylesheet"
+  />
 
   <style>
-    html { scroll-behavior: smooth; }
     body {
       font-family: 'Poppins', sans-serif;
-      background-color: #f9f9f9;
-      position: relative;
-    }
-    a { transition: 0.3s; }
-    .valign-wrapper { min-height: 75vh; }
-
-    #preloader {
-      position: fixed; top:0; left:0; right:0; bottom:0;
-      background: #1a237e; z-index: 9999;
-      display:flex; align-items:center; justify-content:center;
-    }
-    #preloader .preloader-wrapper { width: 64px; height: 64px; }
-
-    nav .brand-logo { font-size: 1.6rem; }
-    nav ul li>a:hover { background: rgba(255,255,255,0.1); }
-    .sidenav li>a { color: #1a237e; }
-
-    .parallax-container { height: 500px; }
-    .hero-content {
-      color: #fff;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-    }
-    .hero-content h1 { font-size: 3rem; margin-bottom: 1rem; }
-    .hero-content p { font-size: 1.2rem; margin-bottom: 2rem; }
-
-    .features .card { 
-      border-radius: 8px; 
-      transition: transform 0.3s, box-shadow 0.3s; 
-    }
-    .features .card:hover {
-      transform: translateY(-8px);
-      box-shadow: 0 12px 24px rgba(0,0,0,0.2);
-    }
-    .features .card .card-content i {
-      font-size: 3rem;
-      color: #1a237e;
-    }
-
-    #back-to-top {
-      position: fixed; bottom: 40px; right: 40px;
-      background-color: #1a237e; color: #fff;
-      border-radius: 50%; padding: 12px;
-      display: none; z-index: 999;
-      cursor: pointer; transition: background 0.3s;
-    }
-    #back-to-top:hover { background-color: #0d1336; }
-
-    footer.page-footer {
-      background-color: #1a237e; padding-top: 20px;
     }
   </style>
 </head>
-<body>
 
-  <div id="preloader">
-    <div class="preloader-wrapper active">
-      <div class="spinner-layer spinner-white-only">
-        <div class="circle-clipper left"><div class="circle"></div></div>
-        <div class="gap-patch"><div class="circle"></div></div>
-        <div class="circle-clipper right"><div class="circle"></div></div>
-      </div>
-    </div>
-  </div>
+<body class="min-h-screen flex flex-col bg-gray-50 text-gray-800">
 
+
+
+  <!-- Navigation -->
   {% include 'navigation.html' %}
 
-  <div class="parallax-container valign-wrapper">
-    <div class="container center hero-content" data-sr>
-      <h1>Organize Your Academic Life</h1>
-      <p>Seamless timetable creation, real-time updates, and conflict-free scheduling.</p>
-      {% if not user %}
-      <a href="/auth/google" class="btn-large waves-effect waves-light indigo darken-2">
-        <i class="material-icons left">login</i>Login with Google
-      </a>
-      {% else %}
-      <a href="/dashboard" class="btn-large waves-effect waves-light indigo darken-2">
-        <i class="material-icons left">dashboard</i>Dashboard
-      </a>
-      {% endif %}
+  <!-- Hero / Parallax Section -->
+  <header
+    class="relative h-screen overflow-hidden bg-cover bg-center"
+    style="background-image: url('/static/images/background.png');"
+  >
+    <div
+      class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center px-4"
+    >
+      <div class="text-center text-white space-y-6" data-aos="fade-up">
+        <h1 class="text-4xl md:text-5xl font-semibold">
+          Organize Your Academic Life
+        </h1>
+        <p class="text-lg max-w-xl mx-auto">
+          Seamless timetable creation, real-time updates, and conflict-free scheduling.
+        </p>
+        {% if not user %}
+        <a
+          href="/auth/google"
+          class="inline-flex items-center gap-2 px-6 py-3 bg-indigo-700 hover:bg-indigo-800 transition rounded text-white"
+        >
+          <span class="material-icons">login</span>
+          Login with Google
+        </a>
+        {% else %}
+        <a
+          href="/dashboard"
+          class="inline-flex items-center gap-2 px-6 py-3 bg-indigo-700 hover:bg-indigo-800 transition rounded text-white"
+        >
+          <span class="material-icons">dashboard</span>
+          Dashboard
+        </a>
+        {% endif %}
+      </div>
     </div>
-    <div class="parallax"><img src="static/images/background.png" alt="Campus"></div>
-  </div>
+  </header>
 
-  <section class="section features">
-    <div class="container">
-      <div class="row">
-        <div class="col s12 center"><h4 data-sr>Key Features</h4></div>
-
-        <div class="col s12 m6 l4" data-sr>
-          <div class="card hoverable">
-            <div class="card-content center">
-              <i class="material-icons">cloud_upload</i>
-              <h5>Easy Data Import</h5>
-              <p>Upload CSV/XLSX files for courses, faculty & students in seconds.</p>
-            </div>
-          </div>
+  <!-- Features -->
+  <section class="py-20 bg-gray-50 flex-grow">
+    <div class="container mx-auto px-4">
+      <h2
+        class="text-3xl font-semibold text-center mb-10"
+        data-aos="fade-up"
+      >
+        Key Features
+      </h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- Feature Card 1 -->
+        <div
+          class="bg-white shadow hover:shadow-md transition rounded-lg p-6 text-center"
+          data-aos="fade-up"
+        >
+          <span class="material-icons text-indigo-600 text-4xl mb-2">
+            cloud_upload
+          </span>
+          <h5 class="font-medium text-xl mb-2">Easy Data Import</h5>
+          <p>Upload CSV/XLSX files for courses, faculty & students in seconds.</p>
         </div>
 
-        <div class="col s12 m6 l4" data-sr delay="100">
-          <div class="card hoverable">
-            <div class="card-content center">
-              <i class="material-icons">access_time</i>
-              <h5>Custom Time Slots</h5>
-              <p>Create, edit, and manage time slots with an intuitive UI.</p>
-            </div>
-          </div>
+        <!-- Feature Card 2 -->
+        <div
+          class="bg-white shadow hover:shadow-md transition rounded-lg p-6 text-center"
+          data-aos="fade-up" data-aos-delay="100"
+        >
+          <span class="material-icons text-indigo-600 text-4xl mb-2">
+            access_time
+          </span>
+          <h5 class="font-medium text-xl mb-2">Custom Time Slots</h5>
+          <p>Create, edit, and manage time slots with an intuitive UI.</p>
         </div>
 
-        <div class="col s12 m6 l4" data-sr delay="200">
-          <div class="card hoverable">
-            <div class="card-content center">
-              <i class="material-icons">group</i>
-              <h5>Conflict Checking</h5>
-              <p>Automatic detection and resolution of professor & student clashes.</p>
-            </div>
-          </div>
+        <!-- Feature Card 3 -->
+        <div
+          class="bg-white shadow hover:shadow-md transition rounded-lg p-6 text-center"
+          data-aos="fade-up" data-aos-delay="200"
+        >
+          <span class="material-icons text-indigo-600 text-4xl mb-2">
+            group
+          </span>
+          <h5 class="font-medium text-xl mb-2">Conflict Checking</h5>
+          <p>Automatic detection and resolution of professor & student clashes.</p>
         </div>
 
-        <div class="col s12 m6 l4" data-sr delay="300">
-          <div class="card hoverable">
-            <div class="card-content center">
-              <i class="material-icons">view_module</i>
-              <h5>Interactive Timetable</h5>
-              <p>View, filter, and download schedules for admins, professors, or students.</p>
-            </div>
-          </div>
+        <!-- Feature Card 4 -->
+        <div
+          class="bg-white shadow hover:shadow-md transition rounded-lg p-6 text-center"
+          data-aos="fade-up" data-aos-delay="300"
+        >
+          <span class="material-icons text-indigo-600 text-4xl mb-2">
+            view_module
+          </span>
+          <h5 class="font-medium text-xl mb-2">Interactive Timetable</h5>
+          <p>View, filter, and download schedules for admins, professors, or students.</p>
         </div>
 
-        <div class="col s12 m6 l4" data-sr delay="400">
-          <div class="card hoverable">
-            <div class="card-content center">
-              <i class="material-icons">settings</i>
-              <h5>Full Admin Control</h5>
-              <p>Manage users, roles, settings, and system-wide constraints with ease.</p>
-            </div>
-          </div>
+        <!-- Feature Card 5 -->
+        <div
+          class="bg-white shadow hover:shadow-md transition rounded-lg p-6 text-center"
+          data-aos="fade-up" data-aos-delay="400"
+        >
+          <span class="material-icons text-indigo-600 text-4xl mb-2">
+            settings
+          </span>
+          <h5 class="font-medium text-xl mb-2">Full Admin Control</h5>
+          <p>Manage users, roles, settings, and system-wide constraints with ease.</p>
         </div>
-
       </div>
     </div>
   </section>
 
-  <div class="fixed-action-btn">
-    <a class="btn-floating btn-large red modal-trigger" href="#contactModal">
-      <i class="large material-icons">email</i>
-    </a>
+  <!-- Floating Contact Button -->
+  <button
+    class="fixed bottom-6 left-6 bg-indigo-400 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg z-40"
+    onclick="toggleModal(true)"
+  >
+    <span class="material-icons">email</span>
+  </button>
+
+  <!-- Contact Modal -->
+  <div
+    id="contactModal"
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50"
+  >
+    <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+      <h3 class="text-xl font-semibold mb-2">Contact Us</h3>
+      <p class="text-gray-600 mb-4">Have questions or feedback? Drop us a line!</p>
+      <input
+        id="name" type="text"
+        placeholder="Your Name"
+        class="w-full mb-3 p-2 border rounded"
+      />
+      <input
+        id="email" type="email"
+        placeholder="Your Email"
+        class="w-full mb-3 p-2 border rounded"
+      />
+      <textarea
+        id="message"
+        placeholder="Message"
+        class="w-full mb-3 p-2 border rounded"
+      ></textarea>
+      <div class="flex justify-end space-x-2">
+        <button
+          onclick="toggleModal(false)"
+          class="px-4 py-2 bg-gray-200 rounded"
+        >
+          Cancel
+        </button>
+        <button class="px-4 py-2 bg-indigo-600 text-white rounded">
+          Send
+        </button>
+      </div>
+    </div>
   </div>
 
-  <div id="back-to-top"><i class="material-icons">arrow_upward</i></div>
-
-  <div id="contactModal" class="modal">
-    <div class="modal-content">
-      <h4>Contact Us</h4>
-      <p>Have questions or feedback? Drop us a line!</p>
-      <div class="input-field">
-        <input id="name" type="text"><label for="name">Your Name</label>
-      </div>
-      <div class="input-field">
-        <input id="email" type="email"><label for="email">Your Email</label>
-      </div>
-      <div class="input-field">
-        <textarea id="message" class="materialize-textarea"></textarea>
-        <label for="message">Message</label>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <a href="#" class="modal-close waves-effect waves-green btn-flat">Cancel</a>
-      <a href="#" class="waves-effect waves-light btn indigo darken-2">Send</a>
-    </div>
+  <!-- Back to Top -->
+  <div
+    id="backToTop"
+    class="fixed bottom-6 right-6 hidden z-40"
+  >
+    <button
+      onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+      class="bg-indigo-400 text-white p-3 rounded-full shadow-md"
+    >
+      <span class="material-icons">arrow_upward</span>
+    </button>
   </div>
 
-  <footer class="page-footer">
-    <div class="container">
-      <div class="row">
-        <div class="col s12 m6">
-          <h5 class="white-text">Timetable System</h5>
-          <p class="grey-text text-lighten-4">Making academic scheduling a breeze.</p>
-        </div>
-        <div class="col s12 m6 right-align social-icons">
-        </div>
-      </div>
-    </div>
-    <div class="footer-copyright">
-      <div class="container center"> OurClock</div>
-    </div>
-  </footer>
+  <!-- Footer -->
+  {% include 'footer.html' %}
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <!-- AOS JS -->
+  <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+
   <script>
-    document.addEventListener('DOMContentLoaded', function(){
-      setTimeout(() => document.getElementById('preloader').style.opacity = 0, 800);
-      setTimeout(() => document.getElementById('preloader').style.display = 'none', 1200);
+    document.addEventListener('DOMContentLoaded', function () {
+      // Preloader fade out
+      const preloader = document.getElementById('preloader');
+      setTimeout(() => preloader.style.opacity = '0', 800);
+      setTimeout(() => preloader.style.display = 'none', 1200);
 
-      M.Parallax.init(document.querySelectorAll('.parallax'));
-      M.Sidenav.init(document.querySelectorAll('.sidenav'));
-      M.Modal.init(document.querySelectorAll('.modal'));
+      // Init AOS
+      AOS.init({ duration: 800, easing: 'ease-out', once: true });
 
-      ScrollReveal().reveal('[data-sr]', {
-        distance: '50px', duration: 800, easing: 'ease-out', origin: 'bottom', interval: 200
-      });
-
-      const backToTop = document.getElementById('back-to-top');
+      // Back-to-top visibility
+      const backBtn = document.getElementById('backToTop');
       window.addEventListener('scroll', () => {
-        backToTop.style.display = window.scrollY > 300 ? 'block' : 'none';
+        backBtn.classList.toggle('hidden', window.scrollY < 300);
       });
-      backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     });
+
+    // Modal toggle
+    function toggleModal(show) {
+      document
+        .getElementById('contactModal')
+        .classList.toggle('hidden', !show);
+    }
   </script>
 </body>
 </html>

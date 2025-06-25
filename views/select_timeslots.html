@@ -2,276 +2,425 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Timeslot Picker</title>
-  <!-- Materialize CSS -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+  <title>Timeslot Picker – Timetable System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+  <!-- Google Fonts -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap"
+    rel="stylesheet"
+  />
+
   <!-- Material Icons -->
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/icon?family=Material+Icons"
+    rel="stylesheet"
+  />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- AOS CSS -->
+  <link
+    href="https://unpkg.com/aos@2.3.4/dist/aos.css"
+    rel="stylesheet"
+  />
+
+  <!-- Toastify CSS for toasts -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css"
+  />
+
   <style>
-    body {
-      background: #f5f5f5;
-      font-family: 'Poppins', sans-serif;
-    }
-    h4 {
-      text-align: center;
-      color: #1a237e;
-      margin: 24px 0;
-    }
-    #controls-col { padding-right: 1px; }
-    /* GRID for timeslots */
-    #slots-col {
-      padding-left: 70px;
-      padding-right: 70px;
-    }
-    #timeslots {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
-      /* optional: constrain height and scroll if you still want scrolling */
-      max-height: calc(100vh - 200px);
-      overflow-y: auto;
-      justify-items: center;
-    }
-
-    /* Timeslot card tweaks */
-    .timeslot { margin-bottom: 0; }  /* grid gap handles spacing now */
-    .timeslot .card { overflow: visible; }
-    .timeslot.invalid input { border-color: #e53935 !important; }
-
-    /* Controls panel */
-    #controls .card-panel { padding: 16px; }
-    #controls h6 {
-      margin-bottom: 16px;
-      font-weight: 500;
-      color: #1a237e;
-    }
-    /* Floating add button sizing */
-    #controls {
-        display: flex;
-        justify-content: center;  /* center horizontally */
-        flex-wrap: wrap;          /* wrap on small screens */
-        gap: 12px;                /* space between buttons */
-        margin: 0 auto 24px;      /* vertical spacing */
-    }
-
-    /* optional: give a bit of bottom‑margin on each button */
-    #controls .btn,
-    #controls .btn-floating {
-        margin-bottom: 1px;
-    }
-
-    /* Full-width text buttons */
-    .full-width {
-      width: 100%;
-      margin-bottom: 12px;
-      text-transform: none;
-    }
+    body { font-family: 'Poppins', sans-serif; }
+    .invalid { border: 2px solid #dc2626; }
   </style>
 </head>
-<body>
 
+<body class="min-h-screen flex flex-col bg-gray-50 text-gray-800">
   <!-- Navbar -->
-  <div class="navbar-fixed">
-    {% include 'navigation.html' %}
-  </div>
+  {% include 'navigation.html' %}
 
-  <h4>Timeslot Picker</h4>
-  <div id="controls">
-    <button id="add-slot" class="btn blue darken-1"><i class="material-icons left">add</i>Add Slot</button>
-    <button id="clear-all" class="btn grey lighten-1"><i class="material-icons left">delete_sweep</i>Clear All</button>
-    <button id="import-json" class="btn green lighten-1"><i class="material-icons left">upload</i>Import JSON</button>
-    <button id="export-json" class="btn blue lighten-1"><i class="material-icons left">download</i>Export JSON</button>
-    <button id="clear-schedule" class="btn orange darken-2 tooltipped" data-position="top" data-tooltip="Clear current schedule to allow time slot updates"><i class="material-icons left">schedule</i>Clear Schedule</button>
-    <button id="submit" class="btn waves-effect waves-light indigo"><i class="material-icons left">send</i>Submit</button>
-    <input type="file" id="file-input" accept=".json" style="display:none">
-  </div>
+  <main class="flex-1 container mx-auto px-4 py-8">
+    <h2 class="text-3xl font-semibold mb-6" data-aos="fade-up">
+      Timeslot Picker
+    </h2>
 
-  <!-- Timeslots GRID -->
-  <div id="slots-col" class="col s12 m8 l9">
-    <div id="timeslots"></div>
-  </div>
+    <!-- Controls -->
+    <div
+      id="controls"
+      class="flex flex-wrap gap-3 mb-8"
+      data-aos="fade-up" data-aos-delay="100"
+    >
+      <button
+        id="add-slot"
+        class="flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+      >
+        <span class="material-icons">add</span>Add Slot
+      </button>
+      <button
+        id="clear-all"
+        class="flex items-center gap-1 px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 transition"
+      >
+        <span class="material-icons">delete_sweep</span>Clear All
+      </button>
+      <button
+        id="import-json"
+        class="flex items-center gap-1 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition"
+      >
+        <span class="material-icons">upload</span>Import JSON
+      </button>
+      <button
+        id="export-json"
+        class="flex items-center gap-1 px-4 py-2 bg-blue-400 text-white rounded hover:bg-blue-500 transition"
+      >
+        <span class="material-icons">download</span>Export JSON
+      </button>
+      <button
+        id="clear-schedule"
+        class="flex items-center gap-1 px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 transition"
+        title="Clear current schedule to allow time slot updates"
+      >
+        <span class="material-icons">schedule</span>Clear Schedule
+      </button>
+      <button
+        id="sort-toggle"
+        class="flex items-center gap-1 px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition">
+        <span class="material-icons">sort</span>Sort Timeslots
+      </button>
+      <button
+        id="submit"
+        class="flex items-center gap-1 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+      >
+        <span class="material-icons">send</span>Submit
+      </button>
+      <input type="file" id="file-input" accept=".json" class="hidden" />
+    </div>
 
-  <!-- Materialize JS + SortableJS -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <!--Sorting Panel-->
+    <div id="sort-panel"
+        class="hidden bg-white shadow-md rounded-lg p-6 mb-8 space-y-4"
+        data-aos="fade-up" data-aos-delay="150">
+      <h3 class="text-xl font-medium">Sort Timeslots</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+        <div>
+          <label for="sort-field" class="block mb-1">Field</label>
+          <select id="sort-field" class="border rounded p-2 w-full">
+            <option value="day_start">Day & Start Time</option>
+            <option value="day">Day</option>
+            <option value="start">Start Time</option>
+            <option value="end">End Time</option>
+          </select>
+        </div>
+        <div>
+          <label for="sort-order" class="block mb-1">Order</label>
+          <select id="sort-order" class="border rounded p-2 w-full">
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+          </select>
+        </div>
+        <div class="flex space-x-2">
+          <button
+            id="apply-sort"
+            class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+          >
+            Apply
+          </button>
+          <button
+            id="reset-sort"
+            class="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 transition"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Timeslots Grid -->
+    <div
+      id="slots-col"
+      class="w-full md:w-8/12 lg:w-9/12 mx-auto"
+      data-aos="fade-up" data-aos-delay="200"
+    >
+      <div id="timeslots" class="space-y-4"></div>
+    </div>
+  </main>
+    <!-- Footer -->
+  {% include 'footer.html' %}
+
+  <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', function(){
-      // Initialize tooltips
-      M.Tooltip.init(document.querySelectorAll('.tooltipped'));
+  document.addEventListener('DOMContentLoaded', () => {
+    AOS.init({ duration: 800, easing: 'ease-out', once: true });
+    Sortable.create(document.getElementById('timeslots'), {
+      handle: '.drag-handle', animation: 150
+    });
 
-      const daysOfWeek = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-      const container  = document.getElementById('timeslots');
+    const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    const container = document.getElementById('timeslots');
+    const fileInput = document.getElementById('file-input');
 
-      // Make the grid draggable
-      Sortable.create(container, { handle: '.drag-handle', animation: 150 });
+    function toast(msg, type='info') {
+      Toastify({
+        text: msg,
+        duration: 3000,
+        gravity: 'top',
+        position: 'right',
+        backgroundColor: type === 'error' ? '#dc2626' : '#16a34a'
+      }).showToast();
+    }
 
-      function makeSlot({day='', start='', end=''}={}) {
-        const el = document.createElement('div');
-        el.className = 'timeslot';
-        el.innerHTML = `
-          <div class="card">
-            <div class="card-content">
-              <div class="row" style="margin-bottom:8px;">
-                <div class="input-field col s4">
-                  <select class="browser-default day-select">
-                    ${daysOfWeek.map(d=>`<option value="${d}" ${d===day?'selected':''}>${d}</option>`).join('')}
-                  </select>
-                </div>
-                <div class="input-field col s4">
-                  <input type="time" class="start-time" value="${start}"><label class="active">Start Time</label>
-                </div>
-                <div class="input-field col s4">
-                  <input type="time" class="end-time" value="${end}"><label class="active">End Time</label>
-                </div>
+    function makeSlot({day='', start='', end=''}={}) {
+      const el = document.createElement('div');
+      el.className = 'bg-white shadow-md rounded-lg p-4 relative';
+      el.innerHTML = `
+        <div class="flex justify-between items-start mb-4">
+          <div class="flex-1 grid grid-cols-3 gap-3">
+            <select class="day-select border bg-gray-50 rounded p-2">
+              ${days.map(d =>
+                `<option value="${d}" ${d===day?'selected':''}>${d}</option>`
+              ).join('')}
+            </select>
+            <input
+              type="time"
+              class="start-time w-full border rounded p-2"
+              value="${start}"
+            />
+            <input
+              type="time"
+              class="end-time w-full border rounded p-2"
+              value="${end}"
+            />
+          </div>
+          <div class="flex flex-col gap-2 ml-4">
+            <button
+              class="delete-btn relative group bg-red-500 hover:bg-red-600 text-white p-2 rounded"
+            >
+              <span class="material-icons">delete</span>
+              <div
+                class="pointer-events-none absolute bottom-full mb-2 left-1/2 -translate-x-1/2 
+                       opacity-0 group-hover:opacity-100 transition-opacity duration-150 
+                       bg-gray-800 text-white text-sm rounded px-2 py-1 whitespace-nowrap"
+              >
+                Delete this timeslot
               </div>
-              <div class="row" style="margin-bottom:0;">
-                <button class="btn red lighten-1 delete-btn"><i class="material-icons">delete</i></button>
-                <button class="btn grey lighten-1 duplicate-btn"><i class="material-icons">content_copy</i></button>
+            </button>
+            <button
+              class="duplicate-btn relative group bg-gray-300 hover:bg-gray-400 text-gray-800 p-2 rounded"
+            >
+              <span class="material-icons">content_copy</span>
+              <div
+                class="pointer-events-none absolute bottom-full mb-2 left-1/2 -translate-x-1/2 
+                       opacity-0 group-hover:opacity-100 transition-opacity duration-150 
+                       bg-gray-800 text-white text-sm rounded px-2 py-1 whitespace-nowrap"
+              >
+                Duplicate for all days
               </div>
-            </div>
-          </div>`;
-        return el;
+            </button>
+          </div>
+        </div>`;
+      return el;
+    }
+
+    // load existing slots
+    fetch('/get_timeslots')
+      .then(r => r.ok ? r.json() : [])
+      .then(data => {
+        container.innerHTML = '';
+        const all = Object.entries(data).flatMap(([d, slots]) =>
+          slots.map(([s,e]) => ({day: d, start: s, end: e}))
+        );
+        (all.length ? all : [{}]).forEach(slot => container.appendChild(makeSlot(slot)));
+      })
+      .catch(() => container.appendChild(makeSlot()));
+
+    // delete & duplicate delegation
+    container.addEventListener('click', e => {
+      const slot = e.target.closest('div.bg-white');
+      if (!slot) return;
+      if (e.target.closest('.delete-btn')) slot.remove();
+      if (e.target.closest('.duplicate-btn')) {
+        const d = slot.querySelector('.day-select').value;
+        const s = slot.querySelector('.start-time').value;
+        const eTime = slot.querySelector('.end-time').value;
+        days.forEach(day => {
+          if (day !== d) container.appendChild(makeSlot({day, start: s, end: eTime}));
+        });
       }
+    });
 
-      // Load existing timeslots
-      fetch('/get_timeslots')
-        .then(r => r.ok ? r.json() : [])
-        .then(dataObj => {
+    // controls
+    document.getElementById('add-slot')
+      .addEventListener('click', () => container.appendChild(makeSlot()));
+    document.getElementById('clear-all')
+      .addEventListener('click', () => container.innerHTML = '');
+
+    document.getElementById('clear-schedule').addEventListener('click', () => {
+      if (!confirm('⚠️ This will clear the current timetable schedule. Proceed?')) return;
+      fetch('/clear_schedule',{ method:'POST', headers:{'Content-Type':'application/json'} })
+        .then(r => r.json())
+        .then(j => toast(j.message||j.detail, j.message?'success':'error'))
+        .catch(err => toast(`Error: ${err}`, 'error'));
+    });
+
+    document.getElementById('export-json').addEventListener('click', () => {
+      const data = Array.from(container.children).map(slot => ({
+        day: slot.querySelector('.day-select').value,
+        start: slot.querySelector('.start-time').value,
+        end: slot.querySelector('.end-time').value
+      }));
+      const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'timeslots.json';
+      a.click(); URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('import-json').addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => {
+      const f = fileInput.files[0]; if (!f) return;
+      f.text().then(t => {
+        try {
+          const arr = JSON.parse(t);
           container.innerHTML = '';
-          const all = [];
-          Object.entries(dataObj).forEach(([day, slots]) => {
-            slots.forEach(([s,e]) => all.push({day, start: s, end: e}));
-          });
-          if (all.length) {
-            all.forEach(slot => container.appendChild(makeSlot(slot)));
-          } else {
-            container.appendChild(makeSlot());
-          }
-        })
-        .catch(_ => {
-          container.innerHTML = '';
-          container.appendChild(makeSlot());
-        });
-
-      // Delete & duplicate
-      container.addEventListener('click', e => {
-        const slot = e.target.closest('.timeslot');
-        if (!slot) return;
-        if (e.target.closest('.delete-btn')) slot.remove();
-        if (e.target.closest('.duplicate-btn')) {
-          const day = slot.querySelector('.day-select').value;
-          const start = slot.querySelector('.start-time').value;
-          const end = slot.querySelector('.end-time').value;
-          daysOfWeek.forEach(d => {
-            if (d !== day) container.appendChild(makeSlot({day: d, start, end}));
-          });
+          arr.forEach(item => container.appendChild(makeSlot(item)));
+        } catch {
+          toast('Invalid JSON file', 'error');
         }
-      });
-
-      // Controls
-      document.getElementById('add-slot').addEventListener('click', () => container.appendChild(makeSlot()));
-      document.getElementById('clear-all').addEventListener('click', () => container.innerHTML = '');
-
-      // Clear schedule functionality
-      document.getElementById('clear-schedule').addEventListener('click', () => {
-        if (confirm('⚠️ This will clear the current timetable schedule. Are you sure?')) {
-          fetch('/clear_schedule', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.message) {
-              M.toast({html: `✅ ${data.message}`, classes: 'green', displayLength: 4000});
-            } else {
-              M.toast({html: `❌ ${data.detail || 'Failed to clear schedule'}`, classes: 'red'});
-            }
-          })
-          .catch(error => {
-            M.toast({html: `❌ Error: ${error.message}`, classes: 'red'});
-          });
-        }
-      });
-
-      // Export JSON
-      document.getElementById('export-json').addEventListener('click', () => {
-        const data = Array.from(container.children).map(slot => ({
-          day: slot.querySelector('.day-select').value,
-          start: slot.querySelector('.start-time').value,
-          end: slot.querySelector('.end-time').value
-        }));
-        const blob = new Blob([JSON.stringify(data,null,2)], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = 'timeslots.json'; a.click(); URL.revokeObjectURL(url);
-      });
-
-      // Import JSON
-      const fileInput = document.getElementById('file-input');
-      document.getElementById('import-json').addEventListener('click', () => fileInput.click());
-      fileInput.addEventListener('change', () => {
-        const file = fileInput.files[0]; if (!file) return;
-        file.text().then(txt => {
-          try {
-            const arr = JSON.parse(txt);
-            container.innerHTML = '';
-            arr.forEach(item => container.appendChild(makeSlot(item)));
-          } catch {
-            M.toast({html: 'Invalid JSON file', classes: 'red'});
-          }
-        });
-      });
-
-      // Submit slots
-      document.getElementById('submit').addEventListener('click', () => {
-        const slots = Array.from(container.children).map(slot => ({
-          slot,
-          day: slot.querySelector('.day-select').value,
-          startEl: slot.querySelector('.start-time'),
-          endEl: slot.querySelector('.end-time')
-        }));
-        let bad = false;
-        slots.forEach(o => o.slot.classList.remove('invalid'));
-        // Validate time ranges
-        slots.forEach(({slot, startEl, endEl}) => {
-          if (!startEl.value || !endEl.value || endEl.value <= startEl.value) {
-            bad = true;
-            slot.classList.add('invalid');
-          }
-        });
-        if (bad) return M.toast({html: 'Fix invalid time ranges', classes: 'red'});
-        // Check overlaps
-        const byDay = {};
-        slots.forEach(({slot, day, startEl, endEl}) => {
-          byDay[day] = byDay[day] || [];
-          byDay[day].push({slot, s: startEl.value, e: endEl.value});
-        });
-        Object.values(byDay).forEach(arr => {
-          arr.sort((a,b) => a.s.localeCompare(b.s));
-          for (let i = 1; i < arr.length; i++) {
-            if (arr[i].s < arr[i-1].e) {
-              bad = true;
-              arr[i-1].slot.classList.add('invalid');
-              arr[i].slot.classList.add('invalid');
-            }
-          }
-        });
-        if (bad) return M.toast({html: 'Found overlapping times', classes: 'red'});
-        // Build payload
-        const payload = {};
-        slots.forEach(({day, startEl, endEl}) => {
-          payload[day] = payload[day] || [];
-          payload[day].push([startEl.value, endEl.value]);
-        });
-        fetch('/insert_timeslots', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(payload)
-        })
-        .then(r => r.ok ? r.json() : Promise.reject())
-        .then(_ => { M.toast({html: 'Submitted!', classes: 'green'}); window.location = '/home'; })
-        .catch(_ => M.toast({html: 'Submission failed', classes: 'red'}));
       });
     });
+
+    //sorting
+    const sortToggle = document.getElementById('sort-toggle');
+    const sortPanel  = document.getElementById('sort-panel');
+    const sortField  = document.getElementById('sort-field');
+    const sortOrder  = document.getElementById('sort-order');
+    const applySort  = document.getElementById('apply-sort');
+    const resetSort  = document.getElementById('reset-sort');
+
+    // show/hide sort UI
+    sortToggle.addEventListener('click', () => {
+      sortPanel.classList.toggle('hidden');
+    });
+
+    // apply sort
+    applySort.addEventListener('click', () => {
+    const slots = Array.from(container.children);
+    const field = sortField.value;        // "day", "start", "end" or "day_start"
+    const asc   = sortOrder.value === 'asc';
+
+    // Map weekdays to numbers
+    const dayIndex = {
+      Monday:1, Tuesday:2, Wednesday:3, Thursday:4,
+      Friday:5, Saturday:6, Sunday:7
+    };
+
+    slots.sort((a, b) => {
+      // 2-level sort: day then start time
+      if (field === 'day_start') {
+        const ad = dayIndex[a.querySelector('.day-select').value];
+        const bd = dayIndex[b.querySelector('.day-select').value];
+        if (ad !== bd) return asc ? ad - bd : bd - ad;
+
+        const as = a.querySelector('.start-time').value;
+        const bs = b.querySelector('.start-time').value;
+        if (as < bs) return asc ? -1 : 1;
+        if (as > bs) return asc ? 1 : -1;
+        return 0;
+      }
+
+      // Single-field sort (unchanged)
+      let va, vb;
+      if (field === 'day') {
+        va = dayIndex[a.querySelector('.day-select').value];
+        vb = dayIndex[b.querySelector('.day-select').value];
+      } else {
+        va = a.querySelector(`.${field}-time`).value;
+        vb = b.querySelector(`.${field}-time`).value;
+      }
+
+      if (va < vb) return asc ? -1 : 1;
+      if (va > vb) return asc ? 1 : -1;
+      return 0;
+    });
+
+    // Re-append in new order
+    container.innerHTML = '';
+    slots.forEach(el => container.appendChild(el));
+  });
+
+
+    // reset sort (just show original load order)
+    resetSort.addEventListener('click', () => {
+      // simply reload from server (or you could cache original array)
+      fetch('/get_timeslots')
+        .then(r => r.ok ? r.json() : [])
+        .then(data => {
+          container.innerHTML = '';
+          const all = Object.entries(data).flatMap(([d, slots]) =>
+            slots.map(([s,e]) => ({day: d, start: s, end: e}))
+          );
+          (all.length ? all : [{}])
+            .forEach(slot => container.appendChild(makeSlot(slot)));
+        })
+        .catch(() => container.appendChild(makeSlot()));
+    });
+
+    document.getElementById('submit').addEventListener('click', () => {
+      const items = Array.from(container.children).map(el => ({
+        el,
+        day: el.querySelector('.day-select').value,
+        start: el.querySelector('.start-time'),
+        end: el.querySelector('.end-time')
+      }));
+      let bad = false;
+      items.forEach(o=>o.el.classList.remove('invalid'));
+      // validate
+      items.forEach(o => {
+        if (!o.start.value || !o.end.value || o.end.value <= o.start.value) {
+          bad = true; o.el.classList.add('invalid');
+        }
+      });
+      if (bad) return toast('Fix invalid time ranges', 'error');
+      // overlap
+      const byDay = {};
+      items.forEach(o => (byDay[o.day] = byDay[o.day]||[]).push(o));
+      Object.values(byDay).forEach(arr => {
+        arr.sort((a,b) => a.start.value.localeCompare(b.start.value));
+        for (let i=1; i<arr.length; i++) {
+          if (arr[i].start.value < arr[i-1].end.value) {
+            bad = true;
+            arr[i-1].el.classList.add('invalid');
+            arr[i].el.classList.add('invalid');
+          }
+        }
+      });
+      if (bad) return toast('Found overlapping times', 'error');
+
+      // submit
+      const payload = {};
+      items.forEach(o => {
+        payload[o.day] = payload[o.day]||[];
+        payload[o.day].push([o.start.value, o.end.value]);
+      });
+      fetch('/insert_timeslots', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(_ => {
+        toast('Submitted!', 'success');
+        setTimeout(() => window.location='/home', 800);
+      })
+      .catch(_ => toast('Submission failed','error'));
+    });
+  });
   </script>
 </body>
 </html>
