@@ -1010,6 +1010,9 @@ async def clear_schedule(request: Request):
 async def insert_timeslots(request: Request, timeslot_data: dict):
     """
     Inserts time slots into the organization's database. Admin-only route.
+    
+    Note: Updating time slots will clear existing professor busy slot preferences 
+    and any generated timetable, as these depend on the specific time slot structure.
     """
     # 1. Admin check
     if not is_admin(request):
@@ -1026,10 +1029,17 @@ async def insert_timeslots(request: Request, timeslot_data: dict):
             formatted_data[day] = []
             for slot in slots:
                 formatted_data[day].append([slot[0], slot[1]])
+        
+        # Clear any stored infeasibility reason since we're updating time slots
+        request.session.pop("infeasibility_reason", None)
+        
         insert_time_slots(formatted_data, db_path)
-        return JSONResponse(status_code=200, content={"message": "Timeslots inserted successfully!"})
+        return JSONResponse(status_code=200, content={
+            "message": "Timeslots updated successfully! Note: Any existing professor preferences and timetable have been cleared. Please re-upload faculty preferences if needed."
+        })
     except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e)})
+        logger.error(f"Error inserting timeslots: {e}")
+        return JSONResponse(status_code=500, content={"detail": f"Failed to update timeslots: {str(e)}"})
 
 
 @app.get("/timetable/{roll_number}", response_class=HTMLResponse)

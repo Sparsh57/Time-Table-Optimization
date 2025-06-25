@@ -66,7 +66,18 @@ def insert_time_slots(input_data, db_path):
     # Now proceed with bulk insertion
     with session_context as session:
         try:
-            # Delete existing time slots
+            # First, delete dependent records to avoid foreign key constraint violations
+            from .models import ProfessorBusySlot, Schedule
+            
+            # Delete all Professor_BusySlots records (they reference Slots)
+            busy_slots_deleted = session.query(ProfessorBusySlot).delete()
+            logger.info(f"Deleted {busy_slots_deleted} professor busy slot records")
+            
+            # Delete all Schedule records (they reference Slots)
+            schedule_deleted = session.query(Schedule).delete()
+            logger.info(f"Deleted {schedule_deleted} schedule records")
+            
+            # Now delete existing time slots
             deleted_count = session.query(Slot).delete()
             logger.info(f"Deleted {deleted_count} existing time slots")
 
@@ -77,6 +88,15 @@ def insert_time_slots(input_data, db_path):
                 print(f"Successfully bulk inserted {len(slots_to_insert)} time slots.")
 
             session.commit()
+            
+            # Warn user about data that was cleared
+            if busy_slots_deleted > 0 or schedule_deleted > 0:
+                print(f"⚠️  Warning: Updated time slots required clearing:")
+                if busy_slots_deleted > 0:
+                    print(f"   - {busy_slots_deleted} professor busy slot preferences")
+                if schedule_deleted > 0:
+                    print(f"   - {schedule_deleted} existing schedule entries")
+                print("   Please re-upload faculty preferences and regenerate the timetable if needed.")
 
         except SQLAlchemyError as e:
             session.rollback()
@@ -186,7 +206,18 @@ def fix_corrupted_time_slots(db_path):
                 print(f"❌ Found {corrupted_count} corrupted time slots")
                 print("🗑️  Deleting all corrupted time slots...")
                 
-                # Delete all existing slots
+                # First, delete dependent records to avoid foreign key constraint violations
+                from .models import ProfessorBusySlot, Schedule
+                
+                # Delete all Professor_BusySlots records (they reference Slots)
+                busy_slots_deleted = session.query(ProfessorBusySlot).delete()
+                print(f"   - Cleared {busy_slots_deleted} professor busy slot records")
+                
+                # Delete all Schedule records (they reference Slots)
+                schedule_deleted = session.query(Schedule).delete()
+                print(f"   - Cleared {schedule_deleted} schedule records")
+                
+                # Now delete all existing slots
                 deleted_count = session.query(Slot).delete()
                 session.commit()
                 
