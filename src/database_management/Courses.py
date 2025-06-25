@@ -146,18 +146,24 @@ def insert_courses_professors(file, db_path):
                         })
                         processed_courses.add(course_code)
 
-                    # Prepare course-professor relationships
-                    for faculty_name in faculty_names:
-                        professor_id = prof_dict.get(faculty_name)
+                    # Prepare course-professor relationships with section assignments
+                    # Use round-robin assignment for sections
+                    for section_num in range(1, num_sections + 1):
+                        # Assign professor using round-robin logic
+                        prof_index = (section_num - 1) % len(faculty_names)
+                        assigned_professor = faculty_names[prof_index]
+                        
+                        professor_id = prof_dict.get(assigned_professor)
                         if professor_id:
                             course_professor_relationships.append({
                                 'CourseName': course_code,  # Will map to CourseID after bulk insert
                                 'ProfessorID': professor_id,
-                                'FacultyName': faculty_name
+                                'FacultyName': assigned_professor,
+                                'SectionNumber': section_num
                             })
-                            logger.info(f"Will link professor {faculty_name} to course {course_code}")
+                            logger.info(f"Will link professor {assigned_professor} to course {course_code} section {section_num}")
                         else:
-                            logger.warning(f"Professor '{faculty_name}' not found for course {course_code}")
+                            logger.warning(f"Professor '{assigned_professor}' not found for course {course_code}")
 
                 except Exception as e:
                     logger.error(f"Error processing course {row.get('Course code', 'Unknown')}: {e}")
@@ -189,17 +195,18 @@ def insert_courses_professors(file, db_path):
                     if course_id:
                         relationships_to_insert.append({
                             'CourseID': course_id,
-                            'ProfessorID': rel['ProfessorID']
+                            'ProfessorID': rel['ProfessorID'],
+                            'SectionNumber': rel['SectionNumber']
                         })
 
                 # Check for existing relationships and filter them out
                 existing_relations = set()
                 for rel in session.query(CourseProfessor).all():
-                    existing_relations.add((rel.CourseID, rel.ProfessorID))
+                    existing_relations.add((rel.CourseID, rel.ProfessorID, rel.SectionNumber))
 
                 new_relationships = [
                     rel for rel in relationships_to_insert
-                    if (rel['CourseID'], rel['ProfessorID']) not in existing_relations
+                    if (rel['CourseID'], rel['ProfessorID'], rel['SectionNumber']) not in existing_relations
                 ]
 
                 if new_relationships:

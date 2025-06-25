@@ -8,7 +8,7 @@ class LoadingManager {
         this.isVisible = false;
         this.startTime = null;
         this.timeoutId = null;
-        this.maxDuration = 60000; // 60 seconds max
+        this.maxDuration = 3600000; // 6 minutes max// 60 seconds max
         this.createLoadingOverlay();
         this.setupErrorHandling();
     }

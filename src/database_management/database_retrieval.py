@@ -318,17 +318,19 @@ def get_course_professor_mapping(db_path):
             # Query to get course-professor mappings
             query = session.query(
                 Course.CourseName,
-                User.Email.label('ProfessorEmail')
+                User.Email.label('ProfessorEmail'),
+                CourseProfessor.SectionNumber
             ).select_from(Course)\
              .join(CourseProfessor, Course.CourseID == CourseProfessor.CourseID)\
              .join(User, CourseProfessor.ProfessorID == User.UserID)\
              .filter(User.Role == 'Professor')\
-             .order_by(Course.CourseName, User.Email)
+             .order_by(Course.CourseName, CourseProfessor.SectionNumber, User.Email)
             
             course_prof_map = {}
             for row in query.all():
                 course_name = row.CourseName
                 prof_email = row.ProfessorEmail
+                section_number = row.SectionNumber
                 
                 # For multiple professors, use the first one (backward compatibility)
                 if course_name not in course_prof_map:
@@ -362,53 +364,37 @@ def get_course_section_professor_mapping(db_path):
 
     with session_context as session:
         try:
-            # Query to get course information with section details
+            # Query to get course information with section details directly from database
             query = session.query(
                 Course.CourseName,
                 Course.NumberOfSections,
-                User.Email.label('ProfessorEmail')
+                User.Email.label('ProfessorEmail'),
+                CourseProfessor.SectionNumber
             ).select_from(Course)\
              .join(CourseProfessor, Course.CourseID == CourseProfessor.CourseID)\
              .join(User, CourseProfessor.ProfessorID == User.UserID)\
              .filter(User.Role == 'Professor')\
-             .order_by(Course.CourseName, User.Email)
+             .order_by(Course.CourseName, CourseProfessor.SectionNumber, User.Email)
             
             course_section_prof_map = {}
             
-            # Group professors by course
-            course_professors = {}
+            # Directly map sections to professors from database
             for row in query.all():
                 course_name = row.CourseName
                 prof_email = row.ProfessorEmail
                 num_sections = row.NumberOfSections
+                section_number = row.SectionNumber
                 
-                if course_name not in course_professors:
-                    course_professors[course_name] = {
-                        'professors': [],
-                        'num_sections': num_sections
-                    }
-                course_professors[course_name]['professors'].append(prof_email)
-            
-            # Create section mappings using round-robin assignment
-            for course_name, course_info in course_professors.items():
-                professors = course_info['professors']
-                num_sections = course_info['num_sections']
+                # Create course-section identifier
+                if num_sections == 1:
+                    # Single section: just use course name
+                    course_section_id = course_name
+                else:
+                    # Multiple sections: use course-A, course-B format
+                    section_letter = chr(ord('A') + section_number - 1)  # Convert 1->A, 2->B, etc.
+                    course_section_id = f"{course_name}-{section_letter}"
                 
-                for section_num in range(1, num_sections + 1):
-                    # Assign professor using round-robin
-                    prof_index = (section_num - 1) % len(professors)
-                    assigned_professor = professors[prof_index]
-                    
-                    # Create course-section identifier
-                    if num_sections == 1:
-                        # Single section: just use course name
-                        course_section_id = course_name
-                    else:
-                        # Multiple sections: use course-A, course-B format
-                        section_letter = chr(ord('A') + section_num - 1)  # Convert 1->A, 2->B, etc.
-                        course_section_id = f"{course_name}-{section_letter}"
-                    
-                    course_section_prof_map[course_section_id] = assigned_professor
+                course_section_prof_map[course_section_id] = prof_email
             
             return course_section_prof_map
             

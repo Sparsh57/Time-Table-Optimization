@@ -57,6 +57,7 @@ class CourseProfessor(Base):
     
     CourseID = Column(Integer, ForeignKey('Courses.CourseID'), primary_key=True)
     ProfessorID = Column(Integer, ForeignKey('Users.UserID'), primary_key=True)
+    SectionNumber = Column(Integer, primary_key=True, default=1)  # Added section support
     
     # Relationships
     course = relationship("Course", back_populates="professors")
