@@ -310,8 +310,8 @@ class LoadingManager {
     showTimetableGeneration() {
         this.show({
             title: 'Generating Timetable',
-            message: 'Running optimization algorithm, this may take a few minutes...',
-            timeout: 120000 // 2 minutes for timetable generation
+            message: 'Running optimization algorithm, this may take up to 20 minutes for complex datasets...',
+            timeout: 1500000 // 25 minutes for timetable generation (increased from 2 minutes)
         });
     }
 

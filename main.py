@@ -16,6 +16,12 @@ import logging
 import pandas as pd
 import asyncio
 
+# NOTE: For deployment platforms (Heroku, Railway, etc.), ensure that:
+# 1. Request timeout is set to at least 30 minutes (1800 seconds)
+# 2. Any reverse proxy (nginx) has appropriate timeout settings
+# 3. Load balancer timeout is configured for long-running requests
+# The timetable generation algorithm can take 10-20 minutes for complex datasets
+
 import openai
 from openai import OpenAI
 

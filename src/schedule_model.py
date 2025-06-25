@@ -240,7 +240,7 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
         model.Minimize(total_penalty)
 
         solver = cp_model.CpSolver()
-        solver.parameters.max_time_in_seconds = 30.0  # short limit per phase
+        solver.parameters.max_time_in_seconds = 300.0  # 5 minutes per phase (increased from 30 seconds)
         status = solver.Solve(model)
 
         schedule_df = pd.DataFrame(columns=["Course ID", "Scheduled Time"])

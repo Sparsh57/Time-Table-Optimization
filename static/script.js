@@ -485,7 +485,7 @@ const selectedFiles = {
       <div style="text-align: center; background: white; color: black; padding: 30px; border-radius: 10px;">
         <div style="width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
         <h3>Generating Timetable</h3>
-        <p>Please wait...</p>
+        <p>Please wait, this may take up to 20 minutes...</p>
       </div>
       <style>
         @keyframes spin {
