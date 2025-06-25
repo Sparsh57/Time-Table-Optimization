@@ -114,32 +114,50 @@ const selectedFiles = {
    * Renders the preview table.
    */
   function renderTable(fileType, rows) {
-    const headerElem = document.getElementById(fileType + "Header");
-    const bodyElem = document.getElementById(fileType + "Body");
-    headerElem.innerHTML = "";
-    bodyElem.innerHTML = "";
+  const headerElem = document.getElementById(fileType + "Header");
+  const bodyElem   = document.getElementById(fileType + "Body");
 
-    if (rows.length === 0) {
-      return;
-    }
-  
-    const columns = Object.keys(rows[0]);
-    columns.forEach(col => {
-      const th = document.createElement("th");
-      th.innerText = col;
-      headerElem.appendChild(th);
-    });
+  headerElem.innerHTML = "";
+  bodyElem.innerHTML   = "";
 
-    rows.forEach(row => {
-      const tr = document.createElement("tr");
-      columns.forEach(col => {
-        const td = document.createElement("td");
-        td.innerText = row[col];
-        tr.appendChild(td);
-      });
-      bodyElem.appendChild(tr);
-    });
+  if (!rows.length) return;
+
+  // Find the enclosing <table> and set collapse
+  const table = headerElem.closest("table");
+  if (table) {
+    table.style.borderCollapse = "collapse";
+    table.style.width         = "100%";
   }
+
+  const columns = Object.keys(rows[0]);
+
+  // HEADER
+  columns.forEach(col => {
+    const th = document.createElement("th");
+    th.innerText = col;
+    // inline border & padding
+    th.style.border   = "1px solid #ccc";
+    th.style.padding  = "8px 12px";
+    th.style.textAlign= "left";
+    headerElem.appendChild(th);
+  });
+
+  // BODY
+  rows.forEach(row => {
+    const tr = document.createElement("tr");
+
+    columns.forEach(col => {
+      const td = document.createElement("td");
+      td.innerText = row[col];
+      td.style.border  = "1px solid #ccc";
+      td.style.padding = "8px 12px";
+      tr.appendChild(td);
+    });
+
+    bodyElem.appendChild(tr);
+  });
+}
+
   
   /**
    * Renders dropdowns for mapping extra columns and displays missing columns.
