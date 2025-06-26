@@ -45,9 +45,10 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
     # Parameters you can tweak
     # ---------------------------------------------------------
     MAX_CLASSES_PER_SLOT = max_classes_per_slot  # Now configurable!
-    STUDENT_CONFLICT_WEIGHT = 1000  # penalty weight for each student conflict
+    STUDENT_CONFLICT_WEIGHT = 10000  # penalty weight for each student conflict
     REQUIRED_CONFLICT_WEIGHT = 10  # very soft penalty for a clash between two Required courses
     NON_PREFERRED_SLOTS = 50
+    CONSEC_CONFLICT_WEIGHT = 100
 
     # ---------------------------------------------------------
     # Early validation: Check if we have any time slots at all
@@ -96,7 +97,12 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
         Builds and solves a new model with specified constraints included.
         Returns (status, schedule_df).
         """
-        
+        #testing
+        conflict_vars          = []
+        conflict_required_vars = []
+        slot_penalty_vars      = []
+        consec_conflict_vars   = []
+
         model = cp_model.CpModel()
 
         # Collect all distinct time slots globally
@@ -189,7 +195,7 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                         conflict_required_vars.append(conflict_req_var)
 
         # PHASE 5) No same course twice on the same day (hard constraint)
-        if add_consec:
+        if add_same:
             for c_id, slot_dict in course_time_vars.items():
                 # Group the course's slots by day
                 day_map = defaultdict(list)
@@ -202,15 +208,35 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                         model.Add(sum(var_list) <= 1)
         
         # PHASE 6) No classes on consecutive days
-        day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-        day_to_index = {day: idx for idx, day in enumerate(day_order)}
-        
-        for c_id, slot_dict in course_time_vars.items():
-            day_vars = defaultdict(list) # empty-list as keys; can use append
-            for s, vars in slot_dict.items(): # Fetches from the slot dictionary of the given course c_id. (s -> slot, vars -> CP-SAT BOOL VAR) 
-                day = get_day_from_time_slot(s)
-                day_vars[day].append(var)
+        if add_consec:
+            day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+            day_to_index = {day: idx for idx, day in enumerate(day_order)}
+            
+            for c_id, slot_dict in course_time_vars.items():
+                day_vars = defaultdict(list) # empty-list as keys; can use append
+                for s, var in slot_dict.items(): # Fetches from the slot dictionary of the given course c_id. (s -> slot, var -> CP-SAT BOOL VAR) 
+                    day = get_day_from_time_slot(s)
+                    day_vars[day].append(var)
+                # Instead, turn it into a penalty
+                    print("USING NEW LOGIC!!!!!!!!!!!!!!!!!!!!!!")
+                    
+                    for i in range(len(day_order)-1):
+                        d1, d2 = day_order[i], day_order[i+1]
+                        if d1 in day_vars and d2 in day_vars:
+                            # indicator if the course is scheduled ANY time on day1 or day2
+                            d1_var = model.NewBoolVar(f'{c_id}_on_{d1}')
+                            d2_var = model.NewBoolVar(f'{c_id}_on_{d2}')
+                            model.AddMaxEquality(d1_var, day_vars[d1])
+                            model.AddMaxEquality(d2_var, day_vars[d2])
 
+                            # build a flag that is 1 exactly when both d1_var & d2_var are 1
+                            cv = model.NewBoolVar(f'consec_{c_id}_{d1}_{d2}')
+                            # cv ⇒ (d1_var AND d2_var)
+                            model.AddBoolAnd([d1_var, d2_var]).OnlyEnforceIf(cv)
+                            # ¬cv ⇒ (¬d1_var OR ¬d2_var)
+                            model.AddBoolOr([d1_var.Not(), d2_var.Not()]).OnlyEnforceIf(cv.Not())
+                            consec_conflict_vars.append(cv)
+            '''
             for i in range(6): 
                 d1, d2 = day_order[i], day_order[i+1] # Fetches consective days 
                 if d1 in day_vars and d2 in day_vars:
@@ -218,7 +244,7 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                     d2_var = model.NewBoolVar(f'{c_id}_on_{d2}')
                     model.AddMaxEquality(d1_var, day_vars[d1]) # Binds each *_var to the list of time slots on that day.
                     model.AddMaxEquality(d2_var, day_vars[d2]) # Same here 
-                    model.Add(d1_var + d2_var <= 1) # The constraint itsel - course can be scheduled on d1 or d2, but not both.
+                    #model.Add(d1_var + d2_var <= 1) # The constraint itsel - course can be scheduled on d1 or d2, but not both.'''
                 
         slot_penalty_vars = []
         # We retrieve the course_id and the dictionary 
@@ -237,11 +263,23 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
             total_penalty += REQUIRED_CONFLICT_WEIGHT * sum(conflict_required_vars)
         if slot_penalty_vars: 
             total_penalty += NON_PREFERRED_SLOTS * sum(slot_penalty_vars)
+        if consec_conflict_vars:
+            total_penalty += CONSEC_CONFLICT_WEIGHT * sum(consec_conflict_vars)
         model.Minimize(total_penalty)
 
         solver = cp_model.CpSolver()
         solver.parameters.max_time_in_seconds = 300.0  # 5 minutes per phase (increased from 30 seconds)
         status = solver.Solve(model)
+        if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+            # Count how many violation vars triggered
+            consec_violations = sum(int(solver.Value(cv)) for cv in consec_conflict_vars)
+            student_violations = sum(int(solver.Value(v)) for v in conflict_vars)
+            required_violations = sum(int(solver.Value(v)) for v in conflict_required_vars)
+            nonpref_uses  = sum(int(solver.Value(v)) for v in slot_penalty_vars)
+            total_obj     = solver.ObjectiveValue()
+            print(f"[METRICS] consec={consec_violations}, student={student_violations},"
+                f" required={required_violations}, nonpref={nonpref_uses}, obj={total_obj}")
+
 
         schedule_df = pd.DataFrame(columns=["Course ID", "Scheduled Time"])
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
