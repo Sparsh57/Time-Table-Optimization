@@ -12,6 +12,7 @@ This project provides an automated timetable generation system designed for educ
 - [Database Schema](#database-schema)
 - [Endpoints](#endpoints)
 - [How to Use](#how-to-use)
+- [Deployment Timeout Configuration](#deployment-timeout-configuration)
   
 ## Overview
 
@@ -156,3 +157,44 @@ The system uses SQLite with SQLAlchemy ORM. Each organization gets a separate da
 For any bug reports please contact the repo contributor or submit issues on the github page
 
 This project provides a scalable, optimized solution to the complex problem of scheduling in educational institutions, with a focus on automation, efficiency, and ease of use.
+
+## Deployment Timeout Configuration
+
+The timetable generation algorithm can take 10-20 minutes for complex datasets. When deploying to cloud platforms, you need to configure appropriate timeouts:
+
+### Heroku
+Add the following to your Heroku configuration:
+```bash
+heroku config:set WEB_TIMEOUT=1800  # 30 minutes
+heroku config:set TIMEOUT=1800
+```
+
+### Railway
+Configure in your `railway.toml`:
+```toml
+[build]
+nixPacks = true
+
+[deploy]
+healthcheckPath = "/"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+numReplicas = 1
+
+[environment]
+TIMEOUT = "1800"
+```
+
+### Docker/Nginx
+For nginx reverse proxy, add to your configuration:
+```nginx
+proxy_read_timeout 1800s;
+proxy_connect_timeout 1800s;
+proxy_send_timeout 1800s;
+```
+
+### Local Development
+For local development, the default uvicorn settings should work. The Procfile includes:
+```
+uvicorn main:app --timeout-keep-alive 1800 --timeout-graceful-shutdown 30
+```

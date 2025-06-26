@@ -189,10 +189,20 @@
   <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // Preloader
+      // Preloader with null safety
       const pre = document.getElementById('preloader');
-      setTimeout(()=> pre.style.opacity = '0', 800);
-      setTimeout(()=> pre.style.display = 'none', 1200);
+      if (pre) {
+        setTimeout(() => {
+          if (pre && pre.style) {
+            pre.style.opacity = '0';
+          }
+        }, 800);
+        setTimeout(() => {
+          if (pre && pre.style) {
+            pre.style.display = 'none';
+          }
+        }, 1200);
+      }
 
       // AOS
       AOS.init({ duration:800, easing:'ease-out', once:true });

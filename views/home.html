@@ -215,10 +215,20 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', function () {
-      // Preloader fade out
+      // Preloader fade out with null safety
       const preloader = document.getElementById('preloader');
-      setTimeout(() => preloader.style.opacity = '0', 800);
-      setTimeout(() => preloader.style.display = 'none', 1200);
+      if (preloader) {
+        setTimeout(() => {
+          if (preloader && preloader.style) {
+            preloader.style.opacity = '0';
+          }
+        }, 800);
+        setTimeout(() => {
+          if (preloader && preloader.style) {
+            preloader.style.display = 'none';
+          }
+        }, 1200);
+      }
 
       // Init AOS
       AOS.init({ duration: 800, easing: 'ease-out', once: true });

@@ -144,7 +144,7 @@ class LoadingManager {
         setTimeout(() => {
             const finalCheck = document.getElementById('loading-overlay');
             if (!finalCheck || !finalCheck.querySelector('.loading-container')) {
-                console.error('LoadingManager: Overlay initialization failed');
+                // Overlay initialization failed silently
             }
         }, 100);
     }
@@ -152,7 +152,6 @@ class LoadingManager {
     setupErrorHandling() {
         // Hide loading on unhandled promise rejections
         window.addEventListener('unhandledrejection', () => {
-            console.log('Unhandled promise rejection detected, hiding loading screen');
             this.hide();
         });
 
@@ -161,10 +160,15 @@ class LoadingManager {
             this.hide();
         });
 
-        // Hide loading on page visibility change (tab switch, etc.)
+        // Handle page visibility change (tab switch, etc.) but don't auto-hide for long operations
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && this.isVisible) {
-                this.hide();
+                // Don't auto-hide for timetable generation or other long operations
+                // Only hide if it's been less than 30 seconds (likely a quick operation)
+                const elapsedTime = this.startTime ? Date.now() - this.startTime : 0;
+                if (elapsedTime < 30000) {
+                    this.hide();
+                }
             }
         });
 
@@ -199,12 +203,10 @@ class LoadingManager {
         // Verify overlay content exists before showing
         const overlay = document.getElementById('loading-overlay');
         if (!overlay) {
-            console.error('Overlay element not found! Recreating...');
             this.createLoadingOverlay();
             // Try again after recreating
             const newOverlay = document.getElementById('loading-overlay');
             if (!newOverlay) {
-                console.error('Failed to create overlay element!');
                 return;
             }
         }
@@ -235,14 +237,10 @@ class LoadingManager {
         
         if (titleElement) {
             titleElement.textContent = title;
-        } else {
-            console.error('Title element not found!');
         }
         
         if (messageElement) {
             messageElement.textContent = message;
-        } else {
-            console.error('Message element not found!');
         }
 
         // Show overlay using class
@@ -251,23 +249,17 @@ class LoadingManager {
             
             // Force style recalculation
             overlay.offsetHeight;
-            
-            // Check if container is visible
-            const container = overlay.querySelector('.loading-container');
-            if (!container) {
-                console.error('Loading container not found in overlay!');
-            }
-        } else {
-            console.error('Loading overlay element not found!');
         }
 
         // Start time tracking
         this.startTimeTracking();
 
-        // Set timeout to auto-hide
-        this.timeoutId = setTimeout(() => {
-            this.hide();
-        }, timeout);
+        // Set timeout to auto-hide (only if timeout is provided)
+        if (timeout && timeout > 0) {
+            this.timeoutId = setTimeout(() => {
+                this.hide();
+            }, timeout);
+        }
     }
 
     hide() {
@@ -298,6 +290,9 @@ class LoadingManager {
                 return;
             }
 
+            // Check and recreate overlay if needed
+            this.checkAndRecreateOverlay();
+
             const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
             const timeElement = document.getElementById('loading-time');
             if (timeElement) {
@@ -310,8 +305,8 @@ class LoadingManager {
     showTimetableGeneration() {
         this.show({
             title: 'Generating Timetable',
-            message: 'Running optimization algorithm, this may take up to 20 minutes for complex datasets...',
-            timeout: 1500000 // 25 minutes for timetable generation (increased from 2 minutes)
+            message: 'Initializing timetable generation process...',
+            timeout: null // No timeout - controlled by polling
         });
     }
 
@@ -404,6 +399,34 @@ class LoadingManager {
             return overlay.childElementCount > 0;
         }
         return false;
+    }
+
+    // Check if loading overlay is properly visible and recreate if needed
+    checkAndRecreateOverlay() {
+        if (!this.isVisible) return true;
+
+        let overlay = document.getElementById('loading-overlay');
+        if (!overlay) {
+            this.createLoadingOverlay();
+            overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.classList.add('show');
+            } else {
+                return false;
+            }
+        }
+
+        // Check if overlay has content
+        if (overlay.childElementCount === 0) {
+            this.forceCreateContent();
+        }
+
+        // Check if overlay is visible
+        if (!overlay.classList.contains('show')) {
+            overlay.classList.add('show');
+        }
+
+        return true;
     }
 }
 

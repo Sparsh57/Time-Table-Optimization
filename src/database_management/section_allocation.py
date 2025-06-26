@@ -6,6 +6,7 @@ from .dbconnection import get_db_session, is_postgresql, get_organization_databa
 from .models import User, Course, CourseStud
 import logging
 from sqlalchemy import func
+from sqlalchemy.sql import text
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +145,7 @@ def create_student_course_matrix(db_path):
 def allocate_sections_for_course(course_name, num_sections, enrolled_students_df, max_section_size=None):
     """
     Allocate students to sections for a specific course using clustering.
+    Ensures all sections are used when possible.
     
     :param course_name: Name of the course
     :param num_sections: Number of sections for the course
@@ -155,49 +157,94 @@ def allocate_sections_for_course(course_name, num_sections, enrolled_students_df
         return []
     
     enrolled_students = enrolled_students_df.reset_index()[["Roll_No", "Cluster"]]
+    total_students = len(enrolled_students)
     
     if max_section_size is None:
-        max_section_size = max(10, len(enrolled_students) // num_sections)
+        max_section_size = max(10, total_students // num_sections)
+    
+    logger.info(f"Allocating {total_students} students to {num_sections} sections for {course_name}")
+    logger.info(f"Max section size: {max_section_size}")
     
     section_assignments = []
-    section_counter = 1
     
     # Group students by cluster
     grouped_students = enrolled_students.groupby("Cluster")["Roll_No"].apply(list)
     
+    # Create section counters to track how many students are in each section
+    section_counts = [0] * num_sections
+    
+    # For small clusters or when we want to ensure all sections are used,
+    # we'll use a more balanced approach
+    all_students = []
     for cluster, students in grouped_students.items():
-        cluster_size = len(students)
+        for student in students:
+            all_students.append({
+                "Roll_No": student,
+                "Cluster": cluster
+            })
+    
+    # Sort students by cluster to keep similar students together when possible
+    all_students.sort(key=lambda x: x["Cluster"])
+    
+    # If we have fewer students than sections, just distribute one per section
+    if total_students <= num_sections:
+        for i, student_info in enumerate(all_students):
+            section_num = i + 1
+            section_assignments.append({
+                "Roll_No": student_info["Roll_No"],
+                "Course": course_name,
+                "Cluster": student_info["Cluster"],
+                "Assigned_Section": section_num
+            })
+            section_counts[i] += 1
         
-        # If cluster fits in one section, assign all to same section
-        if cluster_size <= max_section_size:
-            for student in students:
-                section_assignments.append({
-                    "Roll_No": student,
-                    "Course": course_name,
-                    "Cluster": cluster,
-                    "Assigned_Section": section_counter
-                })
-            section_counter = (section_counter % num_sections) + 1
+        logger.info(f"Small class: distributed {total_students} students across {total_students} sections")
+    
+    # If we have more students than sections, use a balanced distribution
+    else:
+        # Calculate target size per section
+        base_size = total_students // num_sections
+        extra_students = total_students % num_sections
         
-        # If cluster is too large, split across sections
-        else:
-            num_splits = min(num_sections, (cluster_size // max_section_size) + (1 if cluster_size % max_section_size != 0 else 0))
-            students_per_section = cluster_size // num_splits
+        # Create target sizes for each section
+        target_sizes = [base_size + (1 if i < extra_students else 0) for i in range(num_sections)]
+        
+        logger.info(f"Target section sizes: {target_sizes}")
+        
+        # Distribute students trying to keep clusters together when possible
+        student_index = 0
+        
+        for section_idx in range(num_sections):
+            target_size = target_sizes[section_idx]
+            section_num = section_idx + 1
             
-            for i in range(num_splits):
-                start_idx = i * students_per_section
-                end_idx = (i + 1) * students_per_section if i < num_splits - 1 else cluster_size
-                assigned_students = students[start_idx:end_idx]
+            # Fill this section up to its target size
+            students_added = 0
+            while students_added < target_size and student_index < total_students:
+                student_info = all_students[student_index]
                 
-                for student in assigned_students:
-                    section_assignments.append({
-                        "Roll_No": student,
-                        "Course": course_name,
-                        "Cluster": cluster,
-                        "Assigned_Section": section_counter
-                    })
+                section_assignments.append({
+                    "Roll_No": student_info["Roll_No"],
+                    "Course": course_name,
+                    "Cluster": student_info["Cluster"],
+                    "Assigned_Section": section_num
+                })
                 
-                section_counter = (section_counter % num_sections) + 1
+                section_counts[section_idx] += 1
+                students_added += 1
+                student_index += 1
+            
+            logger.info(f"Section {section_num}: assigned {students_added} students")
+    
+    # Log final distribution
+    logger.info(f"Final section distribution for {course_name}:")
+    for i in range(num_sections):
+        logger.info(f"  Section {i+1}: {section_counts[i]} students")
+    
+    # Verify all students were assigned
+    total_assigned = sum(section_counts)
+    if total_assigned != total_students:
+        logger.error(f"Mismatch! {total_students} students but {total_assigned} assignments")
     
     return section_assignments
 
@@ -257,11 +304,15 @@ def allocate_all_sections(db_path):
 
 def update_student_sections_in_db(section_assignments, db_path):
     """
-    Update the database with section assignments.
+    Update the database with section assignments using bulk operations.
     
     :param section_assignments: List of section assignment dictionaries
     :param db_path: Path to the database or schema identifier
     """
+    if not section_assignments:
+        logger.info("No section assignments to update")
+        return
+    
     # Auto-detect org_name from db_path if it's a schema path
     org_name = None
     if db_path and db_path.startswith("schema:"):
@@ -277,30 +328,106 @@ def update_student_sections_in_db(section_assignments, db_path):
 
     with session_context as session:
         try:
+            # First, get all relevant student and course mappings in bulk
+            logger.info(f"Preparing bulk section assignment update for {len(section_assignments)} assignments...")
+            
+            # Extract unique emails and course names
+            student_emails = list(set(assignment["Roll_No"] for assignment in section_assignments))
+            course_names = list(set(assignment["Course"] for assignment in section_assignments))
+            
+            # Get student ID mappings
+            students_query = session.query(User.Email, User.UserID).filter(
+                User.Email.in_(student_emails),
+                User.Role == 'Student'
+            )
+            student_id_map = {email: user_id for email, user_id in students_query.all()}
+            
+            # Get course ID mappings
+            courses_query = session.query(Course.CourseName, Course.CourseID).filter(
+                Course.CourseName.in_(course_names)
+            )
+            course_id_map = {course_name: course_id for course_name, course_id in courses_query.all()}
+            
+            # Get all relevant CourseStud records
+            student_course_pairs = []
             for assignment in section_assignments:
-                # Get student and course IDs
-                student = session.query(User).filter_by(Email=assignment["Roll_No"]).first()
-                course = session.query(Course).filter_by(CourseName=assignment["Course"]).first()
+                student_email = assignment["Roll_No"]
+                course_name = assignment["Course"]
+                student_id = student_id_map.get(student_email)
+                course_id = course_id_map.get(course_name)
                 
-                if student and course:
-                    # Update section assignment in CourseStud table
-                    course_stud = session.query(CourseStud).filter_by(
-                        StudentID=student.UserID, 
-                        CourseID=course.CourseID
-                    ).first()
-                    
-                    if course_stud:
-                        course_stud.SectionNumber = assignment["Assigned_Section"]
-                        logger.debug(f"Updated section for {assignment['Roll_No']} in {assignment['Course']}: Section {assignment['Assigned_Section']}")
+                if student_id and course_id:
+                    student_course_pairs.append((student_id, course_id, assignment["Assigned_Section"]))
                 else:
-                    logger.warning(f"Student {assignment['Roll_No']} or course {assignment['Course']} not found")
+                    logger.warning(f"Student {student_email} or course {course_name} not found")
+            
+            if not student_course_pairs:
+                logger.warning("No valid student-course pairs found for section assignments")
+                return
+            
+            # Build conditions for bulk CourseStud lookup
+            student_ids = [pair[0] for pair in student_course_pairs]
+            course_ids = [pair[1] for pair in student_course_pairs]
+            
+            # Get all relevant CourseStud records
+            course_stud_records = session.query(CourseStud.CourseID, CourseStud.StudentID).filter(
+                CourseStud.StudentID.in_(student_ids),
+                CourseStud.CourseID.in_(course_ids)
+            ).all()
+            
+            # Create mapping for quick lookup
+            course_stud_map = {(record.StudentID, record.CourseID): (record.CourseID, record.StudentID) for record in course_stud_records}
+            
+            # Prepare bulk update data
+            update_cases = []
+            course_stud_pairs = []
+            
+            for student_id, course_id, section_number in student_course_pairs:
+                if (student_id, course_id) in course_stud_map:
+                    course_stud_pairs.append((course_id, student_id, section_number))
+                    update_cases.append(f"WHEN (\"CourseID\" = {course_id} AND \"StudentID\" = {student_id}) THEN {section_number}")
+                else:
+                    logger.warning(f"CourseStud record not found for StudentID {student_id}, CourseID {course_id}")
+            
+            if not course_stud_pairs:
+                logger.warning("No valid CourseStud records found for section assignments")
+                return
+            
+            # Execute bulk update using CASE statement with composite key
+            case_statement = " ".join(update_cases)
+            
+            if is_postgresql() and org_name:
+                # PostgreSQL syntax with composite key
+                bulk_update_sql = f"""
+                UPDATE "Course_Stud" 
+                SET "SectionNumber" = CASE 
+                    {case_statement}
+                    ELSE "SectionNumber"
+                END
+                WHERE ("CourseID", "StudentID") IN ({','.join(f'({pair[0]}, {pair[1]})' for pair in course_stud_pairs)})
+                """
+            else:
+                # SQLite syntax with composite key
+                bulk_update_sql = f"""
+                UPDATE Course_Stud 
+                SET SectionNumber = CASE 
+                    {case_statement}
+                    ELSE SectionNumber
+                END
+                WHERE (CourseID, StudentID) IN ({','.join(f'({pair[0]}, {pair[1]})' for pair in course_stud_pairs)})
+                """
+            
+            # Execute the bulk update
+            result = session.execute(text(bulk_update_sql))
+            updated_count = result.rowcount
             
             session.commit()
-            logger.info(f"Updated {len(section_assignments)} section assignments in database")
+            logger.info(f"✅ Bulk updated {updated_count} section assignments in database")
+            print(f"✅ Successfully updated {updated_count} student section assignments using bulk operations")
             
         except Exception as e:
             session.rollback()
-            logger.error(f"Error updating section assignments: {e}")
+            logger.error(f"Error in bulk updating section assignments: {e}")
             raise
 
 

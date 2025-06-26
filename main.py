@@ -15,6 +15,8 @@ from typing import Optional
 import logging
 import pandas as pd
 import asyncio
+import uuid
+import time
 
 # NOTE: For deployment platforms (Heroku, Railway, etc.), ensure that:
 # 1. Request timeout is set to at least 30 minutes (1800 seconds)
@@ -25,6 +27,8 @@ import asyncio
 import openai
 from openai import OpenAI
 
+# Global dictionary to track background tasks
+BACKGROUND_TASKS = {}
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -120,6 +124,11 @@ async def startup_event():
                 logger.info("SQLite meta-database initialized successfully")
             else:
                 logger.info("SQLite meta-database already exists, skipping initialization")
+                
+        # Start background task cleanup
+        asyncio.create_task(periodic_cleanup())
+        logger.info("Started background task cleanup service")
+        
     except Exception as e:
         logger.error(f"Failed to initialize meta-database: {e}")
 
@@ -488,7 +497,7 @@ async def send_admin_data(
         toggle_consec_days: bool = Form(False),
 ):
     """
-    Processes admin data uploads, inserts data, generates the timetable, redirects to the dashboard.
+    Processes admin data uploads, starts async timetable generation, returns task ID.
     Admin-only route.
     """
     # 1. Admin check
@@ -593,41 +602,120 @@ async def send_admin_data(
     # 7. Ensure time slots exist before generating timetable
     ensure_default_time_slots(db_path)
 
-    # 8. Generate timetable only after successful data insertion
+    # 8. Generate unique task ID and start background task
+    task_id = str(uuid.uuid4())
+    
+    # Store task info
+    BACKGROUND_TASKS[task_id] = {
+        "status": "processing",
+        "progress": "Starting timetable generation...",
+        "result": None,
+        "error": None,
+        "db_path": db_path
+    }
+    
+    # Start background task
+    asyncio.create_task(generate_timetable_async(
+        task_id, 
+        db_path,
+        toggle_prof,
+        toggle_capacity,
+        toggle_student,
+        toggle_same_day,
+        toggle_consec_days,
+        request
+    ))
+    
+    # Return task ID immediately
+    return JSONResponse({"task_id": task_id, "status": "started"})
+
+
+async def generate_timetable_async(task_id: str, db_path: str, toggle_prof: bool, toggle_capacity: bool, 
+                                  toggle_student: bool, toggle_same_day: bool, toggle_consec_days: bool, request: Request):
+    """
+    Background task to generate timetable asynchronously.
+    """
     try:
-        result = gen_timetable_auto(
+        # Update progress
+        BACKGROUND_TASKS[task_id]["progress"] = "Initializing optimization algorithm..."
+        await asyncio.sleep(0.1)  # Allow other tasks to run
+        
+        BACKGROUND_TASKS[task_id]["progress"] = "Loading course and student data..."
+        await asyncio.sleep(0.1)
+        
+        BACKGROUND_TASKS[task_id]["progress"] = "Setting up optimization constraints..."
+        await asyncio.sleep(0.1)
+        
+        BACKGROUND_TASKS[task_id]["progress"] = "Running multi-phase optimization (this may take several minutes)..."
+        
+        # Run the timetable generation in a thread pool to avoid blocking
+        result = await run_in_threadpool(
+            gen_timetable_auto,
             db_path,
-            add_prof_constraints    = toggle_prof,
-            add_timeslot_capacity   = toggle_capacity,
-            add_student_conflicts   = toggle_student,
-            add_no_same_day         = toggle_same_day,
-            add_no_consec_days      = toggle_consec_days)
+            add_prof_constraints=toggle_prof,
+            add_timeslot_capacity=toggle_capacity,
+            add_student_conflicts=toggle_student,
+            add_no_same_day=toggle_same_day,
+            add_no_consec_days=toggle_consec_days
+        )
+        
+        BACKGROUND_TASKS[task_id]["progress"] = "Processing optimization results..."
+        await asyncio.sleep(0.1)
         
         # Handle both old and new return formats
         if len(result) == 3:
             schedule_data, conflicts, infeasibility_reason = result
             if schedule_data.empty:
-                # Store infeasibility reason in session to display to user
-                request.session["infeasibility_reason"] = infeasibility_reason
+                # Store infeasibility reason
+                BACKGROUND_TASKS[task_id].update({
+                    "status": "failed",
+                    "error": infeasibility_reason,
+                    "progress": "Timetable generation failed due to constraints",
+                    "completed_at": time.time()
+                })
                 logger.info(f"Timetable generation failed: {infeasibility_reason}")
             else:
-                # Clear any previous infeasibility reason
-                request.session.pop("infeasibility_reason", None)
+                # Success
+                BACKGROUND_TASKS[task_id].update({
+                    "status": "completed",
+                    "result": "success",
+                    "progress": "Timetable generated successfully!",
+                    "completed_at": time.time()
+                })
                 logger.info("Timetable generation completed successfully")
         else:
             # Fallback for old format
             schedule_data, conflicts = result
-            request.session.pop("infeasibility_reason", None)
+            BACKGROUND_TASKS[task_id].update({
+                "status": "completed", 
+                "result": "success",
+                "progress": "Timetable generated successfully!",
+                "completed_at": time.time()
+            })
             logger.info("Timetable generation completed successfully")
-        
-        return RedirectResponse(url="/timetable", status_code=status.HTTP_303_SEE_OTHER)
-        
+            
     except Exception as e:
         logger.error(f"Error generating timetable: {e}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Data uploaded successfully, but timetable generation failed: {str(e)}"
-        )
+        BACKGROUND_TASKS[task_id].update({
+            "status": "failed",
+            "error": f"Data uploaded successfully, but timetable generation failed: {str(e)}",
+            "progress": "Error occurred during timetable generation",
+            "completed_at": time.time()
+        })
+
+
+@app.get("/task_status/{task_id}")
+async def get_task_status(task_id: str, request: Request):
+    """
+    Get the status of a background task.
+    """
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Access forbidden: Admins only.")
+    
+    if task_id not in BACKGROUND_TASKS:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    return JSONResponse(BACKGROUND_TASKS[task_id])
 
 
 # -------------------- Page Endpoints --------------------
@@ -1427,3 +1515,28 @@ async def setup_first_admin_submit(request: Request, admin_name: str = Form(...)
 if __name__ == "__main__":
     # Run with:  uvicorn main:app --reload  (or python main.py)
     uvicorn.run(app, host="localhost", port=4000)
+
+
+async def cleanup_old_tasks():
+    """Clean up completed tasks older than 1 hour"""
+    current_time = time.time()
+    
+    tasks_to_remove = []
+    for task_id, task_info in BACKGROUND_TASKS.items():
+        # Remove tasks completed more than 1 hour ago
+        if task_info.get("status") in ["completed", "failed"]:
+            if "completed_at" not in task_info:
+                task_info["completed_at"] = current_time
+            elif current_time - task_info["completed_at"] > 3600:  # 1 hour
+                tasks_to_remove.append(task_id)
+    
+    for task_id in tasks_to_remove:
+        del BACKGROUND_TASKS[task_id]
+        logger.info(f"Cleaned up old task: {task_id}")
+
+
+async def periodic_cleanup():
+    """Run cleanup every 30 minutes"""
+    while True:
+        await asyncio.sleep(1800)  # 30 minutes
+        await cleanup_old_tasks()
