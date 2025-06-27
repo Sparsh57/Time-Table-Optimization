@@ -133,7 +133,8 @@ def gen_timetable_with_sections(db_path, max_classes_per_slot=24,
         course_professor_map_all[course_section_id] = [prof_email]
     
     # Get other required data
-    professor_busy_slots = faculty_pref(db_path)
+    df_faculty_pref = faculty_pref(db_path)
+    professor_busy_slots = faculty_busy_slots(df_faculty_pref)
     
     # Create credit and type maps based on base courses
     course_credit_map = {}
