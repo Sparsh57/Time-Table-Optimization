@@ -268,7 +268,9 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
         model.Minimize(total_penalty)
 
         solver = cp_model.CpSolver()
-        solver.parameters.max_time_in_seconds = 300.0  # 5 minutes per phase (increased from 30 seconds)
+        solver.parameters.max_time_in_seconds = 60.0  # 1 minute per phase
+        solver.parameters.cp_model_presolve = True
+        solver.parameters.linearization_level = 1
         status = solver.Solve(model)
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             # Count how many violation vars triggered
