@@ -109,6 +109,14 @@
         Single Schedule
         <div class="tooltip-text">Get a single schedule</div>
       </button>
+      <button
+        id="edit-mode"
+        class="tooltip inline-flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition"
+      >
+        <span class="material-icons">edit</span>
+        Edit Timetable
+        <div class="tooltip-text">Drag courses to new slots</div>
+      </button>
     </div>
 
     <!-- Timetable Table -->
@@ -132,7 +140,14 @@
               {% endif %}
               <td class="px-4 py-2">{{ slot.start }}</td>
               <td class="px-4 py-2">{{ slot.end }}</td>
-              <td class="px-4 py-2">{{ slot.courses }}</td>
+              <td class="px-4 py-2 dropzone" data-day="{{ day }}" data-start="{{ slot.start }}" data-end="{{ slot.end }}">
+                {% for course in slot.courses.split(', ') %}
+                <div class="course-item bg-gray-100 rounded px-1 mb-1 cursor-move" draggable="true"
+                     data-course="{{ course }}" data-day="{{ day }}" data-start="{{ slot.start }}" data-end="{{ slot.end }}">
+                  {{ course }}
+                </div>
+                {% endfor %}
+              </td>
             </tr>
             {% endfor %}
           {% endfor %}
@@ -317,6 +332,59 @@
       document.getElementById('send-schedule').onclick = () => {
         window.location.href = '/get_role_no';
       };
+            // Drag and drop editing
+      const editBtn = document.getElementById('edit-mode');
+      let editMode = false;
+
+      editBtn.addEventListener('click', () => {
+        editMode = !editMode;
+        editBtn.classList.toggle('bg-yellow-700', editMode);
+      });
+
+      document.querySelectorAll('.course-item').forEach(item => {
+        item.addEventListener('dragstart', e => {
+          if (!editMode) return e.preventDefault();
+          e.dataTransfer.setData('text/plain', JSON.stringify({
+            course: item.dataset.course,
+            day: item.dataset.day,
+            start: item.dataset.start,
+            end: item.dataset.end
+          }));
+        });
+      });
+
+      document.querySelectorAll('.dropzone').forEach(zone => {
+        zone.addEventListener('dragover', e => {
+          if (editMode) e.preventDefault();
+        });
+        zone.addEventListener('drop', async e => {
+          if (!editMode) return;
+          e.preventDefault();
+          const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+          const to = { day: zone.dataset.day, start: zone.dataset.start, end: zone.dataset.end };
+          if (data.day === to.day && data.start === to.start && data.end === to.end) return;
+          if (!confirm(`Move ${data.course} to ${to.day} ${to.start}-${to.end}?`)) return;
+
+          const resp = await fetch('/update_schedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              course: data.course,
+              from_day: data.day,
+              from_start: data.start,
+              from_end: data.end,
+              to_day: to.day,
+              to_start: to.start,
+              to_end: to.end
+            })
+          });
+          if (resp.ok) {
+            location.reload();
+          } else {
+            alert('Failed to update schedule');
+          }
+        });
+      });
     });
   </script>
 </body>
