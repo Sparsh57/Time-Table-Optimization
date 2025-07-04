@@ -48,6 +48,7 @@ from src.database_management.schedule import (
     generate_csv,
     get_student_schedule,
     generate_csv_for_student,
+    update_course_slot
 )
 from src.database_management.course_stud import (
     get_section_mapping_dataframe,
@@ -912,6 +913,44 @@ async def download_schedule_csv(request: Request):
     except HTTPException as http_exc:
         return JSONResponse(status_code=http_exc.status_code, content={"detail": http_exc.detail})
 
+
+@app.post("/update_schedule")
+async def update_schedule_api(request: Request):
+    """Move a course to a different time slot."""
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Access forbidden: Admins only.")
+
+    db_path = request.session.get("db_path")
+    if not db_path:
+        raise HTTPException(status_code=422, detail="Database path not provided in session.")
+
+    data = await request.json()
+    required = [
+        "course",
+        "from_day",
+        "from_start",
+        "from_end",
+        "to_day",
+        "to_start",
+        "to_end",
+    ]
+    if not all(k in data for k in required):
+        raise HTTPException(status_code=400, detail="Missing required fields")
+
+    try:
+        update_course_slot(
+            data["course"],
+            data["from_day"],
+            data["from_start"],
+            data["from_end"],
+            data["to_day"],
+            data["to_start"],
+            data["to_end"],
+            db_path,
+        )
+        return JSONResponse(status_code=200, content={"message": "Schedule updated"})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @app.get("/download-section-mapping")
 async def download_section_mapping_csv(request: Request):
