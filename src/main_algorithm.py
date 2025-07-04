@@ -4,7 +4,7 @@ from .schedule_model import schedule_courses
 from .database_management.schedule import schedule
 from .database_management.Courses import fetch_course_data
 from .conflict_checker import check_conflicts, find_courses_with_multiple_slots_on_same_day
-from .database_management.database_retrieval import registration_data, faculty_pref, get_all_time_slots, registration_data_with_sections, get_course_section_professor_mapping, create_course_credit_map, create_course_elective_map
+from .database_management.database_retrieval import registration_data, faculty_pref, get_all_time_slots, registration_data_with_sections, get_course_section_professor_mapping, create_course_classes_per_week_map, create_course_elective_map
 from .database_management.migration import migrate_database_for_sections, check_migration_needed
 from .database_management.Slot_info import ensure_default_time_slots
 from .database_management.settings_manager import get_max_classes_per_slot, initialize_default_settings
@@ -21,10 +21,10 @@ def gen_student_csv(student_list, course_list):
     df = pd.DataFrame(data)
     df.to_csv("Student Registration Data.csv", index=False)
 
-def diagnose_same_day_constraints(courses, course_credits):
+def diagnose_same_day_constraints(courses, course_classes_per_week):
     """
     Prints a diagnostic for each course that has fewer unique days than
-    required credits. If a course needs 'X' sessions (credits = X) but
+    required classes per week. If a course needs 'X' sessions (classes per week = X) but
     only has Y < X distinct days, you'll never be able to schedule them
     all on different days.
     """
@@ -35,7 +35,7 @@ def diagnose_same_day_constraints(courses, course_credits):
             day = slot.split()[0]  # or your get_day_from_time_slot(slot)
             slot_days.add(day)
 
-        needed = course_credits.get(course_id, 2)  # default if missing
+        needed = course_classes_per_week.get(course_id, 2)  # default if missing
         day_count = len(slot_days)
 
         if day_count < needed:
@@ -65,13 +65,13 @@ def gen_timetable(db_path, max_classes_per_slot=24,
     student_course_map = prepare_student_course_map(df_merged)
     course_professor_map = create_course_professor_map_all(df_merged)
     professor_busy_slots = faculty_pref(db_path)
-    course_credit_map = create_course_credit_map(df_merged)
+    course_classes_per_week_map = create_course_classes_per_week_map(df_merged)
     course_type_map = create_course_elective_map(df_merged)
     time_slots = get_all_time_slots(db_path)
     # Preprocess courses and schedule
     courses = create_course_dictionary(student_course_map, course_professor_map, professor_busy_slots, time_slots)
-    diagnose_same_day_constraints(courses, course_credit_map)
-    schedule_data, infeasibility_reason = schedule_courses(courses, student_course_map, course_professor_map, course_credit_map, course_type_map, [], 
+    diagnose_same_day_constraints(courses, course_classes_per_week_map)
+    schedule_data, infeasibility_reason = schedule_courses(courses, student_course_map, course_professor_map, course_classes_per_week_map, course_type_map, [], 
                                    add_prof_constraints, add_timeslot_capacity, add_student_conflicts, 
                                    add_no_same_day, add_no_consec_days, max_classes_per_slot)
 
@@ -136,12 +136,12 @@ def gen_timetable_with_sections(db_path, max_classes_per_slot=24,
     df_faculty_pref = faculty_pref(db_path)
     professor_busy_slots = faculty_busy_slots(df_faculty_pref)
     
-    # Create credit and type maps based on base courses
-    course_credit_map = {}
+    # Create classes per week and type maps based on base courses
+    course_classes_per_week_map = {}
     course_type_map = {}
     for _, row in df_merged.iterrows():
         course_section_id = row['G CODE']
-        course_credit_map[course_section_id] = row['Credit']
+        course_classes_per_week_map[course_section_id] = row['Classes Per Week']
         course_type_map[course_section_id] = row['Type']
     
     # Ensure default time slots exist
@@ -171,10 +171,10 @@ def gen_timetable_with_sections(db_path, max_classes_per_slot=24,
     print(f"Processing {len(courses)} course sections")
     
     # Diagnose constraints
-    diagnose_same_day_constraints(courses, course_credit_map)
+    diagnose_same_day_constraints(courses, course_classes_per_week_map)
     
     # Generate schedule
-    schedule_data, infeasibility_reason = schedule_courses(courses, student_course_map, course_professor_map_all, course_credit_map, course_type_map, [], 
+    schedule_data, infeasibility_reason = schedule_courses(courses, student_course_map, course_professor_map_all, course_classes_per_week_map, course_type_map, [], 
                                    add_prof_constraints, add_timeslot_capacity, add_student_conflicts, 
                                    add_no_same_day, add_no_consec_days, max_classes_per_slot)
 

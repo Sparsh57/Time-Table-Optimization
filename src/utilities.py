@@ -46,14 +46,14 @@ def create_course_dictionary(student_course_map, course_professor_map, professor
 
     return course_availability
 
-def create_course_credit_map(df_courses):
+def create_course_classes_per_week_map(df_courses):
     try:
         # More efficient way to convert to numeric, handling errors and NaNs
-        df_courses['Credit'] = pd.to_numeric(df_courses['Credit'], errors='coerce').fillna(2).astype(int)
+        df_courses['Classes Per Week'] = pd.to_numeric(df_courses['Classes Per Week'], errors='coerce').fillna(2).astype(int)
     except (KeyError, TypeError):  # Handle missing or incorrect column names
         return {}  # or raise error as you see fit
 
-    return df_courses.set_index('G CODE')['Credit'].to_dict()
+    return df_courses.set_index('G CODE')['Classes Per Week'].to_dict()
 
 
 def create_course_elective_map(df_courses):

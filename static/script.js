@@ -191,11 +191,12 @@ const selectedFiles = {
       mappingElem.appendChild(p);
   
       // Expected columns for each file type
-      const expectedMap = {
-        courses: ["Course code", "Faculty Name", "Type", "Credits"],
-        faculty: ["Name", "Busy Slot"],
-        students: ["Roll No.", "G CODE", "Sections"]
+      const PREVIEW_COLUMNS = {
+        "courses": ["Course code", "Faculty Name", "Type","Classes Per Week", "Number of Sections"],
+        "students":  ["Roll No.", "G CODE", "Sections"],
+        "faculty": ["Name", "Busy Slot"]
       };
+      const expected_cols = PREVIEW_COLUMNS.get(fileType, []);
   
       extraCols.forEach(col => {
         const label = document.createElement("label");
@@ -210,7 +211,7 @@ const selectedFiles = {
         defaultOpt.innerText = "Select expected column";
         select.appendChild(defaultOpt);
   
-        expectedMap[fileType].forEach(ec => {
+        expected_cols.forEach(ec => {
           const opt = document.createElement("option");
           opt.value = ec;
           opt.innerText = ec;

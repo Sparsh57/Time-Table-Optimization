@@ -1,5 +1,5 @@
 from data_preprocessing import merge_data, prepare_student_course_map, create_course_professor_map
-from utilities import faculty_busy_slots, create_course_dictionary, create_course_credit_map
+from utilities import faculty_busy_slots, create_course_dictionary, create_course_classes_per_week_map
 from schedule_model import schedule_courses
 from conflict_checker import check_conflicts, find_courses_with_multiple_slots_on_same_day
 import pandas as pd

@@ -15,7 +15,7 @@ def get_day_from_time_slot(time_slot: str) -> str:
 def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                      student_course_map: Dict[str, List[str]],
                      course_professor_map: Dict[str, Union[str, List[str]]],
-                     course_credits: Dict[str, int],
+                     course_classes_per_week: Dict[str, int],
                      course_type: Dict[str, str],
                      non_preferred_slots: List[str],
                      add_prof_constraints: bool = True,
@@ -27,7 +27,7 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
     """
     Debug-friendly scheduling function with incremental constraint phases:
 
-      PHASE 1) Each course must appear 'credits' times.
+      PHASE 1) Each course must appear 'classes per week' times.
       PHASE 2) Professor cannot teach two courses in the same slot (AddAtMostOne).
       PHASE 3) Limit each slot to at most max_classes_per_slot classes.
       PHASE 4) Student conflicts (soft) -> penalize scheduling multiple courses for one student in the same slot.
@@ -70,10 +70,10 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
     print(f"[INFO] Found {len(all_available_slots)} unique time slots available for scheduling")
 
     # ---------------------------------------------------------
-    # Quick Pre-Check for "credits > available slots" problems
+    # Quick Pre-Check for "classes per week > available slots" problems
     # ---------------------------------------------------------
     for c_id, info in courses.items():
-        needed = course_credits.get(c_id, 2)  # default if missing
+        needed = course_classes_per_week.get(c_id, 2)  # default if missing
         possible = len(info["time_slots"])
         if needed > possible:
             error_msg = (f"PHASE 1 PRE-CHECK FAILED: Course '{c_id}' needs {needed} sessions "
@@ -81,7 +81,7 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                         f"Solutions:\n"
                         f"• Add more time slots to the schedule\n"
                         f"• Check if professor busy slots are too restrictive\n"
-                        f"• Verify course credit requirements are correct")
+                        f"• Verify course classes per week requirements are correct")
             print(f"[PRE-CHECK] {error_msg}")
             return pd.DataFrame(columns=["Course ID", "Scheduled Time"]), error_msg
 
@@ -123,9 +123,9 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                 time_slot_count_vars[slot].append(var)
             course_time_vars[c_id] = slot_dict
 
-        # PHASE 1) Each course must appear exactly 'course_credits[c_id]' times
+        # PHASE 1) Each course must appear exactly 'course_classes_per_week[c_id]' times
         for c_id, slot_dict in course_time_vars.items():
-            needed = course_credits.get(c_id, 2)  # fallback if missing
+            needed = course_classes_per_week.get(c_id, 2)  # fallback if missing
             model.Add(sum(slot_dict.values()) == needed)
 
         # PHASE 2) Professor constraints
@@ -306,13 +306,13 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                                    add_same=False,
                                    add_consec=False)
     if p1_status == cp_model.INFEASIBLE:
-        error_msg = ("PHASE 1 FAILED: Basic 'credits' constraints cannot be satisfied.\n\n"
+        error_msg = ("PHASE 1 FAILED: Basic 'classes per week' constraints cannot be satisfied.\n\n"
                     "This means one or more courses don't have enough available time slots "
-                    "to meet their credit requirements.\n\n"
+                    "to meet their classes per week requirements.\n\n"
                     "Solutions:\n"
                     "• Add more time slots to the schedule\n"
                     "• Check if professor busy slots are too restrictive\n"
-                    "• Verify course credit requirements are realistic")
+                    "• Verify course classes per week requirements are realistic")
         print(f"[DEBUG] {error_msg}")
         return pd.DataFrame(columns=["Course ID", "Scheduled Time"]), error_msg
 
@@ -387,7 +387,7 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                     "Solutions:\n"
                     "• Add time slots on different days\n"
                     "• Review professor busy slots - some may be blocking too many days\n"
-                    "• Check if courses have realistic credit requirements\n"
+                    "• Check if courses have realistic classes per week requirements\n"
                     "• Consider disabling the 'same day' constraint if appropriate")
         print(f"[DEBUG] {error_msg}")
         return pd.DataFrame(columns=["Course ID", "Scheduled Time"]), error_msg
@@ -408,7 +408,7 @@ def schedule_courses(courses: Dict[str, Dict[str, List[str]]],
                         "Solutions:\n"
                         "• Add more time slots spread across different days\n"
                         "• Consider disabling the 'consecutive days' constraint\n"
-                        "• Review course credit requirements\n"
+                        "• Review course classes per week requirements\n"
                         "• Check professor availability across different days")
             print(f"[DEBUG] {error_msg}")
             return pd.DataFrame(columns=["Course ID", "Scheduled Time"]), error_msg

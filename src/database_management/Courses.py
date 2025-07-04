@@ -1,6 +1,6 @@
 from .dbconnection import get_db_session, create_tables
 from .models import User, Course, CourseProfessor
-from .migration import migrate_database_for_sections, check_migration_needed
+from .migration import migrate_database_for_sections, check_migration_needed, migrate_column_rename_credits_to_classes_per_week, check_credits_column_migration_needed
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text
 import pandas as pd
@@ -47,6 +47,72 @@ def parse_faculty_names(faculty_name_str):
     return names
 
 
+def ensure_database_schema_is_current(db_path):
+    """
+    Ensure the database schema is up to date before performing operations.
+    This function checks for common schema issues and runs migrations if needed.
+    
+    :param db_path: Path to the database file or schema identifier
+    """
+    from .dbconnection import is_postgresql, get_organization_database_url
+    
+    # Auto-detect org_name from db_path if it's a schema path
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]  # Remove 'org_' prefix
+
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    try:
+        with session_context as session:
+            # Check if Courses table exists and has the correct schema
+            try:
+                if is_postgresql():
+                    schema = f'org_{org_name}' if org_name else 'public'
+                    result = session.execute(text("""
+                        SELECT column_name 
+                        FROM information_schema.columns 
+                        WHERE table_name = 'Courses' AND table_schema = :schema
+                        ORDER BY ordinal_position
+                    """), {'schema': schema}).fetchall()
+                    columns = [row[0] for row in result]
+                else:
+                    result = session.execute(text('PRAGMA table_info(Courses)')).fetchall()
+                    columns = [row[1] for row in result]  # column names
+                
+                if columns:
+                    has_credits = 'Credits' in columns
+                    has_classes_per_week = 'ClassesPerWeek' in columns
+                    
+                    logger.info(f"Courses table schema check - Credits: {has_credits}, ClassesPerWeek: {has_classes_per_week}")
+                    
+                    if has_credits and not has_classes_per_week:
+                        logger.info("Detected old schema with Credits column, running migration...")
+                        print("🔄 Updating database schema: Credits → ClassesPerWeek")
+                        migrate_column_rename_credits_to_classes_per_week(db_path)
+                        logger.info("Schema migration completed successfully")
+                        print("✅ Database schema updated successfully")
+                    elif has_classes_per_week:
+                        logger.info("Database schema is current (ClassesPerWeek column exists)")
+                    else:
+                        logger.info("Fresh database installation detected")
+                else:
+                    logger.info("Courses table does not exist yet, will be created")
+                    
+            except Exception as e:
+                logger.debug(f"Could not check Courses table schema: {e}")
+                # Table might not exist yet, which is fine
+                
+    except Exception as e:
+        logger.warning(f"Could not perform schema check: {e}")
+        # Continue anyway, the error handling in insert will catch any issues
+
 
 def insert_courses_professors(file, db_path):
     """
@@ -69,11 +135,20 @@ def insert_courses_professors(file, db_path):
         if schema_name.startswith("org_"):
             org_name = schema_name[4:]  # Remove 'org_' prefix
 
+    # Ensure database schema is current before proceeding
+    ensure_database_schema_is_current(db_path)
+
     # Check if migration is needed and run it (only for SQLite)
     if not is_postgresql() and check_migration_needed(db_path):
         print("Database migration needed for sections support...")
         migrate_database_for_sections(db_path)
         print("Database migration completed.")
+    
+    # Check if Credits column migration is needed
+    if check_credits_column_migration_needed(db_path):
+        print("Database migration needed for Credits -> ClassesPerWeek column rename...")
+        migrate_column_rename_credits_to_classes_per_week(db_path)
+        print("Credits column migration completed.")
 
     # First, ensure tables exist
     try:
@@ -119,7 +194,7 @@ def insert_courses_professors(file, db_path):
                     course_code = row['Course code']  # Keep complex patterns like "HIST330|SOCL330|POLT330"
                     faculty_names_str = row['Faculty Name']
                     course_type = map_course_type(row['Type'])
-                    credits = row['Credits']
+                    classes_per_week = row['Classes Per Week']  # Changed from Credits to Classes Per Week
                     
                     # Get number of sections (default to 1 if not provided)
                     num_sections = row.get('Number of Sections', 1)
@@ -141,7 +216,7 @@ def insert_courses_professors(file, db_path):
                         courses_to_insert.append({
                             'CourseName': course_code,  # Keep complex pattern as-is
                             'CourseType': course_type,
-                            'Credits': credits,
+                            'ClassesPerWeek': classes_per_week,
                             'NumberOfSections': num_sections
                         })
                         processed_courses.add(course_code)
@@ -175,10 +250,34 @@ def insert_courses_professors(file, db_path):
                 new_courses = [course for course in courses_to_insert if course['CourseName'] not in existing_courses]
                 
                 if new_courses:
-                    session.bulk_insert_mappings(Course, new_courses)
-                    session.commit()
-                    logger.info(f"Bulk inserted {len(new_courses)} courses")
-                    print(f"Bulk inserted {len(new_courses)} courses (keeping complex patterns intact)")
+                    try:
+                        session.bulk_insert_mappings(Course, new_courses)
+                        session.commit()
+                        logger.info(f"Bulk inserted {len(new_courses)} courses")
+                        print(f"Bulk inserted {len(new_courses)} courses (keeping complex patterns intact)")
+                    except Exception as e:
+                        # Check if this is a column name issue (Credits vs ClassesPerWeek)
+                        error_str = str(e).lower()
+                        if 'classesperweek' in error_str and ('does not exist' in error_str or 'column' in error_str):
+                            logger.warning("ClassesPerWeek column not found, attempting migration...")
+                            print("Detected old database schema, running migration...")
+                            
+                            # Run the migration
+                            session.rollback()
+                            migrate_column_rename_credits_to_classes_per_week(db_path)
+                            
+                            # Retry the insert after migration
+                            try:
+                                session.bulk_insert_mappings(Course, new_courses)
+                                session.commit()
+                                logger.info(f"Bulk inserted {len(new_courses)} courses after migration")
+                                print(f"✅ Successfully inserted {len(new_courses)} courses after migration")
+                            except Exception as e2:
+                                logger.error(f"Failed to insert courses even after migration: {e2}")
+                                raise
+                        else:
+                            # Re-raise original error if it's not related to column names
+                            raise
                 else:
                     logger.info("No new courses to insert")
                     print("No new courses to insert (all already exist)")
@@ -253,7 +352,7 @@ def fetch_course_data(db_path):
                 Course.CourseID,
                 Course.CourseName,
                 Course.CourseType,
-                Course.Credits,
+                Course.ClassesPerWeek,
                 User.Email.label('ProfessorEmail'),
                 User.Name.label('ProfessorName')
             ).select_from(Course)\
@@ -268,7 +367,7 @@ def fetch_course_data(db_path):
                     row.CourseName,
                     row.ProfessorEmail,
                     row.CourseType,
-                    row.Credits,
+                    row.ClassesPerWeek,
                     row.ProfessorName
                 ))
             

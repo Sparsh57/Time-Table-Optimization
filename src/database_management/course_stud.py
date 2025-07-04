@@ -365,7 +365,7 @@ def get_section_mapping_dataframe(db_path):
                 Course.NumberOfSections,
                 CourseStud.SectionNumber,
                 Course.CourseType.label('Course_Type'),
-                Course.Credits
+                Course.ClassesPerWeek
             ).select_from(CourseStud)\
              .join(User, CourseStud.StudentID == User.UserID)\
              .join(Course, CourseStud.CourseID == Course.CourseID)\

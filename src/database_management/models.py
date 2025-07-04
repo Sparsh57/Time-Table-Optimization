@@ -43,7 +43,7 @@ class Course(Base):
     CourseID = Column(Integer, primary_key=True, autoincrement=True)
     CourseName = Column(String(255), unique=True, nullable=False)
     CourseType = Column(String(50))  # Elective, Required
-    Credits = Column(Integer)
+    ClassesPerWeek = Column(Integer)  # Changed from Credits to ClassesPerWeek
     NumberOfSections = Column(Integer, default=1)  # New column for section count
     
     # Relationships

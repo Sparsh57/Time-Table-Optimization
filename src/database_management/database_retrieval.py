@@ -42,7 +42,7 @@ def registration_data(db_path):
                 Course.CourseName.label('G CODE'),
                 func.group_concat(Professor.Email.distinct()).label('Professor'),
                 Course.CourseType.label('Type'),
-                Course.Credits.label('Credit')
+                Course.ClassesPerWeek.label('Classes Per Week')
             ).select_from(CourseStud)\
              .join(Student, CourseStud.StudentID == Student.UserID)\
              .join(Course, CourseStud.CourseID == Course.CourseID)\
@@ -50,7 +50,7 @@ def registration_data(db_path):
              .join(Professor, CourseProfessor.ProfessorID == Professor.UserID)\
              .filter(Student.Role == 'Student')\
              .filter(Professor.Role == 'Professor')\
-             .group_by(Student.Email, Course.CourseName, Course.CourseType, Course.Credits)
+             .group_by(Student.Email, Course.CourseName, Course.CourseType, Course.ClassesPerWeek)
             
             results = []
             for row in query.all():
@@ -59,7 +59,7 @@ def registration_data(db_path):
                     'G CODE': row._asdict()['G CODE'],
                     'Professor': row._asdict()['Professor'],
                     'Type': row._asdict()['Type'],
-                    'Credit': row._asdict()['Credit']
+                    'Classes Per Week': row._asdict()['Classes Per Week']
                 })
             
             return pd.DataFrame(results)
@@ -96,7 +96,7 @@ def registration_data_with_sections(db_path):
                 Course.CourseName.label('BaseCourse'),
                 CourseStud.SectionNumber,
                 Course.CourseType.label('Type'),
-                Course.Credits.label('Credit'),
+                Course.ClassesPerWeek.label('Classes Per Week'),
                 Course.NumberOfSections
             ).select_from(CourseStud)\
              .join(User, CourseStud.StudentID == User.UserID)\
@@ -129,7 +129,7 @@ def registration_data_with_sections(db_path):
                     'SectionNumber': section_num,
                     'Professor': section_prof,
                     'Type': row._asdict()['Type'],
-                    'Credit': row._asdict()['Credit'],
+                    'Classes Per Week': row._asdict()['Classes Per Week'],
                     'NumberOfSections': num_sections
                 })
             
@@ -402,21 +402,21 @@ def get_course_section_professor_mapping(db_path):
             logger.error(f"Error creating course-section-professor mapping: {e}")
             return {}
 
-def create_course_credit_map(df):
+def create_course_classes_per_week_map(df):
     """
-    Create a mapping from course to credit hours.
+    Create a mapping from course to classes per week.
     
-    :param df: DataFrame with 'G CODE' and 'Credit' columns
-    :return: Dictionary mapping course codes to credit hours
+    :param df: DataFrame with 'G CODE' and 'Classes Per Week' columns
+    :return: Dictionary mapping course codes to classes per week
     """
-    course_credit_map = {}
+    course_classes_per_week_map = {}
     
     for index, row in df.iterrows():
         course_code = row['G CODE']
-        credits = row['Credit']
-        course_credit_map[course_code] = credits
+        classes_per_week = row['Classes Per Week']
+        course_classes_per_week_map[course_code] = classes_per_week
     
-    return course_credit_map
+    return course_classes_per_week_map
 
 def create_course_elective_map(df):
     """

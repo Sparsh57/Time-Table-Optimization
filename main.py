@@ -1180,7 +1180,7 @@ async def upload_csv(file_type: str = Form(...), file: UploadFile = File(...)):
         content = await file.read()
         df = pd.read_csv(BytesIO(content))
         PREVIEW_COLUMNS = {
-            "courses": ["Course code", "Faculty Name", "Type","Credits", "Number of Sections"],
+            "courses": ["Course code", "Faculty Name", "Type","Classes Per Week", "Number of Sections"],
             "students":  ["Roll No.", "G CODE", "Sections"],
             "faculty": ["Name", "Busy Slot"]
         }
