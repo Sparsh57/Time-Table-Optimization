@@ -418,3 +418,75 @@ def get_student_schedule(roll_number, db_path):
     course_ids = get_course_ids_for_student(roll_number, db_path)
     schedule_data = get_schedule_for_courses(course_ids, db_path)
     return schedule_data
+
+def update_course_slot(course_identifier, from_day, from_start, from_end,
+                       to_day, to_start, to_end, db_path):
+    """Move a course from one slot to another."""
+    from .dbconnection import is_postgresql, get_organization_database_url
+
+    # Detect org_name from db_path if using schema notation
+    org_name = None
+    if db_path and db_path.startswith("schema:"):
+        schema_name = db_path.replace("schema:", "")
+        if schema_name.startswith("org_"):
+            org_name = schema_name[4:]
+
+    # Determine which session to use
+    if is_postgresql() and org_name:
+        session_context = get_db_session(get_organization_database_url(), org_name)
+    else:
+        session_context = get_db_session(db_path)
+
+    def parse_course(identifier: str):
+        section_number = 1
+        base_name = identifier
+        if "-" in identifier and identifier.split("-")[-1].isalpha():
+            parts = identifier.split("-")
+            base_name = "-".join(parts[:-1])
+            letter = parts[-1]
+            if len(letter) == 1 and letter.isalpha():
+                section_number = ord(letter.upper()) - ord("A") + 1
+        return base_name, section_number
+
+    with session_context as session:
+        try:
+            base_course, section_number = parse_course(course_identifier)
+
+            course = session.query(Course).filter_by(CourseName=base_course).first()
+            if not course:
+                raise ValueError(f"Course not found: {course_identifier}")
+
+            from_slot = session.query(Slot).filter_by(Day=from_day, StartTime=from_start,
+                                                     EndTime=from_end).first()
+            to_slot = session.query(Slot).filter_by(Day=to_day, StartTime=to_start,
+                                                   EndTime=to_end).first()
+            if not from_slot or not to_slot:
+                raise ValueError("Invalid source or destination slot")
+
+            sched = session.query(Schedule).filter_by(
+                CourseID=course.CourseID,
+                SlotID=from_slot.SlotID,
+                SectionNumber=section_number,
+            ).first()
+            if not sched:
+                raise ValueError("Schedule entry not found")
+
+            # Prevent duplicates
+            existing = session.query(Schedule).filter_by(
+                CourseID=course.CourseID,
+                SlotID=to_slot.SlotID,
+                SectionNumber=section_number,
+            ).first()
+            if existing:
+                raise ValueError("Course already assigned to destination slot")
+
+            sched.SlotID = to_slot.SlotID
+            session.commit()
+            logger.info(
+                f"Moved course {course_identifier} from {from_day} {from_start}-{from_end} "
+                f"to {to_day} {to_start}-{to_end}"
+            )
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error updating course slot: {e}")
+            raise 
